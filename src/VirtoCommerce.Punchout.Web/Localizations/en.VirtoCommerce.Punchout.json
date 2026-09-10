@@ -1,0 +1,24 @@
+{
+  "punchout": {
+    "blades": {
+      "hello-world": {
+        "title": "Hello world blade"
+      }
+    }
+  },
+  "permissions": {
+    "punchout:access": "Open Punchout menu",
+    "punchout:create": "Create Punchout related data",
+    "punchout:read": "View Punchout related data",
+    "punchout:update": "Update Punchout related data",
+    "punchout:delete": "Delete Punchout related data"
+  },
+  "settings": {
+    "Punchout": {
+      "Enabled": {
+        "title": "Punchout Enabled",
+        "description": "Punchout Enabled setting"
+      }
+    }
+  }
+}

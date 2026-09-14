@@ -25,6 +25,17 @@ public class PunchoutDbContext : DbContextBase
         modelBuilder.Entity<PunchoutSessionEntity>().ToAuditableEntityTable("PunchoutSession");
         modelBuilder.Entity<PunchoutIntegrationEntity>().ToAuditableEntityTable("PunchoutIntegration");
 
+        modelBuilder.Entity<PunchoutIntegrationOrganizationEntity>().ToEntityTable("PunchoutIntegrationOrganization");
+        modelBuilder.Entity<PunchoutIntegrationOrganizationEntity>()
+            .HasOne(x => x.Integration)
+            .WithMany(x => x.Organizations)
+            .HasForeignKey(x => x.IntegrationId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PunchoutIntegrationOrganizationEntity>()
+            .HasIndex(x => new { x.OrganizationId, x.IntegrationId })
+            .IsUnique()
+            .HasDatabaseName("IX_PunchoutIntegrationOrganization_OrganizationId_IntegrationId");
+
         switch (Database.ProviderName)
         {
             case "Pomelo.EntityFrameworkCore.MySql":

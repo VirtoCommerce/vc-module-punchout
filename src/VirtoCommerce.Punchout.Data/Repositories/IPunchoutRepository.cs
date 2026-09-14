@@ -12,6 +12,8 @@ public interface IPunchoutRepository : IRepository
 
     IQueryable<PunchoutIntegrationEntity> PunchoutIntegrations { get; }
 
+    IQueryable<PunchoutIntegrationOrganizationEntity> PunchoutIntegrationOrganizations { get; }
+
     Task<IList<PunchoutSessionEntity>> GetPunchoutSessionsByIdsAsync(IList<string> ids, string responseGroup);
 
     Task<IList<PunchoutIntegrationEntity>> GetPunchoutIntegrationsByIdsAsync(IList<string> ids, string responseGroup);

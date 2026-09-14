@@ -52,8 +52,11 @@ public class Module : IModule, IHasConfiguration
         serviceCollection.AddTransient<IPunchoutSessionService, PunchoutSessionService>();
         serviceCollection.AddTransient<IPunchoutSessionSearchService, PunchoutSessionSearchService>();
 
+        serviceCollection.AddSingleton<IPunchoutSecretHasher, PunchoutSecretHasher>();
+
         serviceCollection.AddTransient<IPunchoutIntegrationService, PunchoutIntegrationService>();
         serviceCollection.AddTransient<IPunchoutIntegrationSearchService, PunchoutIntegrationSearchService>();
+        serviceCollection.AddTransient<IPunchoutOrganizationIntegrationService, PunchoutOrganizationIntegrationService>();
     }
 
     public void PostInitialize(IApplicationBuilder appBuilder)

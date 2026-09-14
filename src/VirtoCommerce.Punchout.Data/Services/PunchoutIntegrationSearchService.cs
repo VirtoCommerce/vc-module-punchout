@@ -25,6 +25,12 @@ public class PunchoutIntegrationSearchService(
     protected override IQueryable<PunchoutIntegrationEntity> BuildQuery(IRepository repository, PunchoutIntegrationSearchCriteria criteria)
     {
         var query = ((IPunchoutRepository)repository).PunchoutIntegrations;
+
+        if (!criteria.OrganizationIds.IsNullOrEmpty())
+        {
+            query = query.Where(x => x.Organizations.Any(y => criteria.OrganizationIds.Contains(y.OrganizationId)));
+        }
+
         return query;
     }
 

@@ -1,0 +1,37 @@
+<div class="blade-static __bottom" ng-if="pageSettings.itemsPerPageCount < pageSettings.totalItems" ng-include="'pagerTemplate.html'"></div>
+
+<div class="blade-content __medium-wide">
+    <div class="blade-inner">
+        <div class="inner-block">
+            <div class="table-wrapper" ng-init="setGridOptions({
+                    useExternalSorting: true,
+                    rowTemplate: 'punchout-integration-list.row.html',
+                    data: 'blade.currentEntities',
+                    excludeProperties: ['sharedSecret', 'allowedReturnUrls'],
+                    columnDefs: [
+                        { name: 'name', displayName: 'punchout.blades.integration-list.labels.name' },
+                        { name: 'isActive', displayName: 'punchout.blades.integration-list.labels.isActive', width: 90, cellTemplate: 'punchout-integration-list.isActive.html' },
+                        { name: 'storeId', displayName: 'punchout.blades.integration-list.labels.storeId' },
+                        { name: 'senderIdentity', displayName: 'punchout.blades.integration-list.labels.senderIdentity' },
+                        { name: 'credentialDomain', displayName: 'punchout.blades.integration-list.labels.credentialDomain' },
+                    ]})">
+                <div ui-grid="gridOptions" hideMenu ui-grid-auto-resize ui-grid-save-state ui-grid-selection ui-grid-resize-columns ui-grid-move-columns ui-grid-pinning ui-grid-height></div>
+                <ul class="menu __context" role="menu" id="punchout_integration_menu">
+                    <li class="menu-item" ng-click="deleteList([contextMenuEntity])" va-permission="punchout:delete">
+                        <i class="menu-ico fas fa-trash-alt"></i> {{'platform.commands.delete' | translate}}
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/ng-template" id="punchout-integration-list.isActive.html">
+    <div class="ui-grid-cell-contents">
+        <i class="fa fa-check" ng-if="row.entity.isActive"></i>
+    </div>
+</script>
+
+<script type="text/ng-template" id="punchout-integration-list.row.html">
+    <div ng-click="grid.appScope.blade.selectNode(row.entity)" ng-repeat="(colRenderIndex, col) in colContainer.renderedColumns track by col.uid" ui-grid-one-bind-id-grid="rowRenderIndex + '-' + col.uid + '-cell'" class="ui-grid-cell" ng-class="{'ui-grid-row-header-cell': col.isRowHeader, '__hovered': grid.appScope.contextMenuEntity === row.entity, '__selected': row.entity.id === grid.appScope.selectedNodeId }" role="{{col.isRowHeader ? 'rowheader' : 'gridcell' }}" ui-grid-cell context-menu="grid.appScope.contextMenuEntity = row.entity" data-target="punchout_integration_menu"></div>
+</script>

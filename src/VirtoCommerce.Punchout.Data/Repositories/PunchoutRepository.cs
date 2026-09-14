@@ -17,6 +17,8 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
 
     public IQueryable<PunchoutIntegrationEntity> PunchoutIntegrations => DbContext.Set<PunchoutIntegrationEntity>();
 
+    public IQueryable<PunchoutIntegrationOrganizationEntity> PunchoutIntegrationOrganizations => DbContext.Set<PunchoutIntegrationOrganizationEntity>();
+
     public virtual async Task<IList<PunchoutSessionEntity>> GetPunchoutSessionsByIdsAsync(IList<string> ids, string responseGroup)
     {
         if (ids.IsNullOrEmpty())
@@ -36,8 +38,10 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
             return [];
         }
 
+        var query = PunchoutIntegrations.Include(x => x.Organizations);
+
         return ids.Count == 1
-            ? await PunchoutIntegrations.Where(x => x.Id == ids.First()).ToListAsync()
-            : await PunchoutIntegrations.Where(x => ids.Contains(x.Id)).ToListAsync();
+            ? await query.Where(x => x.Id == ids.First()).ToListAsync()
+            : await query.Where(x => ids.Contains(x.Id)).ToListAsync();
     }
 }

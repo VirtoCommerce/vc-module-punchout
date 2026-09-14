@@ -16,9 +16,9 @@ angular.module(moduleName, [])
                         'platformWebApp.bladeNavigationService',
                         function (bladeNavigationService) {
                             var newBlade = {
-                                id: 'blade1',
-                                controller: 'VirtoCommerce.Punchout.helloWorldController',
-                                template: 'Modules/$(VirtoCommerce.Punchout)/Scripts/blades/hello-world.html',
+                                id: 'punchout-integration-list',
+                                controller: 'VirtoCommerce.Punchout.integrationListController',
+                                template: 'Modules/$(VirtoCommerce.Punchout)/Scripts/blades/integration-list.tpl.html',
                                 isClosingDisabled: true,
                             };
                             bladeNavigationService.showBlade(newBlade);
@@ -27,8 +27,8 @@ angular.module(moduleName, [])
                 });
         }
     ])
-    .run(['platformWebApp.mainMenuService', '$state',
-        function (mainMenuService, $state) {
+    .run(['platformWebApp.mainMenuService', '$state', 'platformWebApp.widgetService',
+        function (mainMenuService, $state, widgetService) {
             //Register module in main menu
             var menuItem = {
                 path: 'browse/punchout',
@@ -39,5 +39,19 @@ angular.module(moduleName, [])
                 permission: 'punchout:access',
             };
             mainMenuService.addMenuItem(menuItem);
+
+
+            // widgets
+            var organizationPunchoutIntegrationWidget = {
+                controller: 'VirtoCommerce.Punchout.organizationPunchoutIntegrationWidgetController',
+                template: 'Modules/$(VirtoCommerce.Punchout)/Scripts/widgets/organization-punchout-integration-widget.html',
+                size: [2, 1],
+                permission: 'punchout:read',
+                isVisible: function (blade) {
+                    return !blade.isNew;
+                }
+            };
+
+            widgetService.registerWidget(organizationPunchoutIntegrationWidget, 'organizationDetail2');
         }
     ]);

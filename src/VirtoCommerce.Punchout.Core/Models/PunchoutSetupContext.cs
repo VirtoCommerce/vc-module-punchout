@@ -35,4 +35,9 @@ public class PunchoutSetupContext
     public string SharedSecret { get; set; }
 
     public IDictionary<string, string> Extrinsics { get; set; }
+
+    /// <summary>
+    /// The person who started the session. Null when the request carries no usable Contact.
+    /// </summary>
+    public PunchoutUserContext User { get; set; }
 }

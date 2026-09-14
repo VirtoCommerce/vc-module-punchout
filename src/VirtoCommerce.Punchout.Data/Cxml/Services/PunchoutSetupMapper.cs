@@ -34,8 +34,37 @@ public class PunchoutSetupMapper : IPunchoutSetupMapper
         setupContext.BuyerCookie = setupRequest?.BuyerCookie;
         setupContext.ReturnUrl = setupRequest?.BrowserFormPost?.Url;
         setupContext.Extrinsics = MapExtrinsics(setupRequest?.Extrinsics);
+        setupContext.User = MapUser(setupRequest?.Contacts);
 
         return setupContext;
+    }
+
+    protected virtual PunchoutUserContext MapUser(IList<CxmlContact> contacts)
+    {
+        if (contacts.IsNullOrEmpty())
+        {
+            return null;
+        }
+
+        // cXML allows several contacts told apart by their role; the person who started the session is
+        // the endUser. Fall back to the first contact for buyers that send one without a role.
+        var contact = contacts.FirstOrDefault(x => x.Role.EqualsIgnoreCase(CxmlConstants.ContactRole.EndUser))
+            ?? contacts[0];
+
+        var name = contact.Name?.Value?.Trim();
+        var email = contact.Email?.Trim();
+
+        if (string.IsNullOrEmpty(name) && string.IsNullOrEmpty(email))
+        {
+            return null;
+        }
+
+        var user = AbstractTypeFactory<PunchoutUserContext>.TryCreateInstance();
+
+        user.Name = name;
+        user.Email = email;
+
+        return user;
     }
 
     public virtual CxmlDocument MapResponse(PunchoutSetupResult result)

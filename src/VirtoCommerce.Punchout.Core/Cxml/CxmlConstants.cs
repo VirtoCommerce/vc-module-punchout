@@ -11,6 +11,11 @@ public static class CxmlConstants
     /// </summary>
     public const string TimestampFormat = "yyyy-MM-ddTHH:mm:sszzz";
 
+    public static class ContactRole
+    {
+        public const string EndUser = "endUser";
+    }
+
     /// <summary>
     /// cXML carries the outcome in a Status element whose code and text mirror the HTTP status codes.
     /// </summary>

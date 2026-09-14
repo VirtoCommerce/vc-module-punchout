@@ -16,4 +16,10 @@ public class CxmlPunchoutSetupRequest
 
     [XmlElement("Extrinsic")]
     public List<CxmlExtrinsic> Extrinsics { get; set; }
+
+    /// <summary>
+    /// Contacts of the buying side. cXML allows several, distinguished by their role.
+    /// </summary>
+    [XmlElement("Contact")]
+    public List<CxmlContact> Contacts { get; set; }
 }

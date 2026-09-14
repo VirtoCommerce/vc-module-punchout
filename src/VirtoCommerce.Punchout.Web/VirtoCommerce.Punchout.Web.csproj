@@ -25,4 +25,7 @@
     <ProjectReference Include="..\VirtoCommerce.Punchout.Data.PostgreSql\VirtoCommerce.Punchout.Data.PostgreSql.csproj" />
     <ProjectReference Include="..\VirtoCommerce.Punchout.Data.SqlServer\VirtoCommerce.Punchout.Data.SqlServer.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Scripts\blades\" />
+  </ItemGroup>
 </Project>

@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Permissions = VirtoCommerce.Punchout.Core.ModuleConstants.Security.Permissions;
@@ -5,19 +6,20 @@ using Permissions = VirtoCommerce.Punchout.Core.ModuleConstants.Security.Permiss
 namespace VirtoCommerce.Punchout.Web.Controllers.Api;
 
 [Authorize]
-[Route("api/punchout")]
+[Route("api/punchout/cxml")]
 public class PunchoutController : Controller
 {
-    // GET: api/punchout
-    /// <summary>
-    /// Get message
-    /// </summary>
-    /// <remarks>Return "Hello world!" message</remarks>
-    [HttpGet]
-    [Route("")]
-    [Authorize(Permissions.Read)]
-    public ActionResult<string> Get()
+    public PunchoutController()
     {
-        return Ok(new { result = "Hello world!" });
+
+    }
+
+    // POST: api/punchout/cxml/setup
+    [HttpGet]
+    [Route("setup")]
+    [Authorize(Permissions.Read)]
+    public async Task<ActionResult> Setup()
+    {
+        return Ok(new { result = "OK" });
     }
 }

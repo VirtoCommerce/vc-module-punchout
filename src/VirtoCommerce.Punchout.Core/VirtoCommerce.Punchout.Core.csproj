@@ -6,4 +6,7 @@
   <ItemGroup>
     <PackageReference Include="VirtoCommerce.Platform.Core" Version="3.1052.0" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Cxml\Services\" />
+  </ItemGroup>
 </Project>

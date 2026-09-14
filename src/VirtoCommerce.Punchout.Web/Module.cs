@@ -1,3 +1,4 @@
+using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -9,9 +10,11 @@ using VirtoCommerce.Platform.Data.MySql.Extensions;
 using VirtoCommerce.Platform.Data.PostgreSql.Extensions;
 using VirtoCommerce.Platform.Data.SqlServer.Extensions;
 using VirtoCommerce.Punchout.Core;
+using VirtoCommerce.Punchout.Core.Services;
 using VirtoCommerce.Punchout.Data.MySql;
 using VirtoCommerce.Punchout.Data.PostgreSql;
 using VirtoCommerce.Punchout.Data.Repositories;
+using VirtoCommerce.Punchout.Data.Services;
 using VirtoCommerce.Punchout.Data.SqlServer;
 
 namespace VirtoCommerce.Punchout.Web;
@@ -42,12 +45,15 @@ public class Module : IModule, IHasConfiguration
             }
         });
 
-        // Override models
-        //AbstractTypeFactory<OriginalModel>.OverrideType<OriginalModel, ExtendedModel>().MapToType<ExtendedEntity>();
-        //AbstractTypeFactory<OriginalEntity>.OverrideType<OriginalEntity, ExtendedEntity>();
-
         // Register services
-        //serviceCollection.AddTransient<IMyService, MyService>();
+        serviceCollection.AddTransient<IPunchoutRepository, PunchoutRepository>();
+        serviceCollection.AddSingleton<Func<IPunchoutRepository>>(provider => () => provider.CreateScope().ServiceProvider.GetRequiredService<IPunchoutRepository>());
+
+        serviceCollection.AddTransient<IPunchoutSessionService, PunchoutSessionService>();
+        serviceCollection.AddTransient<IPunchoutSessionSearchService, PunchoutSessionSearchService>();
+
+        serviceCollection.AddTransient<IPunchoutIntegrationService, PunchoutIntegrationService>();
+        serviceCollection.AddTransient<IPunchoutIntegrationSearchService, PunchoutIntegrationSearchService>();
     }
 
     public void PostInitialize(IApplicationBuilder appBuilder)

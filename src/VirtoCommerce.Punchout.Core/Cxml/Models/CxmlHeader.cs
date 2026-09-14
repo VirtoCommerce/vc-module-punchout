@@ -2,14 +2,14 @@ using System.Xml.Serialization;
 
 namespace VirtoCommerce.Punchout.Core.Cxml.Models;
 
-public class Header
+public class CxmlHeader
 {
     [XmlElement("From")]
-    public From From { get; set; }
+    public CxmlFrom From { get; set; }
 
     [XmlElement("To")]
-    public To To { get; set; }
+    public CxmlTo To { get; set; }
 
     [XmlElement("Sender")]
-    public Sender Sender { get; set; }
+    public CxmlSender Sender { get; set; }
 }

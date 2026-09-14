@@ -2,7 +2,7 @@ using System.Xml.Serialization;
 
 namespace VirtoCommerce.Punchout.Core.Cxml.Models;
 
-public class Extrinsic
+public class CxmlExtrinsic
 {
     [XmlAttribute("name")]
     public string Name { get; set; }

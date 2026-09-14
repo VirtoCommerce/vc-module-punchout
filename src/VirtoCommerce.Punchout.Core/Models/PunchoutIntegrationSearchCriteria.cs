@@ -5,8 +5,12 @@ namespace VirtoCommerce.Punchout.Core.Models;
 
 public class PunchoutIntegrationSearchCriteria : SearchCriteriaBase
 {
-    /// <summary>
-    /// Returns only the integrations linked to at least one of these organizations.
-    /// </summary>
     public IList<string> OrganizationIds { get; set; }
+
+    /// <summary>
+    /// cXML Header/Sender/Credential/Identity
+    /// </summary>
+    public string SenderIdentity { get; set; }
+
+    public bool? IsActive { get; set; }
 }

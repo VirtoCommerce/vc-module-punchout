@@ -3,7 +3,7 @@ using System.Xml.Serialization;
 
 namespace VirtoCommerce.Punchout.Core.Cxml.Models;
 
-public class PunchoutSetupRequest
+public class CxmlPunchoutSetupRequest
 {
     [XmlAttribute("operation")]
     public string Operation { get; set; }
@@ -12,8 +12,8 @@ public class PunchoutSetupRequest
     public string BuyerCookie { get; set; }
 
     [XmlElement("BrowserFormPost")]
-    public BrowserFormPost BrowserFormPost { get; set; }
+    public CxmlBrowserFormPost BrowserFormPost { get; set; }
 
     [XmlElement("Extrinsic")]
-    public List<Extrinsic> Extrinsics { get; set; }
+    public List<CxmlExtrinsic> Extrinsics { get; set; }
 }

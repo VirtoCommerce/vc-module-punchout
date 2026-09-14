@@ -10,7 +10,9 @@ using VirtoCommerce.Platform.Data.MySql.Extensions;
 using VirtoCommerce.Platform.Data.PostgreSql.Extensions;
 using VirtoCommerce.Platform.Data.SqlServer.Extensions;
 using VirtoCommerce.Punchout.Core;
+using VirtoCommerce.Punchout.Core.Cxml.Services;
 using VirtoCommerce.Punchout.Core.Services;
+using VirtoCommerce.Punchout.Data.Cxml.Services;
 using VirtoCommerce.Punchout.Data.MySql;
 using VirtoCommerce.Punchout.Data.PostgreSql;
 using VirtoCommerce.Punchout.Data.Repositories;
@@ -57,6 +59,11 @@ public class Module : IModule, IHasConfiguration
         serviceCollection.AddTransient<IPunchoutIntegrationService, PunchoutIntegrationService>();
         serviceCollection.AddTransient<IPunchoutIntegrationSearchService, PunchoutIntegrationSearchService>();
         serviceCollection.AddTransient<IPunchoutOrganizationIntegrationService, PunchoutOrganizationIntegrationService>();
+
+        serviceCollection.AddTransient<ICxmlSerializer, CxmlSerializer>();
+        serviceCollection.AddTransient<IPunchoutSetupMapper, PunchoutSetupMapper>();
+        serviceCollection.AddTransient<IPunchoutSetupService, PunchoutSetupService>();
+
     }
 
     public void PostInitialize(IApplicationBuilder appBuilder)

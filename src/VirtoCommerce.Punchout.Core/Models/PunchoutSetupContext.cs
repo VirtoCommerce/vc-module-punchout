@@ -4,15 +4,35 @@ namespace VirtoCommerce.Punchout.Core.Models;
 
 public class PunchoutSetupContext
 {
-    public string PayloadId { get; set; }
-
     public string BuyerCookie { get; set; }
 
     public string ReturnUrl { get; set; }
 
-    public string Operation { get; set; }
+    /// <summary>
+    /// Identity of the buying organization (cXML Header/From/Credential/Identity).
+    /// </summary>
+    public string From { get; set; }
 
-    //public PunchoutCredential Credential { get; set; }
+    /// <summary>
+    /// NetworkId, DUNS, etc .
+    /// </summary>
+    public string FromDomain { get; set; }
+
+    /// <summary>
+    /// Identity of the supplier the request is addressed to (cXML Header/To/Credential/Identity).
+    /// </summary>
+    public string To { get; set; }
+
+    public string ToDomain { get; set; }
+
+    /// <summary>
+    /// Identity of the system that sent the request and owns the shared secret (cXML Header/Sender/Credential/Identity)
+    /// </summary>
+    public string Sender { get; set; }
+
+    public string SenderDomain { get; set; }
+
+    public string SharedSecret { get; set; }
 
     public IDictionary<string, string> Extrinsics { get; set; }
 }

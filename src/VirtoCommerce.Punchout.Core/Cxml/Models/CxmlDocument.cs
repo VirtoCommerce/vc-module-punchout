@@ -12,8 +12,12 @@ public class CxmlDocument
     public string Timestamp { get; set; }
 
     [XmlElement("Header")]
-    public Header Header { get; set; }
+    public CxmlHeader Header { get; set; }
 
     [XmlElement("Request")]
-    public Request Request { get; set; }
+    public CxmlRequest Request { get; set; }
+
+    [XmlElement("Response")]
+    public CxmlResponse Response { get; set; }
 }
+

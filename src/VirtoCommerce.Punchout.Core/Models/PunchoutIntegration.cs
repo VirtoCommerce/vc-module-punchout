@@ -18,30 +18,24 @@ public class PunchoutIntegration : AuditableEntity, ICloneable
     public string SenderIdentity { get; set; }
 
     /// <summary>
-    /// The plain shared secret. Generated once by the GetNew action and accepted on save, where it is
-    /// replaced with <see cref="SharedSecretHash"/>. Never stored and never returned for an existing integration.
+    /// The plain shared secret. Generated once by the GetNew action and accepted on save, where it is SharedSecretHash.
+    /// Never stored and never returned for an existing integration.
     /// </summary>
     public string SharedSecret { get; set; }
 
     /// <summary>
-    /// A salted one-way hash of <see cref="SharedSecret"/>. Stored in the database, never exposed through the API.
+    /// A salted one-way hash of SharedSecret. Stored in the database, never exposed through the API.
     /// </summary>
     public string SharedSecretHash { get; set; }
 
     public IList<string> AllowedReturnUrls { get; set; }
 
-    /// <summary>
-    /// Organizations this integration is available for. An organization can have several integrations,
-    /// and an integration can serve several organizations.
-    /// </summary>
     public IList<string> OrganizationIds { get; set; }
 
     public virtual object Clone()
     {
         var result = (PunchoutIntegration)MemberwiseClone();
 
-        // Deep copy the collections: the CRUD service hands out clones of cached models, and a shared
-        // list reference would let a caller modify the cached instance.
         result.AllowedReturnUrls = AllowedReturnUrls?.ToList();
         result.OrganizationIds = OrganizationIds?.ToList();
 

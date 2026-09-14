@@ -26,6 +26,15 @@ public static class ModuleConstants
         }
     }
 
+    public static class SessionStatus
+    {
+        public const string Created = "Created";
+        public const string Active = "Active";
+        public const string Returned = "Returned";
+        public const string Expired = "Expired";
+        public const string Cancelled = "Cancelled";
+    }
+
     public static class Settings
     {
         public static class General

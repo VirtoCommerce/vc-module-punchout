@@ -2,10 +2,10 @@ using System.Xml.Serialization;
 
 namespace VirtoCommerce.Punchout.Core.Cxml.Models;
 
-public class Sender
+public class CxmlSender
 {
     [XmlElement("Credential")]
-    public Credential Credential { get; set; }
+    public CxmlCredential Credential { get; set; }
 
     [XmlElement("UserAgent")]
     public string UserAgent { get; set; }

@@ -2,7 +2,7 @@ using System.Xml.Serialization;
 
 namespace VirtoCommerce.Punchout.Core.Cxml.Models;
 
-public class Credential
+public class CxmlCredential
 {
     [XmlAttribute("domain")]
     public string Domain { get; set; }

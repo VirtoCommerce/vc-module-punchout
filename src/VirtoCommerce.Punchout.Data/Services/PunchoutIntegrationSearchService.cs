@@ -26,6 +26,16 @@ public class PunchoutIntegrationSearchService(
     {
         var query = ((IPunchoutRepository)repository).PunchoutIntegrations;
 
+        if (!string.IsNullOrEmpty(criteria.SenderIdentity))
+        {
+            query = query.Where(x => x.SenderIdentity == criteria.SenderIdentity);
+        }
+
+        if (criteria.IsActive != null)
+        {
+            query = query.Where(x => x.IsActive == criteria.IsActive);
+        }
+
         if (!criteria.OrganizationIds.IsNullOrEmpty())
         {
             query = query.Where(x => x.Organizations.Any(y => criteria.OrganizationIds.Contains(y.OrganizationId)));

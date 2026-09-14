@@ -23,6 +23,11 @@ public class PunchoutDbContext : DbContextBase
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<PunchoutSessionEntity>().ToAuditableEntityTable("PunchoutSession");
+        // The session token is the correlation key the storefront resolves a session by.
+        modelBuilder.Entity<PunchoutSessionEntity>()
+            .HasIndex(x => x.SessionToken)
+            .IsUnique()
+            .HasDatabaseName("IX_PunchoutSession_SessionToken");
         modelBuilder.Entity<PunchoutIntegrationEntity>().ToAuditableEntityTable("PunchoutIntegration");
 
         modelBuilder.Entity<PunchoutIntegrationOrganizationEntity>().ToEntityTable("PunchoutIntegrationOrganization");

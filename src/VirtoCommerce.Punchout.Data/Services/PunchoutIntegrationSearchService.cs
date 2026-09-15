@@ -38,7 +38,7 @@ public class PunchoutIntegrationSearchService(
 
         if (!criteria.OrganizationIds.IsNullOrEmpty())
         {
-            query = query.Where(x => x.Organizations.Any(y => criteria.OrganizationIds.Contains(y.OrganizationId)));
+            query = query.Where(x => criteria.OrganizationIds.Contains(x.OrganizationId));
         }
 
         return query;

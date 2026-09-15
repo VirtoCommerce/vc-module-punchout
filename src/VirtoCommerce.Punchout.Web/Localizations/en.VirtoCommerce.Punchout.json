@@ -50,6 +50,7 @@
           "storeId": "Store",
           "senderIdentity": "Sender identity",
           "inactive": "This integration is inactive",
+          "assigned-elsewhere": "(assigned to another organization)",
           "no-integrations": "There are no punchout integrations to assign yet."
         },
         "placeholders": {

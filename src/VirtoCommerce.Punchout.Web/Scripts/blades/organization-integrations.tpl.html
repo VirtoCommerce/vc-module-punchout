@@ -3,13 +3,6 @@
 <div class="blade-content __medium-wide">
     <div class="blade-inner">
         <div class="inner-block">
-
-            <div class="form-group" ng-if="blade.currentEntities.length">
-                <div class="form-input">
-                    <input ng-model="filter.keyword" placeholder="{{ 'punchout.blades.organization-integrations.placeholders.filter' | translate }}">
-                </div>
-            </div>
-
             <div class="table-wrapper" ng-if="blade.currentEntities.length">
                 <table class="table __indexed">
                     <thead>
@@ -28,16 +21,20 @@
                     <tbody>
                         <tr class="table-item"
                             ng-repeat="integration in blade.currentEntities | filter: { $: filter.keyword }"
-                            ng-click="integration.$selected = !integration.$selected">
+                            ng-class="{'__disabled': integration.$disabled}"
+                            ng-click="toggle(integration)">
                             <td class="table-col">
                                 <label class="form-control __checkbox" ng-click="$event.stopPropagation()">
-                                    <input type="checkbox" ng-model="integration.$selected" />
+                                    <input type="checkbox" ng-model="integration.$selected" ng-disabled="integration.$disabled" />
                                     <span class="check"></span>
                                 </label>
                             </td>
                             <td class="table-col">
                                 {{integration.name}}
                                 <i class="fa fa-ban" ng-if="!integration.isActive" title="{{ 'punchout.blades.organization-integrations.labels.inactive' | translate }}"></i>
+                                <span class="muted" ng-if="integration.$disabled">
+                                    {{ 'punchout.blades.organization-integrations.labels.assigned-elsewhere' | translate }}
+                                </span>
                             </td>
                             <td class="table-col">{{integration.storeId}}</td>
                             <td class="table-col">{{integration.senderIdentity}}</td>

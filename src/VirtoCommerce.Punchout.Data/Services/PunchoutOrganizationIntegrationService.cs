@@ -21,9 +21,9 @@ public class PunchoutOrganizationIntegrationService(
         using var repository = repositoryFactory();
         repository.DisableChangesTracking();
 
-        return await repository.PunchoutIntegrationOrganizations
+        return await repository.PunchoutIntegrations
             .Where(x => x.OrganizationId == organizationId)
-            .Select(x => x.IntegrationId)
+            .Select(x => x.Id)
             .ToListAsync();
     }
 
@@ -38,34 +38,36 @@ public class PunchoutOrganizationIntegrationService(
 
         var currentIds = await GetIntegrationIdsAsync(organizationId);
 
-        // Saving only the integrations whose links actually change keeps concurrent edits of other
+        // Saving only the integrations that actually change keeps concurrent edits of other
         // integrations from being overwritten, and keeps their caches warm.
-        var changedIds = requestedIds.Except(currentIds)
-            .Concat(currentIds.Except(requestedIds))
-            .ToList();
+        var addedIds = requestedIds.Except(currentIds).ToList();
+        var removedIds = currentIds.Except(requestedIds).ToList();
 
-        if (changedIds.Count == 0)
+        if (addedIds.Count == 0 && removedIds.Count == 0)
         {
             return;
         }
 
-        var integrations = await crudService.GetAsync(changedIds);
+        var integrations = await crudService.GetAsync([.. addedIds, .. removedIds]);
+
+        // An integration belongs to exactly one organization, so taking over one that is already
+        // assigned elsewhere would silently move it away from an organization the caller cannot see.
+        var conflictingIds = integrations
+            .Where(x => addedIds.Contains(x.Id) &&
+                        !string.IsNullOrEmpty(x.OrganizationId) &&
+                        x.OrganizationId != organizationId)
+            .Select(x => x.Id)
+            .ToList();
+
+        if (conflictingIds.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Punchout integrations {string.Join(", ", conflictingIds)} are already assigned to another organization.");
+        }
 
         foreach (var integration in integrations)
         {
-            integration.OrganizationIds ??= [];
-
-            if (requestedIds.Contains(integration.Id))
-            {
-                if (!integration.OrganizationIds.Contains(organizationId))
-                {
-                    integration.OrganizationIds.Add(organizationId);
-                }
-            }
-            else
-            {
-                integration.OrganizationIds.Remove(organizationId);
-            }
+            integration.OrganizationId = requestedIds.Contains(integration.Id) ? organizationId : null;
         }
 
         await crudService.SaveChangesAsync(integrations);

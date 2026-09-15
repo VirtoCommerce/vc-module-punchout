@@ -30,14 +30,17 @@ public class PunchoutIntegration : AuditableEntity, ICloneable
 
     public IList<string> AllowedReturnUrls { get; set; }
 
-    public IList<string> OrganizationIds { get; set; }
+    /// <summary>
+    /// The organization this integration serves. An organization can have several integrations,
+    /// but an integration belongs to exactly one organization.
+    /// </summary>
+    public string OrganizationId { get; set; }
 
     public virtual object Clone()
     {
         var result = (PunchoutIntegration)MemberwiseClone();
 
         result.AllowedReturnUrls = AllowedReturnUrls?.ToList();
-        result.OrganizationIds = OrganizationIds?.ToList();
 
         return result;
     }

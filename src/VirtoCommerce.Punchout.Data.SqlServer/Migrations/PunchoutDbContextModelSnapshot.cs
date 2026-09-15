@@ -57,6 +57,10 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<string>("OrganizationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
                     b.Property<string>("SenderIdentity")
                         .HasMaxLength(512)
                         .HasColumnType("nvarchar(512)");
@@ -70,35 +74,10 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("IX_PunchoutIntegration_OrganizationId");
+
                     b.ToTable("PunchoutIntegration", (string)null);
-                });
-
-            modelBuilder.Entity("VirtoCommerce.Punchout.Data.Models.PunchoutIntegrationOrganizationEntity", b =>
-                {
-                    b.Property<string>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
-                    b.Property<string>("IntegrationId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
-                    b.Property<string>("OrganizationId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IntegrationId");
-
-                    b.HasIndex("OrganizationId", "IntegrationId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_PunchoutIntegrationOrganization_OrganizationId_IntegrationId");
-
-                    b.ToTable("PunchoutIntegrationOrganization", (string)null);
                 });
 
             modelBuilder.Entity("VirtoCommerce.Punchout.Data.Models.PunchoutSessionEntity", b =>
@@ -174,22 +153,6 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
                         .HasDatabaseName("IX_PunchoutSession_SessionToken");
 
                     b.ToTable("PunchoutSession", (string)null);
-                });
-
-            modelBuilder.Entity("VirtoCommerce.Punchout.Data.Models.PunchoutIntegrationOrganizationEntity", b =>
-                {
-                    b.HasOne("VirtoCommerce.Punchout.Data.Models.PunchoutIntegrationEntity", "Integration")
-                        .WithMany("Organizations")
-                        .HasForeignKey("IntegrationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Integration");
-                });
-
-            modelBuilder.Entity("VirtoCommerce.Punchout.Data.Models.PunchoutIntegrationEntity", b =>
-                {
-                    b.Navigation("Organizations");
                 });
 #pragma warning restore 612, 618
         }

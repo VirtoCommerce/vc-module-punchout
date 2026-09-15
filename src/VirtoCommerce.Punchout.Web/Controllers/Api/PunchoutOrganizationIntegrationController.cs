@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -24,9 +25,19 @@ public class PunchoutOrganizationIntegrationController(IPunchoutOrganizationInte
     [HttpPut]
     [Authorize(Permissions.Update)]
     [ProducesResponseType(typeof(void), StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> SetIntegrations([FromRoute] string organizationId, [FromBody] string[] integrationIds)
     {
-        await organizationIntegrationService.SetIntegrationsAsync(organizationId, integrationIds);
+        try
+        {
+            await organizationIntegrationService.SetIntegrationsAsync(organizationId, integrationIds);
+        }
+        // Raised when one of the integrations is already assigned to another organization.
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
         return NoContent();
     }
 }

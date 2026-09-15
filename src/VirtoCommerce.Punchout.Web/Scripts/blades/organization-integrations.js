@@ -20,6 +20,9 @@ angular.module('VirtoCommerce.Punchout')
                         blade.totalCount = searchResult.totalCount;
                         blade.currentEntities.forEach(function (x) {
                             x.$selected = assignedIds.indexOf(x.id) >= 0;
+                            // An integration belongs to a single organization, so one that is already taken
+                            // cannot be picked here without moving it away from an organization not shown.
+                            x.$disabled = !!x.organizationId && x.organizationId !== blade.organizationId;
                         });
                         blade.origSelectedIds = getSelectedIds();
                         blade.isLoading = false;
@@ -74,9 +77,17 @@ angular.module('VirtoCommerce.Punchout')
                 }, onError);
             };
 
+            $scope.toggle = function (integration) {
+                if (!integration.$disabled) {
+                    integration.$selected = !integration.$selected;
+                }
+            };
+
             $scope.toggleAll = function () {
                 blade.currentEntities.forEach(function (x) {
-                    x.$selected = blade.allSelected;
+                    if (!x.$disabled) {
+                        x.$selected = blade.allSelected;
+                    }
                 });
             };
 

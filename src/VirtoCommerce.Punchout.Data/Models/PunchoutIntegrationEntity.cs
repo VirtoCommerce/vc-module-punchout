@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text.Json;
@@ -27,14 +26,15 @@ public class PunchoutIntegrationEntity : AuditableEntity, IDataEntity<PunchoutIn
     [StringLength(512)]
     public string SenderIdentity { get; set; }
 
+    [StringLength(128)]
+    public string OrganizationId { get; set; }
+
     public string SharedSecretHash { get; set; }
 
     /// <summary>
     /// A JSON array of URLs. Exposed on the model as <see cref="PunchoutIntegration.AllowedReturnUrls"/>.
     /// </summary>
     public string AllowedReturnUrls { get; set; }
-
-    public virtual ObservableCollection<PunchoutIntegrationOrganizationEntity> Organizations { get; set; } = [];
 
     public virtual PunchoutIntegration ToModel(PunchoutIntegration model)
     {
@@ -51,7 +51,7 @@ public class PunchoutIntegrationEntity : AuditableEntity, IDataEntity<PunchoutIn
         model.SenderIdentity = SenderIdentity;
         model.SharedSecretHash = SharedSecretHash;
         model.AllowedReturnUrls = DeserializeUrls(AllowedReturnUrls);
-        model.OrganizationIds = Organizations.Select(x => x.OrganizationId).ToList();
+        model.OrganizationId = OrganizationId;
 
         return model;
     }
@@ -71,17 +71,9 @@ public class PunchoutIntegrationEntity : AuditableEntity, IDataEntity<PunchoutIn
         StoreId = model.StoreId;
         CredentialDomain = model.CredentialDomain;
         SenderIdentity = model.SenderIdentity;
+        OrganizationId = model.OrganizationId;
         SharedSecretHash = model.SharedSecretHash;
         AllowedReturnUrls = SerializeUrls(model.AllowedReturnUrls);
-
-        // A null collection tells Patch() to leave the stored links alone, so that a client which does not
-        // manage organizations does not wipe them by omitting the property.
-        Organizations = model.OrganizationIds is null
-            ? new NullCollection<PunchoutIntegrationOrganizationEntity>()
-            : new ObservableCollection<PunchoutIntegrationOrganizationEntity>(model.OrganizationIds
-                .Where(x => !string.IsNullOrEmpty(x))
-                .Distinct()
-                .Select(x => new PunchoutIntegrationOrganizationEntity { OrganizationId = x, IntegrationId = Id }));
 
         return this;
     }
@@ -93,6 +85,7 @@ public class PunchoutIntegrationEntity : AuditableEntity, IDataEntity<PunchoutIn
         target.StoreId = StoreId;
         target.CredentialDomain = CredentialDomain;
         target.SenderIdentity = SenderIdentity;
+        target.OrganizationId = OrganizationId;
         target.AllowedReturnUrls = AllowedReturnUrls;
 
         // The hash is only filled in when a new shared secret was supplied. Otherwise keep the stored one,
@@ -100,12 +93,6 @@ public class PunchoutIntegrationEntity : AuditableEntity, IDataEntity<PunchoutIn
         if (!string.IsNullOrEmpty(SharedSecretHash))
         {
             target.SharedSecretHash = SharedSecretHash;
-        }
-
-        if (!Organizations.IsNullCollection())
-        {
-            var comparer = AnonymousComparer.Create((PunchoutIntegrationOrganizationEntity x) => x.OrganizationId);
-            Organizations.Patch(target.Organizations, comparer, (_, _) => { });
         }
     }
 

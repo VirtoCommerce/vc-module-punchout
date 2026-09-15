@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using GraphQL.MicrosoftDI;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -19,6 +20,8 @@ using VirtoCommerce.Punchout.Data.PostgreSql;
 using VirtoCommerce.Punchout.Data.Repositories;
 using VirtoCommerce.Punchout.Data.Services;
 using VirtoCommerce.Punchout.Data.SqlServer;
+using VirtoCommerce.Punchout.ExperienceApi;
+using VirtoCommerce.Xapi.Core.Extensions;
 
 namespace VirtoCommerce.Punchout.Web;
 
@@ -48,6 +51,10 @@ public class Module : IModule, IHasConfiguration
             }
         });
 
+        // Register options
+
+        serviceCollection.AddOptions<CoupaConfiguration>().Bind(Configuration.GetSection(ModuleConstants.ConfigurationSections.CoupaConfiguration));
+
         // Register services
         serviceCollection.AddTransient<IPunchoutRepository, PunchoutRepository>();
         serviceCollection.AddSingleton<Func<IPunchoutRepository>>(provider => () => provider.CreateScope().ServiceProvider.GetRequiredService<IPunchoutRepository>());
@@ -67,14 +74,13 @@ public class Module : IModule, IHasConfiguration
         serviceCollection.AddTransient<ICxmlSerializer, CxmlSerializer>();
         serviceCollection.AddTransient<IPunchoutSetupMapper, PunchoutSetupMapper>();
 
-        serviceCollection.AddOptions<CoupaConfiguration>()
-            .Bind(Configuration.GetSection(ModuleConstants.ConfigurationSections.CoupaConfiguration));
-
-        // The Coupa flow authenticates against the global configuration and resolves the user from the
-        // sender identity. The integration-based service stays registered as a concrete type so that it
-        // can still be resolved, or put back in front of the interface, without any other change.
-        serviceCollection.AddTransient<PunchoutSetupService>();
         serviceCollection.AddTransient<IPunchoutSetupService, CoupaPunchoutSetupService>();
+
+        // Register GraphQL schema
+        _ = new GraphQLBuilder(serviceCollection, builder =>
+        {
+            builder.AddSchema(serviceCollection, typeof(XapiAssemblyMarker));
+        });
     }
 
     public void PostInitialize(IApplicationBuilder appBuilder)

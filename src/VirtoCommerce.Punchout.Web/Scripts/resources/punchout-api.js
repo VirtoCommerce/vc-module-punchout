@@ -1,9 +1,19 @@
-angular.module('VirtoCommerce.Punchout')
+﻿angular.module('VirtoCommerce.Punchout')
     .factory('VirtoCommerce.Punchout.Integrations', ['$resource', function ($resource) {
         return $resource('api/punchout-integrations', {}, {
             get: { method: 'GET', url: 'api/punchout-integrations/:id' },
             getNew: { method: 'GET', url: 'api/punchout-integrations/new' },
             search: { method: 'POST', url: 'api/punchout-integrations/search' },
+            save: { method: 'POST' },
+            update: { method: 'PUT' },
+            delete: { method: 'DELETE' },
+        });
+    }])
+    .factory('VirtoCommerce.Punchout.UserMappings', ['$resource', function ($resource) {
+        return $resource('api/punchout-user-mappings', {}, {
+            get: { method: 'GET', url: 'api/punchout-user-mappings/:id' },
+            getNew: { method: 'GET', url: 'api/punchout-user-mappings/new' },
+            search: { method: 'POST', url: 'api/punchout-user-mappings/search' },
             save: { method: 'POST' },
             update: { method: 'PUT' },
             delete: { method: 'DELETE' },

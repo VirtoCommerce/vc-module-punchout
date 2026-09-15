@@ -27,8 +27,8 @@ angular.module(moduleName, [])
                 });
         }
     ])
-    .run(['platformWebApp.mainMenuService', '$state', 'platformWebApp.widgetService',
-        function (mainMenuService, $state, widgetService) {
+    .run(['platformWebApp.mainMenuService', '$state', 'platformWebApp.widgetService', 'platformWebApp.metaFormsService',
+        function (mainMenuService, $state, widgetService, metaFormsService) {
             //Register module in main menu
             var menuItem = {
                 path: 'browse/punchout',
@@ -40,11 +40,10 @@ angular.module(moduleName, [])
             };
             mainMenuService.addMenuItem(menuItem);
 
-
             // widgets
-            var organizationPunchoutIntegrationWidget = {
-                controller: 'VirtoCommerce.Punchout.organizationPunchoutIntegrationWidgetController',
-                template: 'Modules/$(VirtoCommerce.Punchout)/Scripts/widgets/organization-punchout-integration-widget.html',
+            var memberPunchoutUserMappingWidget = {
+                controller: 'VirtoCommerce.Punchout.memberPunchoutUserMappingWidgetController',
+                template: 'Modules/$(VirtoCommerce.Punchout)/Scripts/widgets/member-punchout-user-mapping-widget.html',
                 size: [2, 1],
                 permission: 'punchout:read',
                 isVisible: function (blade) {
@@ -52,6 +51,24 @@ angular.module(moduleName, [])
                 }
             };
 
-            widgetService.registerWidget(organizationPunchoutIntegrationWidget, 'organizationDetail2');
+            widgetService.registerWidget(memberPunchoutUserMappingWidget, 'customerDetail2');
+
+            // metaforms
+            metaFormsService.registerMetaFields('punchoutUserMappingDetail', [
+                {
+                    name: 'isActive',
+                    title: 'punchout.blades.user-mapping-detail.labels.isActive',
+                    valueType: "Boolean",
+                    colSpan: 6
+                },
+                {
+                    name: 'externalId',
+                    title: 'punchout.blades.user-mapping-detail.labels.externalId',
+                    placeholder: 'punchout.blades.user-mapping-detail.placeholders.externalId',
+                    valueType: "ShortText",
+                    isRequired: true,
+                    colSpan: 6
+                }
+            ]);
         }
     ]);

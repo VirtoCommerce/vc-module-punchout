@@ -1,4 +1,4 @@
-namespace VirtoCommerce.Punchout.Core.Models;
+﻿namespace VirtoCommerce.Punchout.Core.Models;
 
 /// <summary>
 /// Outcome of a punchout setup request in business terms. Translated to a cXML status by the setup mapper.
@@ -21,4 +21,14 @@ public enum PunchoutSetupStatus
     /// The credentials are valid, but the integration cannot be served, e.g. its store has no storefront URL.
     /// </summary>
     StoreNotConfigured,
+
+    /// <summary>
+    /// The credentials are valid, but the sender identity is not linked to any platform user.
+    /// </summary>
+    UserNotFound,
+
+    /// <summary>
+    /// The URL the request asks to return to is not in the allow list of the configuration.
+    /// </summary>
+    ReturnUrlNotAllowed,
 }

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using VirtoCommerce.Platform.Core.Settings;
 
 namespace VirtoCommerce.Punchout.Core;
@@ -24,6 +24,14 @@ public static class ModuleConstants
                 Delete,
             ];
         }
+    }
+
+    public static class ConfigurationSections
+    {
+        /// <summary>
+        /// The global Coupa punchout configuration, bound to <see cref="Coupa.CoupaConfiguration"/>.
+        /// </summary>
+        public const string CoupaConfiguration = "Punchout:CoupaConfiguration";
     }
 
     public static class SessionStatus

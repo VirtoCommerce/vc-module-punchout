@@ -7,7 +7,7 @@ public class PunchoutSession : AuditableEntity, ICloneable
 {
     public string StoreId { get; set; }
 
-    // In case we need to hold multiple carts, NULL means we use the default cart (use NULL case for now) 
+    // Created and filled while activating punchout session
     public string CartId { get; set; }
 
     // Supplier (storefront) correlation
@@ -35,6 +35,12 @@ public class PunchoutSession : AuditableEntity, ICloneable
     public string StartPage { get; set; }
 
     public string IntegrationId { get; set; }
+
+    /// <summary>
+    /// The platform user the session belongs to, resolved from the sender identity of the setup request
+    /// through <see cref="PunchoutUserMapping"/>.
+    /// </summary>
+    public string UserId { get; set; }
 
     public object Clone()
     {

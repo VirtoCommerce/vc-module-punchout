@@ -13,9 +13,6 @@ public class PunchoutSetupContext
     /// </summary>
     public string From { get; set; }
 
-    /// <summary>
-    /// NetworkId, DUNS, etc .
-    /// </summary>
     public string FromDomain { get; set; }
 
     /// <summary>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel.DataAnnotations;
 using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Platform.Core.Domain;
@@ -42,6 +42,9 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
     [StringLength(128)]
     public string IntegrationId { get; set; }
 
+    [StringLength(128)]
+    public string UserId { get; set; }
+
     public virtual PunchoutSession ToModel(PunchoutSession model)
     {
         model.Id = Id;
@@ -61,6 +64,7 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
         model.Status = Status;
         model.StartPage = StartPage;
         model.IntegrationId = IntegrationId;
+        model.UserId = UserId;
 
         return model;
     }
@@ -86,6 +90,7 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
         Status = model.Status;
         StartPage = model.StartPage;
         IntegrationId = model.IntegrationId;
+        UserId = model.UserId;
 
         return this;
     }
@@ -103,5 +108,6 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
         target.Status = Status;
         target.StartPage = StartPage;
         target.IntegrationId = IntegrationId;
+        target.UserId = UserId;
     }
 }

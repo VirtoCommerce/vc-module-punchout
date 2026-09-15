@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +16,8 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
     public IQueryable<PunchoutSessionEntity> PunchoutSessions => DbContext.Set<PunchoutSessionEntity>();
 
     public IQueryable<PunchoutIntegrationEntity> PunchoutIntegrations => DbContext.Set<PunchoutIntegrationEntity>();
+
+    public IQueryable<PunchoutUserMappingEntity> PunchoutUserMappings => DbContext.Set<PunchoutUserMappingEntity>();
 
     public virtual async Task<IList<PunchoutSessionEntity>> GetPunchoutSessionsByIdsAsync(IList<string> ids, string responseGroup)
     {
@@ -39,5 +41,17 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
         return ids.Count == 1
             ? await PunchoutIntegrations.Where(x => x.Id == ids.First()).ToListAsync()
             : await PunchoutIntegrations.Where(x => ids.Contains(x.Id)).ToListAsync();
+    }
+
+    public virtual async Task<IList<PunchoutUserMappingEntity>> GetPunchoutUserMappingsByIdsAsync(IList<string> ids, string responseGroup)
+    {
+        if (ids.IsNullOrEmpty())
+        {
+            return [];
+        }
+
+        return ids.Count == 1
+            ? await PunchoutUserMappings.Where(x => x.Id == ids.First()).ToListAsync()
+            : await PunchoutUserMappings.Where(x => ids.Contains(x.Id)).ToListAsync();
     }
 }

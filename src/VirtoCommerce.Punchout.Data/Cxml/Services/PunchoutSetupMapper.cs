@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -106,6 +106,9 @@ public class PunchoutSetupMapper : IPunchoutSetupMapper
             PunchoutSetupStatus.Success => (CxmlConstants.Status.OkCode, CxmlConstants.Status.OkText),
             PunchoutSetupStatus.InvalidCredentials => (CxmlConstants.Status.UnauthorizedCode, CxmlConstants.Status.UnauthorizedText),
             PunchoutSetupStatus.InvalidRequest => (CxmlConstants.Status.BadRequestCode, CxmlConstants.Status.BadRequestText),
+            // An unknown user is an authorization problem for the buyer, the same class of answer as bad credentials.
+            PunchoutSetupStatus.UserNotFound => (CxmlConstants.Status.UnauthorizedCode, CxmlConstants.Status.UnauthorizedText),
+            PunchoutSetupStatus.ReturnUrlNotAllowed => (CxmlConstants.Status.BadRequestCode, CxmlConstants.Status.BadRequestText),
             PunchoutSetupStatus.StoreNotConfigured => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
             _ => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
         };

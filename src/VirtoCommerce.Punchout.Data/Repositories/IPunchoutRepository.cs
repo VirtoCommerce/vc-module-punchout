@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using VirtoCommerce.Platform.Core.Common;
@@ -12,7 +12,11 @@ public interface IPunchoutRepository : IRepository
 
     IQueryable<PunchoutIntegrationEntity> PunchoutIntegrations { get; }
 
+    IQueryable<PunchoutUserMappingEntity> PunchoutUserMappings { get; }
+
     Task<IList<PunchoutSessionEntity>> GetPunchoutSessionsByIdsAsync(IList<string> ids, string responseGroup);
 
     Task<IList<PunchoutIntegrationEntity>> GetPunchoutIntegrationsByIdsAsync(IList<string> ids, string responseGroup);
+
+    Task<IList<PunchoutUserMappingEntity>> GetPunchoutUserMappingsByIdsAsync(IList<string> ids, string responseGroup);
 }

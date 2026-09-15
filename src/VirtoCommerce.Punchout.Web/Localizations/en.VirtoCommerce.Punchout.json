@@ -56,6 +56,25 @@
         "placeholders": {
           "filter": "Filter integrations"
         }
+      },
+      "user-mapping-detail": {
+        "title": "Punchout user",
+        "labels": {
+          "externalId": "External identity",
+          "userId": "Account",
+          "isActive": "Active",
+          "no-accounts": "This contact has no security account yet. Create one first: a punchout session is opened for an account, not for a contact."
+        },
+        "placeholders": {
+          "externalId": "Enter the user identity of the procurement system"
+        },
+        "notations": {
+          "externalId": "The value the procurement system sends in cXML Header/Sender/Credential/Identity."
+        },
+        "validation": {
+          "externalId-required": "External identity is required",
+          "userId-required": "Account is required"
+        }
       }
     },
     "dialogs": {
@@ -71,11 +90,23 @@
       "organization-integrations-save": {
         "title": "Save changes",
         "message": "The assigned punchout integrations have been modified. Do you want to save the changes?"
+      },
+      "user-mapping-save": {
+        "title": "Save changes",
+        "message": "The punchout user has been modified. Do you want to save the changes?"
+      },
+      "user-mapping-delete": {
+        "title": "Delete confirmation",
+        "message": "Are you sure you want to delete the punchout user mapping '{{externalId}}'?"
       }
     },
     "widgets": {
       "organization-integrations": {
         "title": "Punchout integrations"
+      },
+      "user-mapping": {
+        "title": "Punchout user",
+        "not-set": "Not linked"
       }
     }
   },

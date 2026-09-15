@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -10,6 +10,7 @@ using VirtoCommerce.Platform.Data.MySql.Extensions;
 using VirtoCommerce.Platform.Data.PostgreSql.Extensions;
 using VirtoCommerce.Platform.Data.SqlServer.Extensions;
 using VirtoCommerce.Punchout.Core;
+using VirtoCommerce.Punchout.Core.Coupa;
 using VirtoCommerce.Punchout.Core.Cxml.Services;
 using VirtoCommerce.Punchout.Core.Services;
 using VirtoCommerce.Punchout.Data.Cxml.Services;
@@ -60,10 +61,20 @@ public class Module : IModule, IHasConfiguration
         serviceCollection.AddTransient<IPunchoutIntegrationSearchService, PunchoutIntegrationSearchService>();
         serviceCollection.AddTransient<IPunchoutOrganizationIntegrationService, PunchoutOrganizationIntegrationService>();
 
+        serviceCollection.AddTransient<IPunchoutUserMappingService, PunchoutUserMappingService>();
+        serviceCollection.AddTransient<IPunchoutUserMappingSearchService, PunchoutUserMappingSearchService>();
+
         serviceCollection.AddTransient<ICxmlSerializer, CxmlSerializer>();
         serviceCollection.AddTransient<IPunchoutSetupMapper, PunchoutSetupMapper>();
-        serviceCollection.AddTransient<IPunchoutSetupService, PunchoutSetupService>();
 
+        serviceCollection.AddOptions<CoupaConfiguration>()
+            .Bind(Configuration.GetSection(ModuleConstants.ConfigurationSections.CoupaConfiguration));
+
+        // The Coupa flow authenticates against the global configuration and resolves the user from the
+        // sender identity. The integration-based service stays registered as a concrete type so that it
+        // can still be resolved, or put back in front of the interface, without any other change.
+        serviceCollection.AddTransient<PunchoutSetupService>();
+        serviceCollection.AddTransient<IPunchoutSetupService, CoupaPunchoutSetupService>();
     }
 
     public void PostInitialize(IApplicationBuilder appBuilder)

@@ -29,7 +29,7 @@ public class PunchoutSession : AuditableEntity, ICloneable
     // Active (user successfuly opened and validated store url)
     // Returned (order created successfuly and passed to return url)
     // Expired
-    // Cancelled (maybe?)
+    // Cancelled
     public string Status { get; set; }
 
     public string StartPage { get; set; }

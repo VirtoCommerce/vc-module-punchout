@@ -7,7 +7,7 @@ using VirtoCommerce.Xapi.Core.Extensions;
 
 namespace VirtoCommerce.Punchout.ExperienceApi.Commands;
 
-public class ActivatePunchoutSessionCommandBuilder : CommandBuilder<ActivatePunchoutSessionCommand, PunchoutSessonActivationResult, ActivatePunchoutSessionCommandType, PunchoutSessonActivationResultType>
+public class ActivatePunchoutSessionCommandBuilder : CommandBuilder<ActivatePunchoutSessionCommand, PunchoutSessionActivationResult, ActivatePunchoutSessionCommandType, PunchoutSessonActivationResultType>
 {
     protected override string Name => "activatePunchoutSession";
 

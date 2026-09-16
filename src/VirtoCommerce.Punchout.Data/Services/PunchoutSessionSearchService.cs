@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Options;
@@ -25,6 +25,34 @@ public class PunchoutSessionSearchService(
     protected override IQueryable<PunchoutSessionEntity> BuildQuery(IRepository repository, PunchoutSessionSearchCriteria criteria)
     {
         var query = ((IPunchoutRepository)repository).PunchoutSessions;
+
+        if (!string.IsNullOrEmpty(criteria.StoreId))
+        {
+            query = query.Where(x => x.StoreId == criteria.StoreId);
+        }
+
+        if (!string.IsNullOrEmpty(criteria.UserId))
+        {
+            query = query.Where(x => x.UserId == criteria.UserId);
+        }
+
+        if (!string.IsNullOrEmpty(criteria.SessionToken))
+        {
+            query = query.Where(x => x.SessionToken == criteria.SessionToken);
+        }
+
+        if (!criteria.Statuses.IsNullOrEmpty())
+        {
+            query = query.Where(x => criteria.Statuses.Contains(x.Status));
+        }
+
+        if (criteria.NotExpired)
+        {
+            var now = DateTime.UtcNow;
+
+            query = query.Where(x => x.ExpirationDate == null || x.ExpirationDate > now);
+        }
+
         return query;
     }
 

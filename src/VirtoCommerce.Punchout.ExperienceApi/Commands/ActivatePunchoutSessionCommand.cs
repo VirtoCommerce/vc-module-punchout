@@ -4,7 +4,7 @@ using VirtoCommerce.Xapi.Core.Infrastructure;
 
 namespace VirtoCommerce.Punchout.ExperienceApi.Commands;
 
-public class ActivatePunchoutSessionCommand : ICommand<PunchoutSessonActivationResult>
+public class ActivatePunchoutSessionCommand : ICommand<PunchoutSessionActivationResult>
 {
     public string StoreId { get; set; }
 
@@ -24,7 +24,7 @@ public class ActivatePunchoutSessionCommandType : InputObjectGraphType
     public ActivatePunchoutSessionCommandType()
     {
         Field<NonNullGraphType<StringGraphType>>("storeId");
-        Field<NonNullGraphType<StringGraphType>>("SessionToken");
+        Field<NonNullGraphType<StringGraphType>>("sessionToken");
         Field<StringGraphType>("currencyCode");
         Field<StringGraphType>("cultureName");
     }

@@ -65,10 +65,6 @@ public class Module : IModule, IHasConfiguration
 
         serviceCollection.AddSingleton<IPunchoutSecretHasher, PunchoutSecretHasher>();
 
-        serviceCollection.AddTransient<IPunchoutIntegrationService, PunchoutIntegrationService>();
-        serviceCollection.AddTransient<IPunchoutIntegrationSearchService, PunchoutIntegrationSearchService>();
-        serviceCollection.AddTransient<IPunchoutOrganizationIntegrationService, PunchoutOrganizationIntegrationService>();
-
         serviceCollection.AddTransient<IPunchoutUserMappingService, PunchoutUserMappingService>();
         serviceCollection.AddTransient<IPunchoutUserMappingSearchService, PunchoutUserMappingSearchService>();
 

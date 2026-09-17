@@ -1,62 +1,6 @@
 {
   "punchout": {
     "blades": {
-      "integration-list": {
-        "title": "Punchout integrations",
-        "labels": {
-          "name": "Name",
-          "isActive": "Active",
-          "storeId": "Store",
-          "senderIdentity": "Sender identity",
-          "credentialDomain": "Credential domain"
-        }
-      },
-      "integration-detail": {
-        "subtitle": "Integration details",
-        "subtitle-new": "New integration",
-        "labels": {
-          "name": "Name",
-          "isActive": "Active",
-          "storeId": "Store",
-          "credentialDomain": "Credential domain",
-          "senderIdentity": "Sender identity",
-          "sharedSecret": "Shared secret",
-          "sharedSecret-warning": "The shared secret is shown only once. Copy it now and pass it to the procurement system: it cannot be retrieved later.",
-          "allowedReturnUrls": "Allowed return URLs",
-          "url": "URL"
-        },
-        "placeholders": {
-          "name": "Enter a name to identify this integration",
-          "credentialDomain": "e.g. DUNS, NetworkId, AribaNetworkUserId",
-          "senderIdentity": "Enter the sender identity of the procurement system"
-        },
-        "validation": {
-          "name-required": "Name is required",
-          "storeId-required": "Store is required",
-          "credentialDomain-required": "Credential domain is required",
-          "senderIdentity-required": "Sender identity is required"
-        },
-        "blades": {
-          "edit-allowedReturnUrls": {
-            "title": "Allowed return URLs",
-            "subtitle": "Manage the URLs the procurement system is allowed to return to"
-          }
-        }
-      },
-      "organization-integrations": {
-        "title": "Punchout integrations",
-        "labels": {
-          "name": "Name",
-          "storeId": "Store",
-          "senderIdentity": "Sender identity",
-          "inactive": "This integration is inactive",
-          "assigned-elsewhere": "(assigned to another organization)",
-          "no-integrations": "There are no punchout integrations to assign yet."
-        },
-        "placeholders": {
-          "filter": "Filter integrations"
-        }
-      },
       "user-mapping-detail": {
         "title": "Punchout user",
         "labels": {
@@ -78,19 +22,6 @@
       }
     },
     "dialogs": {
-      "integration-delete": {
-        "title": "Delete confirmation",
-        "message": "Are you sure you want to delete the integration '{{name}}'?",
-        "integration": "integration(s) selected"
-      },
-      "integration-save": {
-        "title": "Save changes",
-        "message": "The integration has been modified. Do you want to save the changes?"
-      },
-      "organization-integrations-save": {
-        "title": "Save changes",
-        "message": "The assigned punchout integrations have been modified. Do you want to save the changes?"
-      },
       "user-mapping-save": {
         "title": "Save changes",
         "message": "The punchout user has been modified. Do you want to save the changes?"
@@ -101,9 +32,6 @@
       }
     },
     "widgets": {
-      "organization-integrations": {
-        "title": "Punchout integrations"
-      },
       "user-mapping": {
         "title": "Punchout user",
         "not-set": "Not linked"

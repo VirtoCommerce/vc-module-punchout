@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using VirtoCommerce.Platform.Data.Extensions;
 using VirtoCommerce.Platform.Data.Infrastructure;
@@ -23,25 +23,16 @@ public class PunchoutDbContext : DbContextBase
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<PunchoutSessionEntity>().ToAuditableEntityTable("PunchoutSession");
-        // The session token is the correlation key the storefront resolves a session by.
         modelBuilder.Entity<PunchoutSessionEntity>()
             .HasIndex(x => x.SessionToken)
             .IsUnique()
             .HasDatabaseName("IX_PunchoutSession_SessionToken");
-        modelBuilder.Entity<PunchoutIntegrationEntity>().ToAuditableEntityTable("PunchoutIntegration");
-        // Integrations are looked up by organization from the organization details widget.
-        modelBuilder.Entity<PunchoutIntegrationEntity>()
-            .HasIndex(x => x.OrganizationId)
-            .HasDatabaseName("IX_PunchoutIntegration_OrganizationId");
 
         modelBuilder.Entity<PunchoutUserMappingEntity>().ToAuditableEntityTable("PunchoutUserMapping");
-        // The sender identity is the only thing a setup request presents to say who is punching out,
-        // so it must resolve to exactly one platform user.
         modelBuilder.Entity<PunchoutUserMappingEntity>()
             .HasIndex(x => x.ExternalId)
             .IsUnique()
             .HasDatabaseName("IX_PunchoutUserMapping_ExternalId");
-        // Mappings are looked up by member from the contact details widget.
         modelBuilder.Entity<PunchoutUserMappingEntity>()
             .HasIndex(x => x.MemberId)
             .HasDatabaseName("IX_PunchoutUserMapping_MemberId");

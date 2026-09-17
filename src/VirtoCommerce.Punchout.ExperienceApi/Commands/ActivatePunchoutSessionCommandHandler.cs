@@ -49,12 +49,12 @@ public class ActivatePunchoutSessionCommandHandler(
         // session found, create punchout cart
         var punchoutCart = await CreatePunchoutCart(request, store);
 
-        session.CartId = punchoutCart.Id;
+        session.CartId = punchoutCart.Cart.Id;
         session.Status = ModuleConstants.SessionStatus.Active;
 
         await punchoutSessionService.SaveChangesAsync([session]);
 
-        result.PunchoutCartId = punchoutCart.Id;
+        result.PunchoutCartId = punchoutCart.Cart.Id;
         result.PunchoutCartName = punchoutCart.Cart.Name;
 
         return result;

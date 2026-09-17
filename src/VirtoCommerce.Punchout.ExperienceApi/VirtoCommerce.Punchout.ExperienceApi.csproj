@@ -11,6 +11,5 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Authorization\" />
-    <Folder Include="Queries\" />
   </ItemGroup>
 </Project>

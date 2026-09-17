@@ -64,6 +64,7 @@ public static class ModuleConstants
                 GroupName = "Punchout|General",
                 ValueType = SettingValueType.Boolean,
                 DefaultValue = false,
+                IsPublic = true,
             };
 
             public static IEnumerable<SettingDescriptor> AllGeneralSettings

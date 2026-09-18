@@ -26,6 +26,34 @@ public static class ModuleConstants
         }
     }
 
+    public static class ConfigurationSections
+    {
+        /// <summary>
+        /// The global Coupa punchout configuration, bound to <see cref="Coupa.CoupaConfiguration"/>.
+        /// </summary>
+        public const string CoupaConfiguration = "Punchout:CoupaConfiguration";
+    }
+
+    public static class SessionStatus
+    {
+        public const string Created = "Created";
+        public const string Active = "Active";
+        public const string Returned = "Returned";
+        public const string Expired = "Expired";
+        public const string Cancelled = "Cancelled";
+    }
+
+    /// <summary>
+    /// Errors returned by the session activation mutation. They are deliberately coarse: the storefront is
+    /// reached by anyone holding a start page URL, so a failed activation must not say what was wrong with it.
+    /// </summary>
+    public static class ActivationErrors
+    {
+        public const string SessionNotFound = "SESSION_NOT_FOUND";
+        public const string StoreNotFound = "STORE_NOT_FOUND";
+
+    }
+
     public static class Settings
     {
         public static class General
@@ -36,6 +64,7 @@ public static class ModuleConstants
                 GroupName = "Punchout|General",
                 ValueType = SettingValueType.Boolean,
                 DefaultValue = false,
+                IsPublic = true,
             };
 
             public static IEnumerable<SettingDescriptor> AllGeneralSettings

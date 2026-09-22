@@ -16,9 +16,6 @@ public static class CxmlConstants
         public const string EndUser = "endUser";
     }
 
-    /// <summary>
-    /// cXML carries the outcome in a Status element whose code and text mirror the HTTP status codes.
-    /// </summary>
     public static class Status
     {
         public const string OkCode = "200";

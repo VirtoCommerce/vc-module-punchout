@@ -36,10 +36,6 @@ public class PunchoutSession : AuditableEntity, ICloneable
 
     public string IntegrationId { get; set; }
 
-    /// <summary>
-    /// The platform user the session belongs to, resolved from the sender identity of the setup request
-    /// through <see cref="PunchoutUserMapping"/>.
-    /// </summary>
     public string UserId { get; set; }
 
     public object Clone()

@@ -1,7 +1,7 @@
-﻿namespace VirtoCommerce.Punchout.Core.Models;
+namespace VirtoCommerce.Punchout.Core.Models;
 
 /// <summary>
-/// Outcome of a punchout setup request in business terms. Translated to a cXML status by the setup mapper.
+/// Outcome of a punchout setup request. Translated to a cXML status by the setup mapper.
 /// </summary>
 public enum PunchoutSetupStatus
 {
@@ -13,12 +13,12 @@ public enum PunchoutSetupStatus
     InvalidCredentials,
 
     /// <summary>
-    /// The request could not be understood, e.g. it is not a well-formed cXML document.
+    /// The request is not a well-formed cXML document.
     /// </summary>
     InvalidRequest,
 
     /// <summary>
-    /// The credentials are valid, but the integration cannot be served, e.g. its store has no storefront URL.
+    /// The credentials are valid, but the integration cannot be completed becase the store has no storefront URL.
     /// </summary>
     StoreNotConfigured,
 

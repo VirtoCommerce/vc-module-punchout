@@ -9,21 +9,21 @@ public class PunchoutSetupContext
     public string ReturnUrl { get; set; }
 
     /// <summary>
-    /// Identity of the buying organization (cXML Header/From/Credential/Identity).
+    /// Buying organization (cXML Header/From/Credential/Identity).
     /// </summary>
     public string From { get; set; }
 
     public string FromDomain { get; set; }
 
     /// <summary>
-    /// Identity of the supplier the request is addressed to (cXML Header/To/Credential/Identity).
+    /// Supplier the request is addressed to (cXML Header/To/Credential/Identity).
     /// </summary>
     public string To { get; set; }
 
     public string ToDomain { get; set; }
 
     /// <summary>
-    /// Identity of the system that sent the request and owns the shared secret (cXML Header/Sender/Credential/Identity)
+    /// System that sent the request and the shared secret (cXML Header/Sender/Credential/Identity)
     /// </summary>
     public string Sender { get; set; }
 
@@ -34,7 +34,7 @@ public class PunchoutSetupContext
     public IDictionary<string, string> Extrinsics { get; set; }
 
     /// <summary>
-    /// The person who started the session. Null when the request carries no usable Contact.
+    /// Null when the request carries no usable Contact.
     /// </summary>
     public PunchoutUserContext User { get; set; }
 }

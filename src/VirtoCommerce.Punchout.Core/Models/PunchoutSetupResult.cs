@@ -4,9 +4,6 @@ public class PunchoutSetupResult
 {
     public PunchoutSetupStatus Status { get; set; }
 
-    /// <summary>
-    /// The URL the buyer's browser is sent to. Only filled in when Status is Success/>.
-    /// </summary>
     public string StartPage { get; set; }
 
     public string Message { get; set; }

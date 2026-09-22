@@ -40,8 +40,6 @@ public class ActivatePunchoutSessionCommandHandler(
 
         if (session is null)
         {
-            // Every reason for not finding the session gives the same answer: the caller only holds a start
-            // page URL, so telling it whether the token, the store or the user was wrong would help it guess.
             result.Error = ModuleConstants.ActivationErrors.SessionNotFound;
             return result;
         }
@@ -60,14 +58,8 @@ public class ActivatePunchoutSessionCommandHandler(
         return result;
     }
 
-    /// <summary>
-    /// Finds the session the start page URL points at: it must belong to this store and this user, must not
-    /// have been activated yet and must not have expired.
-    /// </summary>
     protected virtual async Task<PunchoutSession> FindSessionAsync(ActivatePunchoutSessionCommand request)
     {
-        // An empty part of the key is not a filter that matches everything here: without all three the
-        // request does not identify a session at all.
         if (string.IsNullOrEmpty(request.StoreId) ||
             string.IsNullOrEmpty(request.SessionToken) ||
             string.IsNullOrEmpty(request.UserId))
@@ -75,6 +67,7 @@ public class ActivatePunchoutSessionCommandHandler(
             return null;
         }
 
+        // A session the must belong to this store and this user, must not have been activated yet and must not have expired.
         var criteria = AbstractTypeFactory<PunchoutSessionSearchCriteria>.TryCreateInstance();
         criteria.StoreId = request.StoreId;
         criteria.UserId = request.UserId;
@@ -83,7 +76,6 @@ public class ActivatePunchoutSessionCommandHandler(
         criteria.NotExpired = true;
         criteria.Take = 1;
 
-        // Cloned results: the session found here is modified and saved.
         var searchResult = await punchoutSessionSearchService.SearchAsync(criteria);
 
         return searchResult.Results.FirstOrDefault();

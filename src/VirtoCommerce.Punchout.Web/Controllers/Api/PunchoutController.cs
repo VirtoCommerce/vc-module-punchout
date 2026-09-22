@@ -65,8 +65,8 @@ public class PunchoutController : Controller
     }
 
     /// <summary>
-    /// cXML carries the outcome in the Status element of a 200 OK response, so that the caller always
-    /// gets a cXML document it can parse rather than an HTTP error page.
+    /// cXML carries the outcome in the Status element of a 200 OK response,
+    /// the caller always gets a cXML document rather than an HTTP error page.
     /// </summary>
     private ContentResult CxmlResponse(PunchoutSetupResult result)
     {

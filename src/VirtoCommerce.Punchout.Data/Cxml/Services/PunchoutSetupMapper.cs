@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -46,8 +46,7 @@ public class PunchoutSetupMapper : IPunchoutSetupMapper
             return null;
         }
 
-        // cXML allows several contacts told apart by their role; the person who started the session is
-        // the endUser. Fall back to the first contact for buyers that send one without a role.
+        // The person who started the session is he endUser. Fall back to the first contact for buyers that send one without a role.
         var contact = contacts.FirstOrDefault(x => x.Role.EqualsIgnoreCase(CxmlConstants.ContactRole.EndUser))
             ?? contacts[0];
 
@@ -106,7 +105,6 @@ public class PunchoutSetupMapper : IPunchoutSetupMapper
             PunchoutSetupStatus.Success => (CxmlConstants.Status.OkCode, CxmlConstants.Status.OkText),
             PunchoutSetupStatus.InvalidCredentials => (CxmlConstants.Status.UnauthorizedCode, CxmlConstants.Status.UnauthorizedText),
             PunchoutSetupStatus.InvalidRequest => (CxmlConstants.Status.BadRequestCode, CxmlConstants.Status.BadRequestText),
-            // An unknown user is an authorization problem for the buyer, the same class of answer as bad credentials.
             PunchoutSetupStatus.UserNotFound => (CxmlConstants.Status.UnauthorizedCode, CxmlConstants.Status.UnauthorizedText),
             PunchoutSetupStatus.ReturnUrlNotAllowed => (CxmlConstants.Status.BadRequestCode, CxmlConstants.Status.BadRequestText),
             PunchoutSetupStatus.StoreNotConfigured => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
@@ -126,7 +124,7 @@ public class PunchoutSetupMapper : IPunchoutSetupMapper
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
-        // Duplicate names are legal in cXML; the last one wins, which matches how most suppliers read them.
+        // Duplicate names are legal in cXML, the last one wins 
         return extrinsics
             .Where(x => !string.IsNullOrEmpty(x.Name))
             .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)

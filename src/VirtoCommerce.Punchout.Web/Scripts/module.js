@@ -6,8 +6,8 @@ if (AppDependencies !== undefined) {
 }
 
 angular.module(moduleName, [])
-    .run(['platformWebApp.mainMenuService', '$state', 'platformWebApp.widgetService', 'platformWebApp.metaFormsService',
-        function (mainMenuService, $state, widgetService, metaFormsService) {
+    .run(['platformWebApp.widgetService', 'platformWebApp.metaFormsService',
+        function (widgetService, metaFormsService) {
             // widgets
             var memberPunchoutUserMappingWidget = {
                 controller: 'VirtoCommerce.Punchout.memberPunchoutUserMappingWidgetController',

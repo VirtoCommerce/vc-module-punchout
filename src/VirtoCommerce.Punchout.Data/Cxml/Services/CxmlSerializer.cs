@@ -10,8 +10,6 @@ namespace VirtoCommerce.Punchout.Data.Cxml.Services;
 
 public class CxmlSerializer : ICxmlSerializer
 {
-    // cXML documents declare the cXML DTD. Ignore it instead of resolving it: the schema adds nothing to the
-    // mapping, and fetching an external DTD would make deserialization depend on a remote host.
     private static readonly XmlReaderSettings _readerSettings = new()
     {
         DtdProcessing = DtdProcessing.Ignore,
@@ -20,13 +18,11 @@ public class CxmlSerializer : ICxmlSerializer
 
     private static readonly XmlWriterSettings _writerSettings = new()
     {
-        // Without the explicit UTF8Encoding(false) the writer emits a BOM into the string.
         Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
         Indent = true,
         OmitXmlDeclaration = false,
     };
 
-    // cXML has no namespace, so the xsi/xsd declarations XmlSerializer adds by default must be suppressed.
     private static readonly XmlSerializerNamespaces _emptyNamespaces = new([XmlQualifiedName.Empty]);
 
     public T Deserialize<T>(string xml)

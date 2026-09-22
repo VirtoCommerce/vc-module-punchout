@@ -5,7 +5,7 @@ namespace VirtoCommerce.Punchout.Core.Cxml.Models;
 public class CxmlContact
 {
     /// <summary>
-    /// Role of the contact, e.g. endUser, administrator or technicalSupport.
+    /// Role of the contact, e.g. 'endUser'.
     /// </summary>
     [XmlAttribute("role")]
     public string Role { get; set; }

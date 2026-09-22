@@ -14,12 +14,6 @@ using VirtoCommerce.StoreModule.Core.Services;
 
 namespace VirtoCommerce.Punchout.Data.Services;
 
-/// <summary>
-/// Handles a Coupa punchout setup request against the single global configuration:
-/// the shared secret is taken from the configuration rather than from a stored integration, and the
-/// sender identity names the user of the external system, which is resolved to a platform user
-/// through <see cref="PunchoutUserMapping"/>.
-/// </summary>
 public class CoupaPunchoutSetupService(
     IOptions<CoupaConfiguration> configuration,
     IPunchoutUserMappingSearchService userMappingSearchService,
@@ -47,8 +41,6 @@ public class CoupaPunchoutSetupService(
 
         if (!AreCredentialsValid(punchoutSetupContext, settings))
         {
-            // A wrong domain and a wrong secret give the same answer on purpose, so that the response
-            // does not tell the caller which of the two it got wrong.
             logger.LogWarning("Punchout setup rejected for sender identity '{SenderIdentity}': invalid credentials.",
                 punchoutSetupContext.Sender);
 
@@ -93,22 +85,18 @@ public class CoupaPunchoutSetupService(
     protected virtual bool AreCredentialsValid(PunchoutSetupContext context, CoupaConfiguration settings)
     {
         // An empty configured domain means the sender domain is not part of the agreement and is not checked.
-        if (!string.IsNullOrEmpty(settings.SenderDomain) &&
+        if (!settings.SenderDomain.IsNullOrEmpty() &&
             !settings.SenderDomain.EqualsIgnoreCase(context.SenderDomain))
         {
             return false;
         }
 
-        return !string.IsNullOrEmpty(context.SharedSecret) &&
+        return !settings.SenderDomain.IsNullOrEmpty() &&
                CryptographicOperations.FixedTimeEquals(
                    Encoding.UTF8.GetBytes(context.SharedSecret),
                    Encoding.UTF8.GetBytes(settings.SharedSecret));
     }
 
-    /// <summary>
-    /// Checks the URL the buyer's browser is posted back to against the allow list. Each entry is either an
-    /// exact URL or a prefix ending with '*'. An empty allow list turns the check off.
-    /// </summary>
     protected virtual bool IsReturnUrlAllowed(string returnUrl, CoupaConfiguration settings)
     {
         if (settings.AllowedReturnUrls.IsNullOrEmpty())

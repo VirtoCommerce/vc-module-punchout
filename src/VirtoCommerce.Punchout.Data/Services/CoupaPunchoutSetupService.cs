@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -149,7 +149,7 @@ public class CoupaPunchoutSetupService(
         session.BuyerDomain = context.FromDomain;
         session.ReturnUrl = context.ReturnUrl;
         session.Status = ModuleConstants.SessionStatus.Created;
-        session.ExpirationDate = DateTime.UtcNow.Add(SessionLifetime);
+        session.ExpirationDate = DateTime.UtcNow.Add(settings.TokenLifeTime ?? CoupaConfiguration.DefaultTokenLifeTime);
         session.StartPage = BuildStartPage(storefrontUrl, session.SessionToken);
 
         return session;

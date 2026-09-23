@@ -46,11 +46,13 @@ public class PunchoutSessionSearchService(
             query = query.Where(x => criteria.Statuses.Contains(x.Status));
         }
 
-        if (criteria.NotExpired)
+        if (criteria.Expired != null)
         {
             var now = DateTime.UtcNow;
 
-            query = query.Where(x => x.ExpirationDate == null || x.ExpirationDate > now);
+            query = criteria.Expired.Value
+                ? query.Where(x => x.ExpirationDate != null && x.ExpirationDate <= now)
+                : query.Where(x => x.ExpirationDate == null || x.ExpirationDate > now);
         }
 
         return query;

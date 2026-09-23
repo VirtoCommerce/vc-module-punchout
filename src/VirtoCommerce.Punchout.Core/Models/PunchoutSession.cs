@@ -7,13 +7,10 @@ public class PunchoutSession : AuditableEntity, ICloneable
 {
     public string StoreId { get; set; }
 
-    // Created and filled while activating punchout session
-    public string CartId { get; set; }
-
     // Supplier (storefront) correlation
     public string SessionToken { get; set; }
 
-    // Buyer correlration 
+    // Buyer correlation 
     public string BuyerCookie { get; set; }
 
     public string BuyerIdentity { get; set; }
@@ -26,15 +23,12 @@ public class PunchoutSession : AuditableEntity, ICloneable
     public DateTime? ExpirationDate { get; set; }
 
     // Created
-    // Active (user successfuly opened and validated store url)
-    // Returned (order created successfuly and passed to return url)
+    // Active (user successfully opened and validated store url)
+    // Returned (order created successfully and passed to return url)
     // Expired
-    // Cancelled
     public string Status { get; set; }
 
     public string StartPage { get; set; }
-
-    public string IntegrationId { get; set; }
 
     public string UserId { get; set; }
 

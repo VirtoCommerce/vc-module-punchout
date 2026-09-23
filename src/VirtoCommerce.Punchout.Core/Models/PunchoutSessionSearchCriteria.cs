@@ -13,5 +13,6 @@ public class PunchoutSessionSearchCriteria : SearchCriteriaBase
 
     public IList<string> Statuses { get; set; }
 
-    public bool NotExpired { get; set; }
+    // A session with no expiration date never counts as expired.
+    public bool? Expired { get; set; }
 }

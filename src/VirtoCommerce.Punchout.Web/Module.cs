@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using GraphQL.MicrosoftDI;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
@@ -10,10 +10,12 @@ using VirtoCommerce.Platform.Core.Settings;
 using VirtoCommerce.Platform.Data.MySql.Extensions;
 using VirtoCommerce.Platform.Data.PostgreSql.Extensions;
 using VirtoCommerce.Platform.Data.SqlServer.Extensions;
+using VirtoCommerce.Platform.Hangfire;
 using VirtoCommerce.Punchout.Core;
 using VirtoCommerce.Punchout.Core.Coupa;
 using VirtoCommerce.Punchout.Core.Cxml.Services;
 using VirtoCommerce.Punchout.Core.Services;
+using VirtoCommerce.Punchout.Data.BackgroundJobs;
 using VirtoCommerce.Punchout.Data.Cxml.Services;
 using VirtoCommerce.Punchout.Data.MySql;
 using VirtoCommerce.Punchout.Data.PostgreSql;
@@ -73,6 +75,9 @@ public class Module : IModule, IHasConfiguration
 
         serviceCollection.AddTransient<IPunchoutSetupService, CoupaPunchoutSetupService>();
 
+        serviceCollection.AddTransient<IExpirePunchoutSessionsHandler, ExpirePunchoutSessionsHandler>();
+        serviceCollection.AddTransient<ExpirePunchoutSessionsJob>();
+
         // Register GraphQL schema
         _ = new GraphQLBuilder(serviceCollection, builder =>
         {
@@ -101,6 +106,15 @@ public class Module : IModule, IHasConfiguration
 
         // Graphql schema
         appBuilder.UseScopedSchema<XapiAssemblyMarker>("punchout");
+
+        // Recurring jobs
+        var recurringJobService = serviceProvider.GetService<IRecurringJobService>();
+        recurringJobService.WatchJobSetting(
+            new SettingCronJobBuilder()
+                .SetEnablerSetting(ModuleConstants.Settings.Jobs.ExpireSessionsJobEnabled)
+                .SetCronSetting(ModuleConstants.Settings.Jobs.ExpireSessionsJobCronExpression)
+                .ToJob<ExpirePunchoutSessionsJob>(x => x.Process())
+                .Build());
     }
 
     public void Uninstall()

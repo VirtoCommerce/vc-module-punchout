@@ -15,5 +15,8 @@ public class PunchoutSessonActivationResultType : ExtendableGraphType<PunchoutSe
 
         Field(x => x.PunchoutCartName, nullable: true)
             .Description("The name of the cart the punchout session works with.");
+
+        Field(x => x.ExpiresIn, nullable: true)
+            .Description("Number of seconds until the punchout session expires, counted from the moment of activation. Empty when the activation failed.");
     }
 }

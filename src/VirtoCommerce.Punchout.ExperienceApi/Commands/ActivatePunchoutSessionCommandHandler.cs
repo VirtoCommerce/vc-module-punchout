@@ -25,7 +25,6 @@ public class ActivatePunchoutSessionCommandHandler(
     IOptions<CoupaConfiguration> configuration)
     : IRequestHandler<ActivatePunchoutSessionCommand, PunchoutSessionActivationResult>
 {
-    private const string PunchoutCartNamePrefix = "punchout";
     private const string PunchoutCartChannelId = "punchout";
 
     public async Task<PunchoutSessionActivationResult> Handle(ActivatePunchoutSessionCommand request, CancellationToken cancellationToken)
@@ -53,12 +52,15 @@ public class ActivatePunchoutSessionCommandHandler(
 
         // The token is single-use, moving the session out of Created spends it, second activation with the same token no longer finds anything
         session.Status = ModuleConstants.SessionStatus.Active;
-        session.ExpirationDate = DateTime.UtcNow.Add(configuration.Value.SessionLifeTime ?? CoupaConfiguration.DefaultSessionLifeTime);
+
+        var sessionLifeTime = configuration.Value.SessionLifeTime ?? CoupaConfiguration.DefaultSessionLifeTime;
+        session.ExpirationDate = DateTime.UtcNow.Add(sessionLifeTime);
 
         await punchoutSessionService.SaveChangesAsync([session]);
 
         result.PunchoutCartId = punchoutCart.Cart.Id;
         result.PunchoutCartName = punchoutCart.Cart.Name;
+        result.ExpiresIn = (int)sessionLifeTime.TotalSeconds;
 
         return result;
     }
@@ -88,7 +90,7 @@ public class ActivatePunchoutSessionCommandHandler(
 
     protected virtual async Task<CartAggregate> CreatePunchoutCartIfNotExistAsync(ActivatePunchoutSessionCommand request, Store store, PunchoutSession session)
     {
-        var punchoutCartName = $"{PunchoutCartNamePrefix}.{session.Id}";
+        var punchoutCartName = $"{PunchoutCartChannelId}.{session.Id}";
 
         var getCartQuery = GetGetCartQuery(request, store, punchoutCartName);
         var punchoutCart = await mediator.Send(getCartQuery);

@@ -7,4 +7,6 @@ public class PunchoutSessionActivationResult
     public string PunchoutCartId { get; set; }
 
     public string PunchoutCartName { get; set; }
+
+    public int? ExpiresIn { get; set; }
 }

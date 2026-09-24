@@ -70,6 +70,14 @@ public static class ModuleConstants
             }
         }
 
+        public static IEnumerable<SettingDescriptor> StoreSettings
+        {
+            get
+            {
+                yield return General.PunchoutEnabled;
+            }
+        }
+
         public static IEnumerable<SettingDescriptor> AllSettings
         {
             get

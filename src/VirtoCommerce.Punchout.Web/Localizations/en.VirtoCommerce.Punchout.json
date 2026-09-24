@@ -50,16 +50,6 @@
       "Enabled": {
         "title": "Punchout Enabled",
         "description": "Punchout Enabled setting"
-      },
-      "ExpireSessionsJob": {
-        "Enable": {
-          "title": "Expire punchout sessions",
-          "description": "Run a background job that moves punchout sessions past their expiration date to the Expired status"
-        },
-        "CronExpression": {
-          "title": "Expire punchout sessions cron expression",
-          "description": "Schedule of the punchout session expiration job"
-        }
       }
     }
   }

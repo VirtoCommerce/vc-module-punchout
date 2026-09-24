@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using VirtoCommerce.Platform.Core.Settings;
 
 namespace VirtoCommerce.Punchout.Core;
@@ -71,39 +70,11 @@ public static class ModuleConstants
             }
         }
 
-        public static class Jobs
-        {
-            public static SettingDescriptor ExpireSessionsJobEnabled { get; } = new()
-            {
-                Name = "Punchout.ExpireSessionsJob.Enable",
-                GroupName = "Punchout|Jobs",
-                ValueType = SettingValueType.Boolean,
-                DefaultValue = true,
-            };
-
-            public static SettingDescriptor ExpireSessionsJobCronExpression { get; } = new()
-            {
-                Name = "Punchout.ExpireSessionsJob.CronExpression",
-                GroupName = "Punchout|Jobs",
-                ValueType = SettingValueType.ShortText,
-                DefaultValue = "*/15 * * * *",
-            };
-
-            public static IEnumerable<SettingDescriptor> AllJobsSettings
-            {
-                get
-                {
-                    yield return ExpireSessionsJobEnabled;
-                    yield return ExpireSessionsJobCronExpression;
-                }
-            }
-        }
-
         public static IEnumerable<SettingDescriptor> AllSettings
         {
             get
             {
-                return General.AllGeneralSettings.Concat(Jobs.AllJobsSettings);
+                return General.AllGeneralSettings;
             }
         }
     }

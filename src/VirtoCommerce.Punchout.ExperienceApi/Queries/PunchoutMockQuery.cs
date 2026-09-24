@@ -16,7 +16,6 @@ public class PunchoutMockQuery : Query<PunchoutMockResult>
 
     public override void Map(IResolveFieldContext context)
     {
-        return;
     }
 }
 

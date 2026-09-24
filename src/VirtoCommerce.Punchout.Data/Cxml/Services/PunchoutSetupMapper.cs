@@ -117,16 +117,16 @@ public class PunchoutSetupMapper : IPunchoutSetupMapper
         return $"{DateTime.UtcNow.Ticks}.{Guid.NewGuid():N}@virtocommerce.com";
     }
 
-    private static IDictionary<string, string> MapExtrinsics(IList<CxmlExtrinsic> extrinsics)
+    private static Dictionary<string, string> MapExtrinsics(IList<CxmlExtrinsic> extrinsics)
     {
         if (extrinsics.IsNullOrEmpty())
         {
-            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            return [];
         }
 
         // Duplicate names are legal in cXML, the last one wins 
         return extrinsics
-            .Where(x => !string.IsNullOrEmpty(x.Name))
+            .Where(x => !x.Name.IsNullOrEmpty())
             .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(x => x.Key, x => x.Last().Value, StringComparer.OrdinalIgnoreCase);
     }

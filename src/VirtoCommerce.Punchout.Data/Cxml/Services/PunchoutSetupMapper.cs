@@ -98,7 +98,7 @@ public class PunchoutSetupMapper : IPunchoutSetupMapper
         return document;
     }
 
-    protected virtual (string Code, string Text) MapStatus(PunchoutSetupStatus status)
+    protected virtual (string Code, string Text) MapStatus(string status)
     {
         return status switch
         {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -84,7 +84,7 @@ public class CoupaPunchoutSetupService(
 
     protected virtual bool AreCredentialsValid(PunchoutSetupContext context, CoupaConfiguration settings)
     {
-        // An empty configured domain means the sender domain is not part of the agreement and is not checked.
+        // An empty configured domain is not checked
         if (!settings.SenderDomain.IsNullOrEmpty() &&
             !settings.SenderDomain.EqualsIgnoreCase(context.SenderDomain))
         {

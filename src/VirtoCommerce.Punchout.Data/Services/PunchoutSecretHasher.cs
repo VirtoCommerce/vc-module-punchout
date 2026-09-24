@@ -7,8 +7,7 @@ namespace VirtoCommerce.Punchout.Data.Services;
 
 /// <summary>
 /// Hashes punchout shared secrets with PBKDF2 (HMAC-SHA256).
-/// The hash is stored as "{version}.{iterations}.{base64 salt}.{base64 hash}" so that the work factor
-/// can be raised later without invalidating the secrets hashed with the current one.
+/// The hash is stored as "{version}.{iterations}.{base64 salt}.{base64 hash}"
 /// </summary>
 public class PunchoutSecretHasher : IPunchoutSecretHasher
 {

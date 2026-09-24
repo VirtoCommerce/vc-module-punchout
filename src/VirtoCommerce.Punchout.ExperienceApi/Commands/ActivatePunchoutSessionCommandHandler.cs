@@ -25,7 +25,8 @@ public class ActivatePunchoutSessionCommandHandler(
     IOptions<CoupaConfiguration> configuration)
     : IRequestHandler<ActivatePunchoutSessionCommand, PunchoutSessionActivationResult>
 {
-    private const string PunchoutCartName = "punchout";
+    private const string PunchoutCartNamePrefix = "punchout";
+    private const string PunchoutCartChannelId = "punchout";
 
     public async Task<PunchoutSessionActivationResult> Handle(ActivatePunchoutSessionCommand request, CancellationToken cancellationToken)
     {
@@ -87,7 +88,7 @@ public class ActivatePunchoutSessionCommandHandler(
 
     protected virtual async Task<CartAggregate> CreatePunchoutCartIfNotExistAsync(ActivatePunchoutSessionCommand request, Store store, PunchoutSession session)
     {
-        var punchoutCartName = $"{PunchoutCartName}.{session.Id}";
+        var punchoutCartName = $"{PunchoutCartNamePrefix}.{session.Id}";
 
         var getCartQuery = GetGetCartQuery(request, store, punchoutCartName);
         var punchoutCart = await mediator.Send(getCartQuery);
@@ -109,6 +110,7 @@ public class ActivatePunchoutSessionCommandHandler(
         createCartCommand.CurrencyCode = request.CurrencyCode ?? store.DefaultCurrency;
         createCartCommand.CultureName = request.CultureName ?? store.DefaultLanguage;
         createCartCommand.CartName = punchoutCartName;
+        createCartCommand.ChannelId = PunchoutCartChannelId;
         return createCartCommand;
     }
 

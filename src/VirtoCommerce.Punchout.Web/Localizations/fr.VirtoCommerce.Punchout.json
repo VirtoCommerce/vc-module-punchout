@@ -1,0 +1,56 @@
+{
+  "punchout": {
+    "blades": {
+      "user-mapping-detail": {
+        "title": "Utilisateur Punchout",
+        "labels": {
+          "externalId": "Identité externe",
+          "userId": "Compte",
+          "isActive": "Actif",
+          "no-accounts": "Ce contact n'a pas encore de compte de sécurité. Créez-en un d'abord : une session Punchout est ouverte pour un compte, pas pour un contact."
+        },
+        "placeholders": {
+          "externalId": "Saisissez l'identité utilisateur du système d'approvisionnement"
+        },
+        "notations": {
+          "externalId": "La valeur envoyée par le système d'approvisionnement dans cXML Header/Sender/Credential/Identity."
+        },
+        "validation": {
+          "externalId-required": "L'identité externe est obligatoire",
+          "userId-required": "Le compte est obligatoire"
+        }
+      }
+    },
+    "dialogs": {
+      "user-mapping-save": {
+        "title": "Enregistrer les modifications",
+        "message": "L'utilisateur Punchout a été modifié. Voulez-vous enregistrer les modifications ?"
+      },
+      "user-mapping-delete": {
+        "title": "Confirmation de suppression",
+        "message": "Voulez-vous vraiment supprimer l'association d'utilisateur Punchout '{{externalId}}' ?"
+      }
+    },
+    "widgets": {
+      "user-mapping": {
+        "title": "Utilisateur Punchout",
+        "not-set": "Non lié"
+      }
+    }
+  },
+  "permissions": {
+    "punchout:access": "Ouvrir le menu Punchout",
+    "punchout:create": "Créer des données liées à Punchout",
+    "punchout:read": "Afficher les données liées à Punchout",
+    "punchout:update": "Mettre à jour les données liées à Punchout",
+    "punchout:delete": "Supprimer les données liées à Punchout"
+  },
+  "settings": {
+    "Punchout": {
+      "Enabled": {
+        "title": "Punchout activé",
+        "description": "Paramètre Punchout activé"
+      }
+    }
+  }
+}

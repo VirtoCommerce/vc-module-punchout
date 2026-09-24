@@ -1,0 +1,56 @@
+{
+  "punchout": {
+    "blades": {
+      "user-mapping-detail": {
+        "title": "Użytkownik Punchout",
+        "labels": {
+          "externalId": "Tożsamość zewnętrzna",
+          "userId": "Konto",
+          "isActive": "Aktywny",
+          "no-accounts": "Ten kontakt nie ma jeszcze konta zabezpieczeń. Najpierw je utwórz: sesja Punchout jest otwierana dla konta, a nie dla kontaktu."
+        },
+        "placeholders": {
+          "externalId": "Wprowadź tożsamość użytkownika systemu zakupowego"
+        },
+        "notations": {
+          "externalId": "Wartość, którą system zakupowy wysyła w cXML Header/Sender/Credential/Identity."
+        },
+        "validation": {
+          "externalId-required": "Tożsamość zewnętrzna jest wymagana",
+          "userId-required": "Konto jest wymagane"
+        }
+      }
+    },
+    "dialogs": {
+      "user-mapping-save": {
+        "title": "Zapisz zmiany",
+        "message": "Użytkownik Punchout został zmodyfikowany. Czy chcesz zapisać zmiany?"
+      },
+      "user-mapping-delete": {
+        "title": "Potwierdzenie usunięcia",
+        "message": "Czy na pewno chcesz usunąć mapowanie użytkownika Punchout '{{externalId}}'?"
+      }
+    },
+    "widgets": {
+      "user-mapping": {
+        "title": "Użytkownik Punchout",
+        "not-set": "Niepowiązany"
+      }
+    }
+  },
+  "permissions": {
+    "punchout:access": "Otwieranie menu Punchout",
+    "punchout:create": "Tworzenie danych związanych z Punchout",
+    "punchout:read": "Wyświetlanie danych związanych z Punchout",
+    "punchout:update": "Aktualizowanie danych związanych z Punchout",
+    "punchout:delete": "Usuwanie danych związanych z Punchout"
+  },
+  "settings": {
+    "Punchout": {
+      "Enabled": {
+        "title": "Punchout włączony",
+        "description": "Ustawienie włączenia Punchout"
+      }
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "punchout": {
+    "blades": {
+      "user-mapping-detail": {
+        "title": "Punchout 用户",
+        "labels": {
+          "externalId": "外部身份",
+          "userId": "账户",
+          "isActive": "启用",
+          "no-accounts": "此联系人还没有安全账户。请先创建一个：Punchout 会话是为账户而不是为联系人打开的。"
+        },
+        "placeholders": {
+          "externalId": "输入采购系统的用户身份"
+        },
+        "notations": {
+          "externalId": "采购系统在 cXML Header/Sender/Credential/Identity 中发送的值。"
+        },
+        "validation": {
+          "externalId-required": "外部身份为必填项",
+          "userId-required": "账户为必填项"
+        }
+      }
+    },
+    "dialogs": {
+      "user-mapping-save": {
+        "title": "保存更改",
+        "message": "Punchout 用户已被修改。是否保存更改？"
+      },
+      "user-mapping-delete": {
+        "title": "删除确认",
+        "message": "确定要删除 Punchout 用户映射 '{{externalId}}' 吗？"
+      }
+    },
+    "widgets": {
+      "user-mapping": {
+        "title": "Punchout 用户",
+        "not-set": "未关联"
+      }
+    }
+  },
+  "permissions": {
+    "punchout:access": "打开 Punchout 菜单",
+    "punchout:create": "创建 Punchout 相关数据",
+    "punchout:read": "查看 Punchout 相关数据",
+    "punchout:update": "更新 Punchout 相关数据",
+    "punchout:delete": "删除 Punchout 相关数据"
+  },
+  "settings": {
+    "Punchout": {
+      "Enabled": {
+        "title": "启用 Punchout",
+        "description": "启用 Punchout 设置"
+      }
+    }
+  }
+}

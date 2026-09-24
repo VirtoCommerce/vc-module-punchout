@@ -91,7 +91,7 @@ public class CoupaPunchoutSetupService(
             return false;
         }
 
-        return !settings.SenderDomain.IsNullOrEmpty() &&
+        return !context.SharedSecret.IsNullOrEmpty() &&
                CryptographicOperations.FixedTimeEquals(
                    Encoding.UTF8.GetBytes(context.SharedSecret),
                    Encoding.UTF8.GetBytes(settings.SharedSecret));

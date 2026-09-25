@@ -12,8 +12,8 @@ using VirtoCommerce.Punchout.Data.Repositories;
 namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
 {
     [DbContext(typeof(PunchoutDbContext))]
-    [Migration("20260917155028_AddPunchoutUserMapping")]
-    partial class AddPunchoutUserMapping
+    [Migration("20260925074841_AddPunchoutSession")]
+    partial class AddPunchoutSession
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -44,10 +44,6 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("nvarchar(512)");
 
-                    b.Property<string>("CartId")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
                     b.Property<string>("CreatedBy")
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
@@ -57,10 +53,6 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
 
                     b.Property<DateTime?>("ExpirationDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("IntegrationId")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
 
                     b.Property<string>("ModifiedBy")
                         .HasMaxLength(64)

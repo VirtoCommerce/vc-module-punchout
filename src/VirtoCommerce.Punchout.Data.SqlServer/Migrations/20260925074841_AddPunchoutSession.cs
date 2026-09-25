@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
 {
     /// <inheritdoc />
-    public partial class AddPunchoutUserMapping : Migration
+    public partial class AddPunchoutSession : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -17,7 +17,6 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
                 {
                     Id = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
                     StoreId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
-                    CartId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
                     SessionToken = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
                     BuyerCookie = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: true),
                     BuyerIdentity = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: true),
@@ -26,7 +25,6 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
                     ExpirationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     Status = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     StartPage = table.Column<string>(type: "nvarchar(2048)", maxLength: 2048, nullable: true),
-                    IntegrationId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
                     UserId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
                     CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ModifiedDate = table.Column<DateTime>(type: "datetime2", nullable: true),

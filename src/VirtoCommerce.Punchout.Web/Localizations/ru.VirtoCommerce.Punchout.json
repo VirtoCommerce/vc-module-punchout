@@ -1,0 +1,56 @@
+{
+  "punchout": {
+    "blades": {
+      "user-mapping-detail": {
+        "title": "Пользователь Punchout",
+        "labels": {
+          "externalId": "Внешний идентификатор",
+          "userId": "Учётная запись",
+          "isActive": "Активен",
+          "no-accounts": "У этого контакта ещё нет учётной записи безопасности. Сначала создайте её: сессия Punchout открывается для учётной записи, а не для контакта."
+        },
+        "placeholders": {
+          "externalId": "Введите идентификатор пользователя в системе закупок"
+        },
+        "notations": {
+          "externalId": "Значение, которое система закупок передаёт в cXML Header/Sender/Credential/Identity."
+        },
+        "validation": {
+          "externalId-required": "Внешний идентификатор обязателен",
+          "userId-required": "Учётная запись обязательна"
+        }
+      }
+    },
+    "dialogs": {
+      "user-mapping-save": {
+        "title": "Сохранить изменения",
+        "message": "Пользователь Punchout был изменён. Сохранить изменения?"
+      },
+      "user-mapping-delete": {
+        "title": "Подтверждение удаления",
+        "message": "Вы уверены, что хотите удалить сопоставление пользователя Punchout '{{externalId}}'?"
+      }
+    },
+    "widgets": {
+      "user-mapping": {
+        "title": "Пользователь Punchout",
+        "not-set": "Не привязан"
+      }
+    }
+  },
+  "permissions": {
+    "punchout:access": "Открывать меню Punchout",
+    "punchout:create": "Создавать данные Punchout",
+    "punchout:read": "Просматривать данные Punchout",
+    "punchout:update": "Изменять данные Punchout",
+    "punchout:delete": "Удалять данные Punchout"
+  },
+  "settings": {
+    "Punchout": {
+      "Enabled": {
+        "title": "Punchout включён",
+        "description": "Настройка включения Punchout"
+      }
+    }
+  }
+}

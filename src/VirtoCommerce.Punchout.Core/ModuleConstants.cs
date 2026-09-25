@@ -26,6 +26,28 @@ public static class ModuleConstants
         }
     }
 
+    public static class ConfigurationSections
+    {
+        public const string CoupaConfiguration = "Punchout:CoupaConfiguration";
+    }
+
+    public static class SessionStatus
+    {
+        public const string Created = "Created";
+        public const string Active = "Active";
+        public const string Returned = "Returned";
+        public const string Expired = "Expired";
+    }
+
+    /// <summary>
+    /// Errors returned by the session activation mutation.
+    /// </summary>
+    public static class ActivationErrors
+    {
+        public const string SessionNotFound = "SESSION_NOT_FOUND";
+        public const string StoreNotFound = "STORE_NOT_FOUND";
+    }
+
     public static class Settings
     {
         public static class General
@@ -36,6 +58,7 @@ public static class ModuleConstants
                 GroupName = "Punchout|General",
                 ValueType = SettingValueType.Boolean,
                 DefaultValue = false,
+                IsPublic = true,
             };
 
             public static IEnumerable<SettingDescriptor> AllGeneralSettings
@@ -44,6 +67,14 @@ public static class ModuleConstants
                 {
                     yield return PunchoutEnabled;
                 }
+            }
+        }
+
+        public static IEnumerable<SettingDescriptor> StoreSettings
+        {
+            get
+            {
+                yield return General.PunchoutEnabled;
             }
         }
 

@@ -1,3 +1,5 @@
+using System;
+using GraphQL.MicrosoftDI;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -9,10 +11,19 @@ using VirtoCommerce.Platform.Data.MySql.Extensions;
 using VirtoCommerce.Platform.Data.PostgreSql.Extensions;
 using VirtoCommerce.Platform.Data.SqlServer.Extensions;
 using VirtoCommerce.Punchout.Core;
+using VirtoCommerce.Punchout.Core.Coupa;
+using VirtoCommerce.Punchout.Core.Cxml.Services;
+using VirtoCommerce.Punchout.Core.Services;
+using VirtoCommerce.Punchout.Data.Cxml.Services;
 using VirtoCommerce.Punchout.Data.MySql;
 using VirtoCommerce.Punchout.Data.PostgreSql;
 using VirtoCommerce.Punchout.Data.Repositories;
+using VirtoCommerce.Punchout.Data.Services;
 using VirtoCommerce.Punchout.Data.SqlServer;
+using VirtoCommerce.Punchout.ExperienceApi;
+using VirtoCommerce.StoreModule.Core.Model;
+using VirtoCommerce.Xapi.Core.Extensions;
+using VirtoCommerce.Xapi.Core.Infrastructure;
 
 namespace VirtoCommerce.Punchout.Web;
 
@@ -42,12 +53,32 @@ public class Module : IModule, IHasConfiguration
             }
         });
 
-        // Override models
-        //AbstractTypeFactory<OriginalModel>.OverrideType<OriginalModel, ExtendedModel>().MapToType<ExtendedEntity>();
-        //AbstractTypeFactory<OriginalEntity>.OverrideType<OriginalEntity, ExtendedEntity>();
+        // Register options
+
+        serviceCollection.AddOptions<CoupaConfiguration>().Bind(Configuration.GetSection(ModuleConstants.ConfigurationSections.CoupaConfiguration));
 
         // Register services
-        //serviceCollection.AddTransient<IMyService, MyService>();
+        serviceCollection.AddTransient<IPunchoutRepository, PunchoutRepository>();
+        serviceCollection.AddSingleton<Func<IPunchoutRepository>>(provider => () => provider.CreateScope().ServiceProvider.GetRequiredService<IPunchoutRepository>());
+
+        serviceCollection.AddTransient<IPunchoutSessionService, PunchoutSessionService>();
+        serviceCollection.AddTransient<IPunchoutSessionSearchService, PunchoutSessionSearchService>();
+
+        serviceCollection.AddTransient<IPunchoutUserMappingService, PunchoutUserMappingService>();
+        serviceCollection.AddTransient<IPunchoutUserMappingSearchService, PunchoutUserMappingSearchService>();
+
+        serviceCollection.AddTransient<ICxmlSerializer, CxmlSerializer>();
+        serviceCollection.AddTransient<IPunchoutSetupMapper, PunchoutSetupMapper>();
+
+        serviceCollection.AddTransient<IPunchoutSetupService, CoupaPunchoutSetupService>();
+
+        // Register GraphQL schema
+        _ = new GraphQLBuilder(serviceCollection, builder =>
+        {
+            builder.AddSchema(serviceCollection, typeof(XapiAssemblyMarker));
+        });
+
+        serviceCollection.AddSingleton<ScopedSchemaFactory<XapiAssemblyMarker>>();
     }
 
     public void PostInitialize(IApplicationBuilder appBuilder)
@@ -58,6 +89,9 @@ public class Module : IModule, IHasConfiguration
         var settingsRegistrar = serviceProvider.GetRequiredService<ISettingsRegistrar>();
         settingsRegistrar.RegisterSettings(ModuleConstants.Settings.AllSettings, ModuleInfo.Id);
 
+        // Register store settings
+        settingsRegistrar.RegisterSettingsForType(ModuleConstants.Settings.StoreSettings, nameof(Store));
+
         // Register permissions
         var permissionsRegistrar = serviceProvider.GetRequiredService<IPermissionsRegistrar>();
         permissionsRegistrar.RegisterPermissions(ModuleInfo.Id, "Punchout", ModuleConstants.Security.Permissions.AllPermissions);
@@ -66,6 +100,9 @@ public class Module : IModule, IHasConfiguration
         using var serviceScope = serviceProvider.CreateScope();
         using var dbContext = serviceScope.ServiceProvider.GetRequiredService<PunchoutDbContext>();
         dbContext.Database.Migrate();
+
+        // Graphql schema
+        appBuilder.UseScopedSchema<XapiAssemblyMarker>("punchout");
     }
 
     public void Uninstall()

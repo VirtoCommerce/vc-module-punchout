@@ -6,38 +6,37 @@ if (AppDependencies !== undefined) {
 }
 
 angular.module(moduleName, [])
-    .config(['$stateProvider',
-        function ($stateProvider) {
-            $stateProvider
-                .state('workspace.PunchoutState', {
-                    url: '/punchout',
-                    templateUrl: '$(Platform)/Scripts/common/templates/home.tpl.html',
-                    controller: [
-                        'platformWebApp.bladeNavigationService',
-                        function (bladeNavigationService) {
-                            var newBlade = {
-                                id: 'blade1',
-                                controller: 'VirtoCommerce.Punchout.helloWorldController',
-                                template: 'Modules/$(VirtoCommerce.Punchout)/Scripts/blades/hello-world.html',
-                                isClosingDisabled: true,
-                            };
-                            bladeNavigationService.showBlade(newBlade);
-                        }
-                    ]
-                });
-        }
-    ])
-    .run(['platformWebApp.mainMenuService', '$state',
-        function (mainMenuService, $state) {
-            //Register module in main menu
-            var menuItem = {
-                path: 'browse/punchout',
-                icon: 'fa fa-cube',
-                title: 'Punchout',
-                priority: 100,
-                action: function () { $state.go('workspace.PunchoutState'); },
-                permission: 'punchout:access',
+    .run(['platformWebApp.widgetService', 'platformWebApp.metaFormsService',
+        function (widgetService, metaFormsService) {
+            // widgets
+            var memberPunchoutUserMappingWidget = {
+                controller: 'VirtoCommerce.Punchout.memberPunchoutUserMappingWidgetController',
+                template: 'Modules/$(VirtoCommerce.Punchout)/Scripts/widgets/member-punchout-user-mapping-widget.html',
+                size: [2, 1],
+                permission: 'punchout:read',
+                isVisible: function (blade) {
+                    return !blade.isNew;
+                }
             };
-            mainMenuService.addMenuItem(menuItem);
+
+            widgetService.registerWidget(memberPunchoutUserMappingWidget, 'customerDetail2');
+
+            // metaforms
+            metaFormsService.registerMetaFields('punchoutUserMappingDetail', [
+                {
+                    name: 'isActive',
+                    title: 'punchout.blades.user-mapping-detail.labels.isActive',
+                    valueType: "Boolean",
+                    colSpan: 6
+                },
+                {
+                    name: 'externalId',
+                    title: 'punchout.blades.user-mapping-detail.labels.externalId',
+                    placeholder: 'punchout.blades.user-mapping-detail.placeholders.externalId',
+                    valueType: "ShortText",
+                    isRequired: true,
+                    colSpan: 6
+                }
+            ]);
         }
     ]);

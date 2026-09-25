@@ -1,0 +1,56 @@
+{
+  "punchout": {
+    "blades": {
+      "user-mapping-detail": {
+        "title": "Punchout-käyttäjä",
+        "labels": {
+          "externalId": "Ulkoinen tunniste",
+          "userId": "Tili",
+          "isActive": "Aktiivinen",
+          "no-accounts": "Tällä yhteyshenkilöllä ei ole vielä suojaustiliä. Luo se ensin: Punchout-istunto avataan tilille, ei yhteyshenkilölle."
+        },
+        "placeholders": {
+          "externalId": "Anna hankintajärjestelmän käyttäjätunniste"
+        },
+        "notations": {
+          "externalId": "Arvo, jonka hankintajärjestelmä lähettää kentässä cXML Header/Sender/Credential/Identity."
+        },
+        "validation": {
+          "externalId-required": "Ulkoinen tunniste on pakollinen",
+          "userId-required": "Tili on pakollinen"
+        }
+      }
+    },
+    "dialogs": {
+      "user-mapping-save": {
+        "title": "Tallenna muutokset",
+        "message": "Punchout-käyttäjää on muokattu. Haluatko tallentaa muutokset?"
+      },
+      "user-mapping-delete": {
+        "title": "Poiston vahvistus",
+        "message": "Haluatko varmasti poistaa Punchout-käyttäjäliitoksen '{{externalId}}'?"
+      }
+    },
+    "widgets": {
+      "user-mapping": {
+        "title": "Punchout-käyttäjä",
+        "not-set": "Ei linkitetty"
+      }
+    }
+  },
+  "permissions": {
+    "punchout:access": "Avaa Punchout-valikko",
+    "punchout:create": "Luo Punchout-tietoja",
+    "punchout:read": "Näytä Punchout-tiedot",
+    "punchout:update": "Päivitä Punchout-tietoja",
+    "punchout:delete": "Poista Punchout-tietoja"
+  },
+  "settings": {
+    "Punchout": {
+      "Enabled": {
+        "title": "Punchout käytössä",
+        "description": "Punchout käytössä -asetus"
+      }
+    }
+  }
+}

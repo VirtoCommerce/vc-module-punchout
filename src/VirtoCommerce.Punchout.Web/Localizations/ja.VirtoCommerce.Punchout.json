@@ -1,0 +1,56 @@
+{
+  "punchout": {
+    "blades": {
+      "user-mapping-detail": {
+        "title": "Punchout ユーザー",
+        "labels": {
+          "externalId": "外部 ID",
+          "userId": "アカウント",
+          "isActive": "有効",
+          "no-accounts": "この連絡先にはまだセキュリティ アカウントがありません。先にアカウントを作成してください。Punchout セッションは連絡先ではなくアカウントに対して開かれます。"
+        },
+        "placeholders": {
+          "externalId": "調達システムのユーザー ID を入力してください"
+        },
+        "notations": {
+          "externalId": "調達システムが cXML Header/Sender/Credential/Identity で送信する値です。"
+        },
+        "validation": {
+          "externalId-required": "外部 ID は必須です",
+          "userId-required": "アカウントは必須です"
+        }
+      }
+    },
+    "dialogs": {
+      "user-mapping-save": {
+        "title": "変更を保存",
+        "message": "Punchout ユーザーが変更されました。変更を保存しますか？"
+      },
+      "user-mapping-delete": {
+        "title": "削除の確認",
+        "message": "Punchout ユーザー マッピング '{{externalId}}' を削除してもよろしいですか？"
+      }
+    },
+    "widgets": {
+      "user-mapping": {
+        "title": "Punchout ユーザー",
+        "not-set": "未リンク"
+      }
+    }
+  },
+  "permissions": {
+    "punchout:access": "Punchout メニューを開く",
+    "punchout:create": "Punchout 関連データの作成",
+    "punchout:read": "Punchout 関連データの表示",
+    "punchout:update": "Punchout 関連データの更新",
+    "punchout:delete": "Punchout 関連データの削除"
+  },
+  "settings": {
+    "Punchout": {
+      "Enabled": {
+        "title": "Punchout 有効",
+        "description": "Punchout 有効化の設定"
+      }
+    }
+  }
+}

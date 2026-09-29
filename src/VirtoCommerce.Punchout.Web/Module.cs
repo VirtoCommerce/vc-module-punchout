@@ -25,7 +25,6 @@ using VirtoCommerce.Punchout.Data.SqlServer;
 using VirtoCommerce.Punchout.ExperienceApi;
 using VirtoCommerce.StoreModule.Core.Model;
 using VirtoCommerce.Xapi.Core.Extensions;
-using VirtoCommerce.Xapi.Core.Infrastructure;
 
 namespace VirtoCommerce.Punchout.Web;
 
@@ -87,8 +86,6 @@ public class Module : IModule, IHasConfiguration
         {
             builder.AddSchema(serviceCollection, typeof(XapiAssemblyMarker));
         });
-
-        serviceCollection.AddSingleton<ScopedSchemaFactory<XapiAssemblyMarker>>();
     }
 
     public void PostInitialize(IApplicationBuilder appBuilder)
@@ -110,9 +107,6 @@ public class Module : IModule, IHasConfiguration
         using var serviceScope = serviceProvider.CreateScope();
         using var dbContext = serviceScope.ServiceProvider.GetRequiredService<PunchoutDbContext>();
         dbContext.Database.Migrate();
-
-        // Graphql schema
-        appBuilder.UseScopedSchema<XapiAssemblyMarker>("punchout");
     }
 
     public void Uninstall()

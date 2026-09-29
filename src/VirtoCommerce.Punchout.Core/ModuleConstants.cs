@@ -40,15 +40,6 @@ public static class ModuleConstants
         public const string Expired = "Expired";
     }
 
-    /// <summary>
-    /// Errors returned by the session activation mutation.
-    /// </summary>
-    public static class ActivationErrors
-    {
-        public const string SessionNotFound = "SESSION_NOT_FOUND";
-        public const string StoreNotFound = "STORE_NOT_FOUND";
-    }
-
     public static class Settings
     {
         public static class General

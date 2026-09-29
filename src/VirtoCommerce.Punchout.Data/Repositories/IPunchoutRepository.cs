@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -15,4 +16,10 @@ public interface IPunchoutRepository : IRepository
     Task<IList<PunchoutSessionEntity>> GetPunchoutSessionsByIdsAsync(IList<string> ids, string responseGroup);
 
     Task<IList<PunchoutUserMappingEntity>> GetPunchoutUserMappingsByIdsAsync(IList<string> ids, string responseGroup);
+
+    /// <summary>
+    /// Atomically marks the session token as redeemed.
+    /// </summary>
+    /// <returns>The session id, or null if the token is invalid, already redeemed or expired</returns>
+    Task<string> RedeemSessionTokenAsync(string sessionTokenHash, DateTime now);
 }

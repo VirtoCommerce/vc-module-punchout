@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Options;
@@ -38,7 +38,7 @@ public class PunchoutSessionSearchService(
 
         if (!string.IsNullOrEmpty(criteria.SessionToken))
         {
-            query = query.Where(x => x.SessionToken == criteria.SessionToken);
+            query = query.Where(x => x.SessionTokenHash == criteria.SessionToken);
         }
 
         if (!criteria.Statuses.IsNullOrEmpty())
@@ -46,13 +46,19 @@ public class PunchoutSessionSearchService(
             query = query.Where(x => criteria.Statuses.Contains(x.Status));
         }
 
+        var now = DateTime.UtcNow;
         if (criteria.Expired != null)
         {
-            var now = DateTime.UtcNow;
-
             query = criteria.Expired.Value
                 ? query.Where(x => x.ExpirationDate != null && x.ExpirationDate <= now)
                 : query.Where(x => x.ExpirationDate == null || x.ExpirationDate > now);
+        }
+
+        if (criteria.TokenActive != null)
+        {
+            query = criteria.TokenActive.Value
+                ? query.Where(x => !x.IsSessionTokenRedeemed && x.TokenExpirationDate != null && x.TokenExpirationDate > now)
+                : query.Where(x => x.IsSessionTokenRedeemed || x.TokenExpirationDate == null || x.TokenExpirationDate <= now);
         }
 
         return query;

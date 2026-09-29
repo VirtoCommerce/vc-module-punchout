@@ -3,10 +3,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
-using Microsoft.Extensions.Options;
 using VirtoCommerce.Platform.Core.Common;
-using VirtoCommerce.Punchout.Core.Coupa;
 using VirtoCommerce.Punchout.Core.Models;
+using VirtoCommerce.Punchout.Core.Security;
 using VirtoCommerce.Punchout.Core.Services;
 using VirtoCommerce.StoreModule.Core.Model;
 using VirtoCommerce.StoreModule.Core.Services;
@@ -18,11 +17,9 @@ using ModuleConstants = VirtoCommerce.Punchout.Core.ModuleConstants;
 namespace VirtoCommerce.Punchout.ExperienceApi.Commands;
 
 public class ActivatePunchoutSessionCommandHandler(
-    IPunchoutSessionService punchoutSessionService,
     IPunchoutSessionSearchService punchoutSessionSearchService,
     IStoreService storeService,
-    IMediator mediator,
-    IOptions<CoupaConfiguration> configuration)
+    IMediator mediator)
     : IRequestHandler<ActivatePunchoutSessionCommand, PunchoutSessionActivationResult>
 {
     private const string PunchoutCartChannelId = "punchout";
@@ -50,17 +47,11 @@ public class ActivatePunchoutSessionCommandHandler(
 
         var punchoutCart = await CreatePunchoutCartIfNotExistAsync(request, store, session);
 
-        // The token is single-use, moving the session out of Created spends it, second activation with the same token no longer finds anything
-        session.Status = ModuleConstants.SessionStatus.Active;
-
-        var sessionLifeTime = configuration.Value.SessionLifeTime ?? CoupaConfiguration.DefaultSessionLifeTime;
-        session.ExpirationDate = DateTime.UtcNow.Add(sessionLifeTime);
-
-        await punchoutSessionService.SaveChangesAsync([session]);
-
         result.PunchoutCartId = punchoutCart.Cart.Id;
         result.PunchoutCartName = punchoutCart.Cart.Name;
-        result.ExpiresIn = (int)sessionLifeTime.TotalSeconds;
+        result.ExpiresIn = session.ExpirationDate is null
+            ? 0
+            : (int)Math.Max(0, (session.ExpirationDate.Value - DateTime.UtcNow).TotalSeconds);
 
         return result;
     }
@@ -74,12 +65,13 @@ public class ActivatePunchoutSessionCommandHandler(
             return null;
         }
 
-        // The session must belong to this store and this user, must not have been activated yet and not be expired
+        // The session must belong to this store and this user, be active and not expired.
+        // The token is not spent here, it is redeemed once by the punchout grant type in connect/token.
         var criteria = AbstractTypeFactory<PunchoutSessionSearchCriteria>.TryCreateInstance();
         criteria.StoreId = request.StoreId;
         criteria.UserId = request.UserId;
-        criteria.SessionToken = request.SessionToken;
-        criteria.Statuses = [ModuleConstants.SessionStatus.Created];
+        criteria.SessionToken = SessionTokenHasher.Hash(request.SessionToken);
+        criteria.Statuses = [ModuleConstants.SessionStatus.Active];
         criteria.Expired = false;
         criteria.Take = 1;
 

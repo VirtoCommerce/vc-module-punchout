@@ -4,7 +4,9 @@
     <SonarQubeTestProject>false</SonarQubeTestProject>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="VirtoCommerce.Platform.Data" Version="3.1052.0" />
+    <PackageReference Include="VirtoCommerce.Platform.Data" Version="3.1071.1" />
+    <PackageReference Include="VirtoCommerce.Platform.Security" Version="3.1071.1" />
+    <PackageReference Include="OpenIddict.Server" Version="7.5.0" />
     <PackageReference Include="VirtoCommerce.StoreModule.Core" Version="3.1007.0" />
   </ItemGroup>
   <ItemGroup>

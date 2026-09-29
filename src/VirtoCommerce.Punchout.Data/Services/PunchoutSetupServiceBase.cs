@@ -43,8 +43,19 @@ public abstract class PunchoutSetupServiceBase(IStoreService storeService) : IPu
         return Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(SessionTokenByteCount));
     }
 
-    protected virtual string BuildStartPage(string storefrontUrl, string sessionToken)
+    /// <summary>
+    /// The start page without the session token.
+    /// </summary>
+    protected virtual string BuildStartPage(string storefrontUrl)
     {
-        return $"{storefrontUrl.TrimEnd('/')}/{StartPagePath}/{sessionToken}";
+        return $"{storefrontUrl.TrimEnd('/')}/{StartPagePath}";
+    }
+
+    /// <summary>
+    /// The start page returned to the buyer, with the session token.
+    /// </summary>
+    protected virtual string BuildStartPageUrl(string startPage, string sessionToken)
+    {
+        return $"{startPage}/{sessionToken}";
     }
 }

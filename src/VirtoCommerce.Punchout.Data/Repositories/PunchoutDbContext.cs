@@ -24,7 +24,7 @@ public class PunchoutDbContext : DbContextBase
 
         modelBuilder.Entity<PunchoutSessionEntity>().ToAuditableEntityTable("PunchoutSession");
         modelBuilder.Entity<PunchoutSessionEntity>()
-            .HasIndex(x => x.SessionToken)
+            .HasIndex(x => x.SessionTokenHash)
             .IsUnique()
             .HasDatabaseName("IX_PunchoutSession_SessionToken");
 

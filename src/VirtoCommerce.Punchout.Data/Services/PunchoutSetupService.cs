@@ -7,22 +7,22 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Punchout.Core;
-using VirtoCommerce.Punchout.Core.Coupa;
 using VirtoCommerce.Punchout.Core.Models;
+using VirtoCommerce.Punchout.Core.Security;
 using VirtoCommerce.Punchout.Core.Services;
 using VirtoCommerce.StoreModule.Core.Services;
 
 namespace VirtoCommerce.Punchout.Data.Services;
 
-public class CoupaPunchoutSetupService(
-    IOptions<CoupaConfiguration> configuration,
+public class PunchoutSetupService(
+    IOptions<PunchoutConfiguration> configuration,
     IPunchoutUserMappingSearchService userMappingSearchService,
     IPunchoutSessionService sessionService,
     IStoreService storeService,
-    ILogger<CoupaPunchoutSetupService> logger)
+    ILogger<PunchoutSetupService> logger)
     : PunchoutSetupServiceBase(storeService), IPunchoutSetupService
 {
-    protected CoupaConfiguration Configuration => configuration.Value;
+    protected PunchoutConfiguration Configuration => configuration.Value;
 
     public override async Task<PunchoutSetupResult> ProcessAsync(PunchoutSetupContext punchoutSetupContext)
     {
@@ -33,7 +33,7 @@ public class CoupaPunchoutSetupService(
         if (string.IsNullOrEmpty(settings.SharedSecret) || string.IsNullOrEmpty(settings.StoreId))
         {
             logger.LogError("Punchout is not configured: the '{Section}' configuration section has no {Missing}.",
-                ModuleConstants.ConfigurationSections.CoupaConfiguration,
+                ModuleConstants.ConfigurationSections.ConfigurationKey,
                 string.IsNullOrEmpty(settings.SharedSecret) ? nameof(settings.SharedSecret) : nameof(settings.StoreId));
 
             return PunchoutSetupResult.Error(PunchoutSetupStatus.StoreNotConfigured);
@@ -75,14 +75,16 @@ public class CoupaPunchoutSetupService(
             return PunchoutSetupResult.Error(PunchoutSetupStatus.StoreNotConfigured);
         }
 
-        var session = CreateSession(punchoutSetupContext, userMapping, settings, storefrontUrl);
+        var sessionToken = CreateSessionToken();
+        var session = CreateSession(punchoutSetupContext, userMapping, settings, storefrontUrl, sessionToken);
 
         await sessionService.SaveChangesAsync([session]);
 
-        return PunchoutSetupResult.Success(session.StartPage);
+        // The token goes to the buyer in the start page URL, only the hash is stored
+        return PunchoutSetupResult.Success(BuildStartPageUrl(session.StartPage, sessionToken));
     }
 
-    protected virtual bool AreCredentialsValid(PunchoutSetupContext context, CoupaConfiguration settings)
+    protected virtual bool AreCredentialsValid(PunchoutSetupContext context, PunchoutConfiguration settings)
     {
         // An empty configured domain is not checked
         if (!settings.SenderDomain.IsNullOrEmpty() &&
@@ -97,7 +99,7 @@ public class CoupaPunchoutSetupService(
                    Encoding.UTF8.GetBytes(settings.SharedSecret));
     }
 
-    protected virtual bool IsReturnUrlAllowed(string returnUrl, CoupaConfiguration settings)
+    protected virtual bool IsReturnUrlAllowed(string returnUrl, PunchoutConfiguration settings)
     {
         if (settings.AllowedReturnUrls.IsNullOrEmpty())
         {
@@ -136,21 +138,23 @@ public class CoupaPunchoutSetupService(
     protected virtual PunchoutSession CreateSession(
         PunchoutSetupContext context,
         PunchoutUserMapping userMapping,
-        CoupaConfiguration settings,
-        string storefrontUrl)
+        PunchoutConfiguration settings,
+        string storefrontUrl,
+        string sessionToken)
     {
         var session = AbstractTypeFactory<PunchoutSession>.TryCreateInstance();
 
         session.StoreId = settings.StoreId;
         session.UserId = userMapping.UserId;
-        session.SessionToken = CreateSessionToken();
+        session.SessionTokenHash = SessionTokenHasher.Hash(sessionToken);
         session.BuyerCookie = context.BuyerCookie;
         session.BuyerIdentity = context.From;
         session.BuyerDomain = context.FromDomain;
         session.ReturnUrl = context.ReturnUrl;
-        session.Status = ModuleConstants.SessionStatus.Created;
-        session.ExpirationDate = DateTime.UtcNow.Add(settings.TokenLifeTime ?? CoupaConfiguration.DefaultTokenLifeTime);
-        session.StartPage = BuildStartPage(storefrontUrl, session.SessionToken);
+        session.Status = ModuleConstants.SessionStatus.Active;
+        session.ExpirationDate = DateTime.UtcNow.Add(settings.SessionLifeTime ?? PunchoutConfiguration.DefaultSessionLifeTime);
+        session.TokenExpirationDate = DateTime.UtcNow.Add(settings.TokenLifeTime ?? PunchoutConfiguration.DefaultTokenLifeTime);
+        session.StartPage = BuildStartPage(storefrontUrl);
 
         return session;
     }

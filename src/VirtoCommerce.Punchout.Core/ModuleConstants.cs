@@ -24,16 +24,17 @@ public static class ModuleConstants
                 Delete,
             ];
         }
+
+        public const string PunchoutGrantType = "punchout";
     }
 
     public static class ConfigurationSections
     {
-        public const string CoupaConfiguration = "Punchout:CoupaConfiguration";
+        public const string ConfigurationKey = "Punchout:Configuration";
     }
 
     public static class SessionStatus
     {
-        public const string Created = "Created";
         public const string Active = "Active";
         public const string Returned = "Returned";
         public const string Expired = "Expired";

@@ -4,15 +4,17 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using OpenIddict.Server;
 using VirtoCommerce.Platform.Core.Modularity;
 using VirtoCommerce.Platform.Core.Security;
 using VirtoCommerce.Platform.Core.Settings;
 using VirtoCommerce.Platform.Data.MySql.Extensions;
 using VirtoCommerce.Platform.Data.PostgreSql.Extensions;
 using VirtoCommerce.Platform.Data.SqlServer.Extensions;
+using VirtoCommerce.Platform.Security.OpenIddict;
 using VirtoCommerce.Punchout.Core;
-using VirtoCommerce.Punchout.Core.Coupa;
 using VirtoCommerce.Punchout.Core.Cxml.Services;
+using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Services;
 using VirtoCommerce.Punchout.Data.Cxml.Services;
 using VirtoCommerce.Punchout.Data.MySql;
@@ -53,9 +55,14 @@ public class Module : IModule, IHasConfiguration
             }
         });
 
-        // Register options
+        // Register the Punchout Grant Type for using in connect/token endpoint
+        serviceCollection.PostConfigure<OpenIddictServerOptions>(options =>
+        {
+            options.GrantTypes.Add(ModuleConstants.Security.PunchoutGrantType);
+        });
 
-        serviceCollection.AddOptions<CoupaConfiguration>().Bind(Configuration.GetSection(ModuleConstants.ConfigurationSections.CoupaConfiguration));
+        // Register options
+        serviceCollection.AddOptions<PunchoutConfiguration>().Bind(Configuration.GetSection(ModuleConstants.ConfigurationSections.ConfigurationKey));
 
         // Register services
         serviceCollection.AddTransient<IPunchoutRepository, PunchoutRepository>();
@@ -70,7 +77,10 @@ public class Module : IModule, IHasConfiguration
         serviceCollection.AddTransient<ICxmlSerializer, CxmlSerializer>();
         serviceCollection.AddTransient<IPunchoutSetupMapper, PunchoutSetupMapper>();
 
-        serviceCollection.AddTransient<IPunchoutSetupService, CoupaPunchoutSetupService>();
+        serviceCollection.AddTransient<IPunchoutSetupService, PunchoutSetupService>();
+
+        serviceCollection.AddTransient<ITokenGrantTypeHandler, PunchoutGrantTypeHandler>();
+        serviceCollection.AddTransient<IPunchoutSessionManagementService, PunchoutSessionManagementService>();
 
         // Register GraphQL schema
         _ = new GraphQLBuilder(serviceCollection, builder =>

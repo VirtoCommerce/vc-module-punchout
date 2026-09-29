@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 
-namespace VirtoCommerce.Punchout.Core.Coupa;
+namespace VirtoCommerce.Punchout.Core.Models;
 
-public class CoupaConfiguration
+public class PunchoutConfiguration
 {
     public static readonly TimeSpan DefaultTokenLifeTime = TimeSpan.FromMinutes(15);
 
-    public static readonly TimeSpan DefaultSessionLifeTime = TimeSpan.FromHours(24);
+    public static readonly TimeSpan DefaultSessionLifeTime = TimeSpan.FromHours(4);
 
     public string StoreId { get; set; }
 
@@ -22,12 +22,12 @@ public class CoupaConfiguration
     public IList<string> AllowedReturnUrls { get; set; } = [];
 
     /// <summary>
-    /// How long the start page URL stays redeemable, e.g. '00:15:00'. Defaults to 15 minutes.
+    /// How long the start page URL stays redeemable, e.g. '00:15:00'.
     /// </summary>
     public TimeSpan? TokenLifeTime { get; set; }
 
     /// <summary>
-    /// How long the buyer may shop once the session is activated, e.g. '1.00:00:00'. Defaults to 24 hours.
+    /// How long the buyer may shop after the punchout setup request, e.g. '1.00:00:00'.
     /// </summary>
     public TimeSpan? SessionLifeTime { get; set; }
 }

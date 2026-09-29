@@ -13,7 +13,9 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
 
     [Required]
     [StringLength(128)]
-    public string SessionToken { get; set; }
+    public string SessionTokenHash { get; set; }
+
+    public bool IsSessionTokenRedeemed { get; set; }
 
     [StringLength(512)]
     public string BuyerCookie { get; set; }
@@ -28,6 +30,8 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
     public string ReturnUrl { get; set; }
 
     public DateTime? ExpirationDate { get; set; }
+
+    public DateTime? TokenExpirationDate { get; set; }
 
     [Required]
     [StringLength(64)]
@@ -48,12 +52,14 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
         model.ModifiedDate = ModifiedDate;
 
         model.StoreId = StoreId;
-        model.SessionToken = SessionToken;
+        model.SessionTokenHash = SessionTokenHash;
+        model.IsSessionTokenRedeemed = IsSessionTokenRedeemed;
         model.BuyerCookie = BuyerCookie;
         model.BuyerIdentity = BuyerIdentity;
         model.BuyerDomain = BuyerDomain;
         model.ReturnUrl = ReturnUrl;
         model.ExpirationDate = ExpirationDate;
+        model.TokenExpirationDate = TokenExpirationDate;
         model.Status = Status;
         model.StartPage = StartPage;
         model.UserId = UserId;
@@ -72,12 +78,14 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
         ModifiedDate = model.ModifiedDate;
 
         StoreId = model.StoreId;
-        SessionToken = model.SessionToken;
+        SessionTokenHash = model.SessionTokenHash;
+        IsSessionTokenRedeemed = model.IsSessionTokenRedeemed;
         BuyerCookie = model.BuyerCookie;
         BuyerIdentity = model.BuyerIdentity;
         BuyerDomain = model.BuyerDomain;
         ReturnUrl = model.ReturnUrl;
         ExpirationDate = model.ExpirationDate;
+        TokenExpirationDate = model.TokenExpirationDate;
         Status = model.Status;
         StartPage = model.StartPage;
         UserId = model.UserId;
@@ -88,12 +96,14 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
     public virtual void Patch(PunchoutSessionEntity target)
     {
         target.StoreId = StoreId;
-        target.SessionToken = SessionToken;
+        target.SessionTokenHash = SessionTokenHash;
+        target.IsSessionTokenRedeemed = IsSessionTokenRedeemed;
         target.BuyerCookie = BuyerCookie;
         target.BuyerIdentity = BuyerIdentity;
         target.BuyerDomain = BuyerDomain;
         target.ReturnUrl = ReturnUrl;
         target.ExpirationDate = ExpirationDate;
+        target.TokenExpirationDate = TokenExpirationDate;
         target.Status = Status;
         target.StartPage = StartPage;
         target.UserId = UserId;

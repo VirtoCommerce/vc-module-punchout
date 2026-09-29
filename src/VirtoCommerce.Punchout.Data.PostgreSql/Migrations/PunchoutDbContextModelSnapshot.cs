@@ -51,6 +51,9 @@ namespace VirtoCommerce.Punchout.Data.PostgreSql.Migrations
                     b.Property<DateTime?>("ExpirationDate")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsSessionTokenRedeemed")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("ModifiedBy")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
@@ -62,7 +65,7 @@ namespace VirtoCommerce.Punchout.Data.PostgreSql.Migrations
                         .HasMaxLength(2048)
                         .HasColumnType("character varying(2048)");
 
-                    b.Property<string>("SessionToken")
+                    b.Property<string>("SessionTokenHash")
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
@@ -80,13 +83,16 @@ namespace VirtoCommerce.Punchout.Data.PostgreSql.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<DateTime?>("TokenExpirationDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("UserId")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SessionToken")
+                    b.HasIndex("SessionTokenHash")
                         .IsUnique()
                         .HasDatabaseName("IX_PunchoutSession_SessionToken");
 

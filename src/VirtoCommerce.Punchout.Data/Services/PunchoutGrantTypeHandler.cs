@@ -2,44 +2,47 @@ using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
 using VirtoCommerce.Platform.Core.Common;
+using VirtoCommerce.Platform.Core.Events;
 using VirtoCommerce.Platform.Core.Security;
 using VirtoCommerce.Platform.Security.OpenIddict;
 using VirtoCommerce.Punchout.Core;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Services;
-using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace VirtoCommerce.Punchout.Data.Services;
 
-public class PunchoutGrantTypeHandler : ITokenGrantTypeHandler
+public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
 {
+    private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IPunchoutSessionManagementService _sessionManagementService;
-    private readonly Func<SignInManager<ApplicationUser>> _signInManagerFactory;
-    private readonly IdentityOptions _identityOptions;
 
     public PunchoutGrantTypeHandler(
-        IPunchoutSessionManagementService sessionManagementService,
-        Func<SignInManager<ApplicationUser>> signInManagerFactory,
-        IOptions<IdentityOptions> identityOptions)
+        SignInManager<ApplicationUser> signInManager,
+        IOptions<IdentityOptions> identityOptions,
+        IEnumerable<ITokenRequestValidator> requestValidators,
+        IEnumerable<ITokenClaimProvider> claimProviders,
+        IEnumerable<ITokenRequestHandler> requestHandlers,
+        IEventPublisher eventPublisher,
+        IPunchoutSessionManagementService sessionManagementService)
+        : base(signInManager, identityOptions, requestValidators, claimProviders, requestHandlers, eventPublisher)
     {
+        _signInManager = signInManager;
         _sessionManagementService = sessionManagementService;
-        _signInManagerFactory = signInManagerFactory;
-        _identityOptions = identityOptions.Value;
     }
 
-    public string GrantType => ModuleConstants.Security.PunchoutGrantType;
+    public override string GrantType => ModuleConstants.Security.PunchoutGrantType;
+    protected override string SignInType => ModuleConstants.Security.PunchoutGrantType;
 
-    public async Task<TokenGrantTypeResult> HandleAsync(TokenRequestContext context)
+    protected override async Task<GrantValidationResult> ValidateGrantAsync(TokenRequestContext context)
     {
         var sessionRedeemRequest = GetReedeemPunchoutSessionRequest(context);
         if (sessionRedeemRequest == null)
         {
-            return TokenGrantTypeResult.Fail(SecurityErrorDescriber.LoginFailed());
+            return GrantValidationResult.Fail(SecurityErrorDescriber.LoginFailed());
         }
 
         var sessionRedeemResult = await _sessionManagementService.RedeemSessionAsync(sessionRedeemRequest);
@@ -47,24 +50,22 @@ public class PunchoutGrantTypeHandler : ITokenGrantTypeHandler
         var session = sessionRedeemResult.Session;
         if (session?.UserId == null || session.ExpirationDate == null)
         {
-            return TokenGrantTypeResult.Fail(SecurityErrorDescriber.LoginFailed());
+            return GrantValidationResult.Fail(SecurityErrorDescriber.LoginFailed());
         }
 
-        var signInManager = _signInManagerFactory();
-
-        var user = await signInManager.UserManager.FindByIdAsync(session.UserId);
-        if (user == null ||
-            !await signInManager.CanSignInAsync(user) ||
-            await signInManager.UserManager.IsLockedOutAsync(user))
+        var user = await _signInManager.UserManager.FindByIdAsync(session.UserId);
+        if (user == null
+            || await _signInManager.UserManager.IsLockedOutAsync(user)
+            || !await _signInManager.CanSignInAsync(user))
         {
-            return TokenGrantTypeResult.Fail(SecurityErrorDescriber.LoginFailed());
+            return GrantValidationResult.Fail(SecurityErrorDescriber.LoginFailed());
         }
 
-        var principal = await signInManager.CreateUserPrincipalAsync(user);
+        // set additional params to set to claims later
+        context.AdditionalParameters.Add("channelSessionId", session.Id);
+        context.AdditionalParameters.Add("sessionExpirationDate", session.ExpirationDate.Value);
 
-        var ticket = await CreateTicket(principal, context, session);
-
-        return TokenGrantTypeResult.Success(ticket);
+        return GrantValidationResult.Succeed(user);
     }
 
     protected virtual ReedeemPunchoutSessionRequest GetReedeemPunchoutSessionRequest(TokenRequestContext context)
@@ -83,48 +84,25 @@ public class PunchoutGrantTypeHandler : ITokenGrantTypeHandler
         return sessionRequest;
     }
 
-    protected virtual async Task<AuthenticationTicket> CreateTicket(ClaimsPrincipal principal, TokenRequestContext context, PunchoutSession session)
+    protected override void SetTicketScopes(TokenRequestContext context, ClaimsPrincipal principal)
     {
         // Explicitly no offline_access scope so no refresh_access is generated
-        principal.SetScopes(
-            Scopes.OpenId,
-            Scopes.Email,
-            Scopes.Profile,
-            Scopes.Roles);
+        principal.SetScopes([]);
 
+        // Set claims here (most convinient place)
         principal.SetClaim("channelId", "punchout");
-        principal.SetClaim("channelSessionId", session.Id);
-
-        principal.SetResources("resource_server");
-
-        // Claims are not included in the tokens unless they have a destination.
-        principal.SetDestinations(claim => GetDestinations(claim, principal));
-
-        // Set expire_in for the session lifetime
-        principal.SetAccessTokenLifetime(session.ExpirationDate.Value - DateTime.UtcNow);
-
-        // Create the authentication ticket
-        var ticket = new AuthenticationTicket(principal, new AuthenticationProperties(), context.AuthenticationScheme);
-
-        return ticket;
+        if (context.AdditionalParameters.TryGetValue("channelSessionId", out var channelSessionId))
+        {
+            principal.SetClaim("channelSessionId", (string)channelSessionId);
+        }
+        if (context.AdditionalParameters.TryGetValue("sessionExpirationDate", out var sessionExpirationDate))
+        {
+            principal.SetAccessTokenLifetime((DateTime)sessionExpirationDate - DateTime.UtcNow);
+        }
     }
 
-    protected virtual IEnumerable<string> GetDestinations(Claim claim, ClaimsPrincipal principal)
+    protected override void SetClaimDestinations(ClaimsPrincipal principal)
     {
-        // Same destinations as in the platform AuthorizationController.
-        // Never include the security stamp in the access and identity tokens, as it's a secret value.
-        if (claim.Type == _identityOptions.ClaimsIdentity.SecurityStampClaimType)
-        {
-            yield break;
-        }
-
-        yield return Destinations.AccessToken;
-
-        if (claim.Type == Claims.Name && principal.HasScope(Scopes.Profile) ||
-            claim.Type == Claims.Email && principal.HasScope(Scopes.Email) ||
-            claim.Type == Claims.Role && principal.HasScope(Scopes.Roles))
-        {
-            yield return Destinations.IdentityToken;
-        }
+        base.SetClaimDestinations(principal);
     }
 }

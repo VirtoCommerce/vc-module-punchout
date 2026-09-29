@@ -30,7 +30,7 @@ public static class ModuleConstants
 
     public static class ConfigurationSections
     {
-        public const string ConfigurationKey = "Punchout:Configuration";
+        public const string ConfigurationKey = "Punchout";
     }
 
     public static class SessionStatus

@@ -62,7 +62,7 @@ public class Module : IModule, IHasConfiguration
         });
 
         // Register options
-        serviceCollection.AddOptions<PunchoutConfiguration>().Bind(Configuration.GetSection(ModuleConstants.ConfigurationSections.ConfigurationKey));
+        serviceCollection.AddOptions<PunchoutOptions>().Bind(Configuration.GetSection(ModuleConstants.ConfigurationSections.ConfigurationKey));
 
         // Register services
         serviceCollection.AddTransient<IPunchoutRepository, PunchoutRepository>();

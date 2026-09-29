@@ -15,26 +15,43 @@ using VirtoCommerce.StoreModule.Core.Services;
 namespace VirtoCommerce.Punchout.Data.Services;
 
 public class PunchoutSetupService(
-    IOptions<PunchoutConfiguration> configuration,
+    IOptions<PunchoutOptions> options,
     IPunchoutUserMappingSearchService userMappingSearchService,
     IPunchoutSessionService sessionService,
     IStoreService storeService,
     ILogger<PunchoutSetupService> logger)
     : PunchoutSetupServiceBase(storeService), IPunchoutSetupService
 {
-    protected PunchoutConfiguration Configuration => configuration.Value;
+    protected PunchoutOptions Options => options.Value;
 
     public override async Task<PunchoutSetupResult> ProcessAsync(PunchoutSetupContext punchoutSetupContext)
     {
         ArgumentNullException.ThrowIfNull(punchoutSetupContext);
 
-        var settings = Configuration;
-
-        if (string.IsNullOrEmpty(settings.SharedSecret) || string.IsNullOrEmpty(settings.StoreId))
+        if (Options.Configurations.IsNullOrEmpty())
         {
-            logger.LogError("Punchout is not configured: the '{Section}' configuration section has no {Missing}.",
+            logger.LogError("Punchout is not configured: the '{Section}' configuration section has no {Configurations}.",
                 ModuleConstants.ConfigurationSections.ConfigurationKey,
-                string.IsNullOrEmpty(settings.SharedSecret) ? nameof(settings.SharedSecret) : nameof(settings.StoreId));
+                nameof(Options.Configurations));
+
+            return PunchoutSetupResult.Error(PunchoutSetupStatus.StoreNotConfigured);
+        }
+
+        var settings = FindConfiguration(punchoutSetupContext);
+
+        if (settings is null)
+        {
+            logger.LogWarning("Punchout setup rejected for sender identity '{SenderIdentity}': no configuration matches the shared secret.",
+                punchoutSetupContext.Sender);
+
+            return PunchoutSetupResult.Error(PunchoutSetupStatus.InvalidCredentials);
+        }
+
+        if (string.IsNullOrEmpty(settings.StoreId))
+        {
+            logger.LogError("Punchout is not configured: the configuration matched for sender identity '{SenderIdentity}' has no {Missing}.",
+                punchoutSetupContext.Sender,
+                nameof(settings.StoreId));
 
             return PunchoutSetupResult.Error(PunchoutSetupStatus.StoreNotConfigured);
         }
@@ -84,19 +101,36 @@ public class PunchoutSetupService(
         return PunchoutSetupResult.Success(BuildStartPageUrl(session.StartPage, sessionToken));
     }
 
+    /// <summary>
+    /// Selects the configuration by the shared secret of the setup request.
+    /// </summary>
+    protected virtual PunchoutConfiguration FindConfiguration(PunchoutSetupContext context)
+    {
+        if (context.SharedSecret.IsNullOrEmpty())
+        {
+            return null;
+        }
+
+        var secret = Encoding.UTF8.GetBytes(context.SharedSecret);
+        PunchoutConfiguration result = null;
+
+        // Compare with every configuration, so the response time does not depend on the matched position
+        foreach (var configuration in Options.Configurations.Where(x => !string.IsNullOrEmpty(x?.SharedSecret)))
+        {
+            if (CryptographicOperations.FixedTimeEquals(secret, Encoding.UTF8.GetBytes(configuration.SharedSecret)))
+            {
+                result ??= configuration;
+            }
+        }
+
+        return result;
+    }
+
     protected virtual bool AreCredentialsValid(PunchoutSetupContext context, PunchoutConfiguration settings)
     {
         // An empty configured domain is not checked
-        if (!settings.SenderDomain.IsNullOrEmpty() &&
-            !settings.SenderDomain.EqualsIgnoreCase(context.SenderDomain))
-        {
-            return false;
-        }
-
-        return !context.SharedSecret.IsNullOrEmpty() &&
-               CryptographicOperations.FixedTimeEquals(
-                   Encoding.UTF8.GetBytes(context.SharedSecret),
-                   Encoding.UTF8.GetBytes(settings.SharedSecret));
+        return settings.SenderDomain.IsNullOrEmpty() ||
+               settings.SenderDomain.EqualsIgnoreCase(context.SenderDomain);
     }
 
     protected virtual bool IsReturnUrlAllowed(string returnUrl, PunchoutConfiguration settings)

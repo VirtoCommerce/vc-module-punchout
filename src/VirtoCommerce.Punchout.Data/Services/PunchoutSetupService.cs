@@ -101,9 +101,6 @@ public class PunchoutSetupService(
         return PunchoutSetupResult.Success(BuildStartPageUrl(session.StartPage, sessionToken));
     }
 
-    /// <summary>
-    /// Selects the configuration by the shared secret of the setup request.
-    /// </summary>
     protected virtual PunchoutConfiguration FindConfiguration(PunchoutSetupContext context)
     {
         if (context.SharedSecret.IsNullOrEmpty())
@@ -115,7 +112,7 @@ public class PunchoutSetupService(
         PunchoutConfiguration result = null;
 
         // Compare with every configuration, so the response time does not depend on the matched position
-        foreach (var configuration in Options.Configurations.Where(x => !string.IsNullOrEmpty(x?.SharedSecret)))
+        foreach (var configuration in Options.Configurations.Where(x => !x.SharedSecret.IsNullOrEmpty()))
         {
             if (CryptographicOperations.FixedTimeEquals(secret, Encoding.UTF8.GetBytes(configuration.SharedSecret)))
             {

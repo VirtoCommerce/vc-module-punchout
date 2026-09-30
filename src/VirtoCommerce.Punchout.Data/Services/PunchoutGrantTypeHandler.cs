@@ -100,9 +100,4 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
             principal.SetAccessTokenLifetime((DateTime)sessionExpirationDate - DateTime.UtcNow);
         }
     }
-
-    protected override void SetClaimDestinations(ClaimsPrincipal principal)
-    {
-        base.SetClaimDestinations(principal);
-    }
 }

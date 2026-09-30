@@ -12,6 +12,7 @@ using VirtoCommerce.Platform.Data.MySql.Extensions;
 using VirtoCommerce.Platform.Data.PostgreSql.Extensions;
 using VirtoCommerce.Platform.Data.SqlServer.Extensions;
 using VirtoCommerce.Platform.Security.OpenIddict;
+using VirtoCommerce.ProfileExperienceApiModule.Data.Models;
 using VirtoCommerce.Punchout.Core;
 using VirtoCommerce.Punchout.Core.Cxml.Services;
 using VirtoCommerce.Punchout.Core.Models;
@@ -23,8 +24,10 @@ using VirtoCommerce.Punchout.Data.Repositories;
 using VirtoCommerce.Punchout.Data.Services;
 using VirtoCommerce.Punchout.Data.SqlServer;
 using VirtoCommerce.Punchout.ExperienceApi;
+using VirtoCommerce.Punchout.ExperienceApi.Middlewares;
 using VirtoCommerce.StoreModule.Core.Model;
 using VirtoCommerce.Xapi.Core.Extensions;
+using VirtoCommerce.Xapi.Core.Pipelines;
 
 namespace VirtoCommerce.Punchout.Web;
 
@@ -85,6 +88,11 @@ public class Module : IModule, IHasConfiguration
         _ = new GraphQLBuilder(serviceCollection, builder =>
         {
             builder.AddSchema(serviceCollection, typeof(XapiAssemblyMarker));
+        });
+
+        serviceCollection.AddPipeline<ContactOrganizationsContext>(builder =>
+        {
+            builder.AddMiddleware(typeof(PunchoutContactOrganizationsMiddleware));
         });
     }
 

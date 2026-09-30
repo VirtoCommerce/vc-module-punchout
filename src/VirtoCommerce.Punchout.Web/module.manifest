@@ -8,7 +8,7 @@
   <dependencies>
     <dependency id="VirtoCommerce.Customer" version="3.1024.0" />
     <dependency id="VirtoCommerce.Store" version="3.1007.0" />
-    <dependency id="VirtoCommerce.XCart" version="3.1037.0-alpha.284-vcst-5886-punchoutsetuprequest" />
+    <dependency id="VirtoCommerce.ProfileExperienceApiModule" version="3.1020.0-alpha.383-vcst-5886-punchoutsetuprequest" />
   </dependencies>
 
   <title>Virto Commerce Punchout</title>

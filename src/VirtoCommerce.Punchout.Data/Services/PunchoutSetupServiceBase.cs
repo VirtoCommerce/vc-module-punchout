@@ -34,12 +34,11 @@ public abstract class PunchoutSetupServiceBase(IStoreService storeService) : IPu
     }
 
     /// <summary>
-    /// Creates the token that identifies the session in the start page URL. It is the only thing the
-    /// buyer's browser presents when it arrives, so it comes from an RNG (32 bytes) and is encoded
-    /// base64url to stay safe in an URL path.
+    /// Creates the token that identifies the session in the start page URL. 
     /// </summary>
     protected virtual string CreateSessionToken()
     {
+        // RNG (32 bytes) and base64url to stay safe in an URL path
         return Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(SessionTokenByteCount));
     }
 

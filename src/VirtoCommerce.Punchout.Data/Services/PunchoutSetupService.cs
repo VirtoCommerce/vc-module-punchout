@@ -28,13 +28,30 @@ public class PunchoutSetupService(
     {
         ArgumentNullException.ThrowIfNull(punchoutSetupContext);
 
+        var validationResult = await ValidateAsync(punchoutSetupContext);
+
+        if (!validationResult.IsValid)
+        {
+            return validationResult.Error;
+        }
+
+        var sessionToken = CreateSessionToken();
+        var session = CreateSession(punchoutSetupContext, validationResult.UserMapping, validationResult.Configuration, validationResult.StorefrontUrl, sessionToken);
+        await sessionService.SaveChangesAsync([session]);
+
+        // The token goes to the buyer in the start page URL, only the hash is stored
+        return PunchoutSetupResult.Success(BuildStartPageUrl(session.StartPage, sessionToken));
+    }
+
+    protected virtual async Task<PunchoutSetupValidationResult> ValidateAsync(PunchoutSetupContext punchoutSetupContext)
+    {
         if (Options.Configurations.IsNullOrEmpty())
         {
             logger.LogError("Punchout is not configured: the '{Section}' configuration section has no {Configurations}.",
                 ModuleConstants.ConfigurationSections.ConfigurationKey,
                 nameof(Options.Configurations));
 
-            return PunchoutSetupResult.Error(PunchoutSetupStatus.StoreNotConfigured);
+            return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
         }
 
         var settings = FindConfiguration(punchoutSetupContext);
@@ -44,7 +61,7 @@ public class PunchoutSetupService(
             logger.LogWarning("Punchout setup rejected for sender identity '{SenderIdentity}': no configuration matches the shared secret.",
                 punchoutSetupContext.Sender);
 
-            return PunchoutSetupResult.Error(PunchoutSetupStatus.InvalidCredentials);
+            return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.InvalidCredentials);
         }
 
         if (string.IsNullOrEmpty(settings.StoreId))
@@ -53,7 +70,7 @@ public class PunchoutSetupService(
                 punchoutSetupContext.Sender,
                 nameof(settings.StoreId));
 
-            return PunchoutSetupResult.Error(PunchoutSetupStatus.StoreNotConfigured);
+            return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
         }
 
         if (!AreCredentialsValid(punchoutSetupContext, settings))
@@ -61,7 +78,7 @@ public class PunchoutSetupService(
             logger.LogWarning("Punchout setup rejected for sender identity '{SenderIdentity}': invalid credentials.",
                 punchoutSetupContext.Sender);
 
-            return PunchoutSetupResult.Error(PunchoutSetupStatus.InvalidCredentials);
+            return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.InvalidCredentials);
         }
 
         if (!IsReturnUrlAllowed(punchoutSetupContext.ReturnUrl, settings))
@@ -69,7 +86,7 @@ public class PunchoutSetupService(
             logger.LogWarning("Punchout setup rejected for sender identity '{SenderIdentity}': the return URL '{ReturnUrl}' is not allowed.",
                 punchoutSetupContext.Sender, punchoutSetupContext.ReturnUrl);
 
-            return PunchoutSetupResult.Error(PunchoutSetupStatus.ReturnUrlNotAllowed);
+            return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.ReturnUrlNotAllowed);
         }
 
         var userMapping = await FindUserMappingAsync(punchoutSetupContext.Sender);
@@ -79,7 +96,7 @@ public class PunchoutSetupService(
             logger.LogWarning("Punchout setup rejected: sender identity '{SenderIdentity}' is not linked to any user.",
                 punchoutSetupContext.Sender);
 
-            return PunchoutSetupResult.Error(PunchoutSetupStatus.UserNotFound);
+            return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.UserNotFound);
         }
 
         var storefrontUrl = await GetStorefrontUrlAsync(settings.StoreId);
@@ -89,16 +106,10 @@ public class PunchoutSetupService(
             logger.LogError("Punchout is configured for store '{StoreId}', which does not exist or has no storefront URL.",
                 settings.StoreId);
 
-            return PunchoutSetupResult.Error(PunchoutSetupStatus.StoreNotConfigured);
+            return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
         }
 
-        var sessionToken = CreateSessionToken();
-        var session = CreateSession(punchoutSetupContext, userMapping, settings, storefrontUrl, sessionToken);
-
-        await sessionService.SaveChangesAsync([session]);
-
-        // The token goes to the buyer in the start page URL, only the hash is stored
-        return PunchoutSetupResult.Success(BuildStartPageUrl(session.StartPage, sessionToken));
+        return PunchoutSetupValidationResult.Valid(settings, userMapping, storefrontUrl);
     }
 
     protected virtual PunchoutConfiguration FindConfiguration(PunchoutSetupContext context)

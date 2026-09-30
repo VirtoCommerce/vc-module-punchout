@@ -27,6 +27,9 @@ public static class CxmlConstants
         public const string UnauthorizedCode = "401";
         public const string UnauthorizedText = "Unauthorized";
 
+        public const string NotImplementedCode = "450";
+        public const string NotImplementedText = "Not Implemented";
+
         public const string InternalServerErrorCode = "500";
         public const string InternalServerErrorText = "Internal Server Error";
     }

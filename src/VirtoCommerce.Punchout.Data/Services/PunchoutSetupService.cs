@@ -19,16 +19,17 @@ public class PunchoutSetupService(
     IPunchoutUserMappingSearchService userMappingSearchService,
     IPunchoutSessionService sessionService,
     IStoreService storeService,
+    IPunchoutHandler handler,
     ILogger<PunchoutSetupService> logger)
     : PunchoutSetupServiceBase(storeService), IPunchoutSetupService
 {
     protected PunchoutOptions Options => options.Value;
 
-    public override async Task<PunchoutSetupResult> ProcessAsync(PunchoutSetupContext punchoutSetupContext)
+    public override async Task<PunchoutSetupResult> ProcessAsync(PunchoutSetupRequest request)
     {
-        ArgumentNullException.ThrowIfNull(punchoutSetupContext);
+        ArgumentNullException.ThrowIfNull(request);
 
-        var validationResult = await ValidateAsync(punchoutSetupContext);
+        var validationResult = await ValidateAsync(request);
 
         if (!validationResult.IsValid)
         {
@@ -36,14 +37,38 @@ public class PunchoutSetupService(
         }
 
         var sessionToken = CreateSessionToken();
-        var session = CreateSession(punchoutSetupContext, validationResult.UserMapping, validationResult.Configuration, validationResult.StorefrontUrl, sessionToken);
-        await sessionService.SaveChangesAsync([session]);
+        var session = CreateSession(request, validationResult.UserMapping, validationResult.Configuration, validationResult.StorefrontUrl, sessionToken);
+
+        var handlerContext = CreateHandlerContext(request, validationResult, session);
+        await handler.HandleSetupAsync(handlerContext);
+
+        if (handlerContext.IsFailed)
+        {
+            return PunchoutSetupResult.Error(handlerContext.ErrorStatus, handlerContext.ErrorMessage);
+        }
+
+        await sessionService.SaveChangesAsync([handlerContext.Session]);
 
         // The token goes to the buyer in the start page URL, only the hash is stored
-        return PunchoutSetupResult.Success(BuildStartPageUrl(session.StartPage, sessionToken));
+        return PunchoutSetupResult.Success(BuildStartPageUrl(handlerContext.Session.StartPage, sessionToken));
     }
 
-    protected virtual async Task<PunchoutSetupValidationResult> ValidateAsync(PunchoutSetupContext punchoutSetupContext)
+    protected virtual PunchoutSetupHandlerContext CreateHandlerContext(
+        PunchoutSetupRequest request,
+        PunchoutSetupValidationResult validationResult,
+        PunchoutSession session)
+    {
+        var context = AbstractTypeFactory<PunchoutSetupHandlerContext>.TryCreateInstance();
+
+        context.Request = request;
+        context.Configuration = validationResult.Configuration;
+        context.UserMapping = validationResult.UserMapping;
+        context.Session = session;
+
+        return context;
+    }
+
+    protected virtual async Task<PunchoutSetupValidationResult> ValidateAsync(PunchoutSetupRequest request)
     {
         if (Options.Configurations.IsNullOrEmpty())
         {
@@ -51,15 +76,15 @@ public class PunchoutSetupService(
                 ModuleConstants.ConfigurationSections.ConfigurationKey,
                 nameof(Options.Configurations));
 
-            return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
+            return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.InvalidCredentials);
         }
 
-        var settings = FindConfiguration(punchoutSetupContext);
+        var settings = FindConfiguration(request);
 
         if (settings is null)
         {
             logger.LogWarning("Punchout setup rejected for sender identity '{SenderIdentity}': no configuration matches the shared secret.",
-                punchoutSetupContext.Sender);
+                request.Sender);
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.InvalidCredentials);
         }
@@ -67,34 +92,34 @@ public class PunchoutSetupService(
         if (string.IsNullOrEmpty(settings.StoreId))
         {
             logger.LogError("Punchout is not configured: the configuration matched for sender identity '{SenderIdentity}' has no {Missing}.",
-                punchoutSetupContext.Sender,
+                request.Sender,
                 nameof(settings.StoreId));
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
         }
 
-        if (!AreCredentialsValid(punchoutSetupContext, settings))
+        if (!AreCredentialsValid(request, settings))
         {
             logger.LogWarning("Punchout setup rejected for sender identity '{SenderIdentity}': invalid credentials.",
-                punchoutSetupContext.Sender);
+                request.Sender);
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.InvalidCredentials);
         }
 
-        if (!IsReturnUrlAllowed(punchoutSetupContext.ReturnUrl, settings))
+        if (!IsReturnUrlAllowed(request.ReturnUrl, settings))
         {
             logger.LogWarning("Punchout setup rejected for sender identity '{SenderIdentity}': the return URL '{ReturnUrl}' is not allowed.",
-                punchoutSetupContext.Sender, punchoutSetupContext.ReturnUrl);
+                request.Sender, request.ReturnUrl);
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.ReturnUrlNotAllowed);
         }
 
-        var userMapping = await FindUserMappingAsync(punchoutSetupContext.Sender);
+        var userMapping = await FindUserMappingAsync(request.Sender);
 
         if (userMapping is null)
         {
             logger.LogWarning("Punchout setup rejected: sender identity '{SenderIdentity}' is not linked to any user.",
-                punchoutSetupContext.Sender);
+                request.Sender);
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.UserNotFound);
         }
@@ -112,14 +137,14 @@ public class PunchoutSetupService(
         return PunchoutSetupValidationResult.Valid(settings, userMapping, storefrontUrl);
     }
 
-    protected virtual PunchoutConfiguration FindConfiguration(PunchoutSetupContext context)
+    protected virtual PunchoutConfiguration FindConfiguration(PunchoutSetupRequest request)
     {
-        if (context.SharedSecret.IsNullOrEmpty())
+        if (request.SharedSecret.IsNullOrEmpty())
         {
             return null;
         }
 
-        var secret = Encoding.UTF8.GetBytes(context.SharedSecret);
+        var secret = Encoding.UTF8.GetBytes(request.SharedSecret);
         PunchoutConfiguration result = null;
 
         // Compare with every configuration, so the response time does not depend on the matched position
@@ -134,11 +159,11 @@ public class PunchoutSetupService(
         return result;
     }
 
-    protected virtual bool AreCredentialsValid(PunchoutSetupContext context, PunchoutConfiguration settings)
+    protected virtual bool AreCredentialsValid(PunchoutSetupRequest request, PunchoutConfiguration settings)
     {
         // An empty configured domain is not checked
         return settings.SenderDomain.IsNullOrEmpty() ||
-               settings.SenderDomain.EqualsIgnoreCase(context.SenderDomain);
+               settings.SenderDomain.EqualsIgnoreCase(request.SenderDomain);
     }
 
     protected virtual bool IsReturnUrlAllowed(string returnUrl, PunchoutConfiguration settings)
@@ -178,7 +203,7 @@ public class PunchoutSetupService(
     }
 
     protected virtual PunchoutSession CreateSession(
-        PunchoutSetupContext context,
+        PunchoutSetupRequest request,
         PunchoutUserMapping userMapping,
         PunchoutConfiguration settings,
         string storefrontUrl,
@@ -189,10 +214,10 @@ public class PunchoutSetupService(
         session.StoreId = settings.StoreId;
         session.UserId = userMapping.UserId;
         session.SessionTokenHash = SessionTokenHasher.Hash(sessionToken);
-        session.BuyerCookie = context.BuyerCookie;
-        session.BuyerIdentity = context.From;
-        session.BuyerDomain = context.FromDomain;
-        session.ReturnUrl = context.ReturnUrl;
+        session.BuyerCookie = request.BuyerCookie;
+        session.BuyerIdentity = request.From;
+        session.BuyerDomain = request.FromDomain;
+        session.ReturnUrl = request.ReturnUrl;
         session.Status = ModuleConstants.SessionStatus.Active;
         session.ExpirationDate = DateTime.UtcNow.Add(settings.SessionLifeTime ?? PunchoutConfiguration.DefaultSessionLifeTime);
         session.TokenExpirationDate = DateTime.UtcNow.Add(settings.TokenLifeTime ?? PunchoutConfiguration.DefaultTokenLifeTime);

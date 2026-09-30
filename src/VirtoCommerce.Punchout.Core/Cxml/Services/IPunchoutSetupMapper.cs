@@ -5,7 +5,7 @@ namespace VirtoCommerce.Punchout.Core.Cxml.Services;
 
 public interface IPunchoutSetupMapper
 {
-    PunchoutSetupContext MapRequest(CxmlDocument document);
+    PunchoutSetupRequest MapRequest(CxmlDocument document);
 
     public CxmlDocument MapResponse(PunchoutSetupResult result);
 }

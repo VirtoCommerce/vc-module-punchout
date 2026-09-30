@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Punchout.Core.Cxml;
@@ -10,13 +9,13 @@ using VirtoCommerce.Punchout.Core.Models;
 
 namespace VirtoCommerce.Punchout.Data.Cxml.Services;
 
-public class PunchoutSetupMapper : IPunchoutSetupMapper
+public class PunchoutSetupMapper(ICxmlResponseFactory responseFactory) : IPunchoutSetupMapper
 {
-    public virtual PunchoutSetupContext MapRequest(CxmlDocument document)
+    public virtual PunchoutSetupRequest MapRequest(CxmlDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
 
-        var setupContext = AbstractTypeFactory<PunchoutSetupContext>.TryCreateInstance();
+        var setupContext = AbstractTypeFactory<PunchoutSetupRequest>.TryCreateInstance();
 
         var header = document.Header;
         var setupRequest = document.Request?.PunchOutSetupRequest;
@@ -70,22 +69,9 @@ public class PunchoutSetupMapper : IPunchoutSetupMapper
     {
         ArgumentNullException.ThrowIfNull(result);
 
-        var document = AbstractTypeFactory<CxmlDocument>.TryCreateInstance();
-
-        document.PayloadId = CreatePayloadId();
-        document.Timestamp = DateTimeOffset.UtcNow.ToString(CxmlConstants.TimestampFormat, CultureInfo.InvariantCulture);
-
         var (code, text) = MapStatus(result.Status);
 
-        document.Response = new CxmlResponse
-        {
-            Status = new CxmlStatus
-            {
-                Code = code,
-                Text = text,
-                Message = result.Message,
-            },
-        };
+        var document = responseFactory.CreateResponse(code, text, result.Message);
 
         if (!string.IsNullOrEmpty(result.StartPage))
         {
@@ -110,11 +96,6 @@ public class PunchoutSetupMapper : IPunchoutSetupMapper
             PunchoutSetupStatus.StoreNotConfigured => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
             _ => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
         };
-    }
-
-    protected virtual string CreatePayloadId()
-    {
-        return $"{DateTime.UtcNow.Ticks}.{Guid.NewGuid():N}@virtocommerce.com";
     }
 
     private static Dictionary<string, string> MapExtrinsics(IList<CxmlExtrinsic> extrinsics)

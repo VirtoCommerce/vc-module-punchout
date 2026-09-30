@@ -5,5 +5,5 @@ namespace VirtoCommerce.Punchout.Core.Services;
 
 public interface IPunchoutSetupService
 {
-    Task<PunchoutSetupResult> ProcessAsync(PunchoutSetupContext punchoutSetupContext);
+    Task<PunchoutSetupResult> ProcessAsync(PunchoutSetupRequest request);
 }

@@ -14,7 +14,7 @@ public abstract class PunchoutSetupServiceBase(IStoreService storeService) : IPu
 
     protected const int SessionTokenByteCount = 32;
 
-    public abstract Task<PunchoutSetupResult> ProcessAsync(PunchoutSetupContext punchoutSetupContext);
+    public abstract Task<PunchoutSetupResult> ProcessAsync(PunchoutSetupRequest request);
 
     protected virtual async Task<string> GetStorefrontUrlAsync(string storeId)
     {

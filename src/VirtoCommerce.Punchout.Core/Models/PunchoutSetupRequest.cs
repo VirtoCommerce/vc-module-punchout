@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace VirtoCommerce.Punchout.Core.Models;
 
-public class PunchoutSetupContext
+public class PunchoutSetupRequest
 {
     public string BuyerCookie { get; set; }
 

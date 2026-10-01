@@ -7,10 +7,12 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VirtoCommerce.Platform.Core.Common;
+using VirtoCommerce.Platform.Core.Settings;
 using VirtoCommerce.Punchout.Core;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Security;
 using VirtoCommerce.Punchout.Core.Services;
+using VirtoCommerce.StoreModule.Core.Model;
 using VirtoCommerce.StoreModule.Core.Services;
 
 namespace VirtoCommerce.Punchout.Data.Services;
@@ -129,11 +131,29 @@ public class PunchoutSetupService(
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.UserNotFound);
         }
 
-        var storefrontUrl = await GetStorefrontUrlAsync(settings.StoreId);
+        var store = await storeService.GetByIdAsync(settings.StoreId);
+
+        if (store is null)
+        {
+            logger.LogError("Punchout is configured for store '{StoreId}', which does not exist.",
+                settings.StoreId);
+
+            return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
+        }
+
+        if (!IsPunchoutEnabled(store))
+        {
+            logger.LogWarning("Punchout setup rejected for sender identity '{SenderIdentity}': punchout is disabled for store '{StoreId}'.",
+                request.Sender, store.Id);
+
+            return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
+        }
+
+        var storefrontUrl = GetStorefrontUrl(store);
 
         if (string.IsNullOrEmpty(storefrontUrl))
         {
-            logger.LogError("Punchout is configured for store '{StoreId}', which does not exist or has no storefront URL.",
+            logger.LogError("Punchout is configured for store '{StoreId}', which has no storefront URL.",
                 settings.StoreId);
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
@@ -231,20 +251,13 @@ public class PunchoutSetupService(
         return session;
     }
 
-    protected virtual async Task<string> GetStorefrontUrlAsync(string storeId)
+    protected virtual bool IsPunchoutEnabled(Store store)
     {
-        if (string.IsNullOrEmpty(storeId))
-        {
-            return null;
-        }
+        return store.Settings.GetValue<bool>(ModuleConstants.Settings.General.PunchoutEnabled);
+    }
 
-        var store = await storeService.GetByIdAsync(storeId);
-
-        if (store is null)
-        {
-            return null;
-        }
-
+    protected virtual string GetStorefrontUrl(Store store)
+    {
         return string.IsNullOrEmpty(store.SecureUrl) ? store.Url : store.SecureUrl;
     }
 

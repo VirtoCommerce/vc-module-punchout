@@ -1,0 +1,56 @@
+{
+  "punchout": {
+    "blades": {
+      "user-mapping-detail": {
+        "title": "Punchout-Benutzer",
+        "labels": {
+          "externalId": "Externe Identität",
+          "userId": "Konto",
+          "isActive": "Aktiv",
+          "no-accounts": "Dieser Kontakt hat noch kein Sicherheitskonto. Erstellen Sie zuerst eines: Eine Punchout-Sitzung wird für ein Konto geöffnet, nicht für einen Kontakt."
+        },
+        "placeholders": {
+          "externalId": "Geben Sie die Benutzeridentität des Beschaffungssystems ein"
+        },
+        "notations": {
+          "externalId": "Der Wert, den das Beschaffungssystem in cXML Header/Sender/Credential/Identity sendet."
+        },
+        "validation": {
+          "externalId-required": "Externe Identität ist erforderlich",
+          "userId-required": "Konto ist erforderlich"
+        }
+      }
+    },
+    "dialogs": {
+      "user-mapping-save": {
+        "title": "Änderungen speichern",
+        "message": "Der Punchout-Benutzer wurde geändert. Möchten Sie die Änderungen speichern?"
+      },
+      "user-mapping-delete": {
+        "title": "Löschbestätigung",
+        "message": "Möchten Sie die Punchout-Benutzerzuordnung '{{externalId}}' wirklich löschen?"
+      }
+    },
+    "widgets": {
+      "user-mapping": {
+        "title": "Punchout-Benutzer",
+        "not-set": "Nicht verknüpft"
+      }
+    }
+  },
+  "permissions": {
+    "punchout:access": "Punchout-Menü öffnen",
+    "punchout:create": "Punchout-bezogene Daten erstellen",
+    "punchout:read": "Punchout-bezogene Daten anzeigen",
+    "punchout:update": "Punchout-bezogene Daten aktualisieren",
+    "punchout:delete": "Punchout-bezogene Daten löschen"
+  },
+  "settings": {
+    "Punchout": {
+      "Enabled": {
+        "title": "Punchout aktiviert",
+        "description": "Einstellung „Punchout aktiviert“"
+      }
+    }
+  }
+}

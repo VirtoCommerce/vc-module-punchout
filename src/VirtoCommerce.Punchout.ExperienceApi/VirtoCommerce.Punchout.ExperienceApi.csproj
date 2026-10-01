@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <SonarQubeTestProject>false</SonarQubeTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="VirtoCommerce.ProfileExperienceApiModule.Data" Version="3.1020.0-alpha.383-vcst-5886-punchoutsetuprequest" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\VirtoCommerce.Punchout.Core\VirtoCommerce.Punchout.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Authorization\" />
+    <Folder Include="Commands\" />
+    <Folder Include="Queries\" />
+    <Folder Include="Schemas\" />
+  </ItemGroup>
+</Project>

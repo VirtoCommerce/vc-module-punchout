@@ -24,6 +24,20 @@ public static class ModuleConstants
                 Delete,
             ];
         }
+
+        public const string PunchoutGrantType = "punchout";
+    }
+
+    public static class ConfigurationSections
+    {
+        public const string ConfigurationKey = "Punchout";
+    }
+
+    public static class SessionStatus
+    {
+        public const string Active = "Active";
+        public const string Returned = "Returned";
+        public const string Expired = "Expired";
     }
 
     public static class Settings
@@ -36,6 +50,7 @@ public static class ModuleConstants
                 GroupName = "Punchout|General",
                 ValueType = SettingValueType.Boolean,
                 DefaultValue = false,
+                IsPublic = true,
             };
 
             public static IEnumerable<SettingDescriptor> AllGeneralSettings
@@ -44,6 +59,14 @@ public static class ModuleConstants
                 {
                     yield return PunchoutEnabled;
                 }
+            }
+        }
+
+        public static IEnumerable<SettingDescriptor> StoreSettings
+        {
+            get
+            {
+                yield return General.PunchoutEnabled;
             }
         }
 

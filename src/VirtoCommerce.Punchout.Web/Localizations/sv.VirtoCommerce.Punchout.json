@@ -1,0 +1,56 @@
+{
+  "punchout": {
+    "blades": {
+      "user-mapping-detail": {
+        "title": "Punchout-användare",
+        "labels": {
+          "externalId": "Extern identitet",
+          "userId": "Konto",
+          "isActive": "Aktiv",
+          "no-accounts": "Den här kontakten har inget säkerhetskonto än. Skapa ett först: en Punchout-session öppnas för ett konto, inte för en kontakt."
+        },
+        "placeholders": {
+          "externalId": "Ange inköpssystemets användaridentitet"
+        },
+        "notations": {
+          "externalId": "Värdet som inköpssystemet skickar i cXML Header/Sender/Credential/Identity."
+        },
+        "validation": {
+          "externalId-required": "Extern identitet krävs",
+          "userId-required": "Konto krävs"
+        }
+      }
+    },
+    "dialogs": {
+      "user-mapping-save": {
+        "title": "Spara ändringar",
+        "message": "Punchout-användaren har ändrats. Vill du spara ändringarna?"
+      },
+      "user-mapping-delete": {
+        "title": "Bekräfta borttagning",
+        "message": "Är du säker på att du vill ta bort Punchout-användarmappningen '{{externalId}}'?"
+      }
+    },
+    "widgets": {
+      "user-mapping": {
+        "title": "Punchout-användare",
+        "not-set": "Inte länkad"
+      }
+    }
+  },
+  "permissions": {
+    "punchout:access": "Öppna Punchout-menyn",
+    "punchout:create": "Skapa Punchout-relaterade data",
+    "punchout:read": "Visa Punchout-relaterade data",
+    "punchout:update": "Uppdatera Punchout-relaterade data",
+    "punchout:delete": "Ta bort Punchout-relaterade data"
+  },
+  "settings": {
+    "Punchout": {
+      "Enabled": {
+        "title": "Punchout aktiverat",
+        "description": "Inställning för Punchout aktiverat"
+      }
+    }
+  }
+}

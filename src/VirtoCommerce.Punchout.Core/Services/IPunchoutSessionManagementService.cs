@@ -5,5 +5,5 @@ namespace VirtoCommerce.Punchout.Core.Services;
 
 public interface IPunchoutSessionManagementService
 {
-    Task<ReedeemPunchoutSessionResult> RedeemSessionAsync(ReedeemPunchoutSessionRequest request);
+    Task<RedeemPunchoutSessionResult> RedeemSessionAsync(RedeemPunchoutSessionRequest request);
 }

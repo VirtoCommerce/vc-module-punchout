@@ -1,6 +1,6 @@
 namespace VirtoCommerce.Punchout.Core.Models;
 
-public class ReedeemPunchoutSessionRequest
+public class RedeemPunchoutSessionRequest
 {
     public string SessionToken { get; set; }
 }

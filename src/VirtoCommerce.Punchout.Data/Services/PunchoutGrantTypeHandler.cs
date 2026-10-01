@@ -39,7 +39,7 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
 
     protected override async Task<GrantValidationResult> ValidateGrantAsync(TokenRequestContext context)
     {
-        var sessionRedeemRequest = GetReedeemPunchoutSessionRequest(context);
+        var sessionRedeemRequest = GetRedeemPunchoutSessionRequest(context);
         if (sessionRedeemRequest == null)
         {
             return GrantValidationResult.Fail(SecurityErrorDescriber.LoginFailed());
@@ -68,7 +68,7 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
         return GrantValidationResult.Succeed(user);
     }
 
-    protected virtual ReedeemPunchoutSessionRequest GetReedeemPunchoutSessionRequest(TokenRequestContext context)
+    protected virtual RedeemPunchoutSessionRequest GetRedeemPunchoutSessionRequest(TokenRequestContext context)
     {
         var sessionToken = (string)context.Request.GetParameter("session_token");
 
@@ -77,7 +77,7 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
             return null;
         }
 
-        var sessionRequest = AbstractTypeFactory<ReedeemPunchoutSessionRequest>.TryCreateInstance();
+        var sessionRequest = AbstractTypeFactory<RedeemPunchoutSessionRequest>.TryCreateInstance();
 
         sessionRequest.SessionToken = sessionToken;
 

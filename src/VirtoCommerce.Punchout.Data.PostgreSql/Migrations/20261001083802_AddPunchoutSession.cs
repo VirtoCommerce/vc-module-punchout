@@ -17,12 +17,14 @@ namespace VirtoCommerce.Punchout.Data.PostgreSql.Migrations
                 {
                     Id = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
                     StoreId = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
-                    SessionToken = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    SessionTokenHash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    IsSessionTokenRedeemed = table.Column<bool>(type: "boolean", nullable: false),
                     BuyerCookie = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
                     BuyerIdentity = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
                     BuyerDomain = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     ReturnUrl = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
                     ExpirationDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    TokenExpirationDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     Status = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     StartPage = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
                     UserId = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
@@ -59,7 +61,7 @@ namespace VirtoCommerce.Punchout.Data.PostgreSql.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_PunchoutSession_SessionToken",
                 table: "PunchoutSession",
-                column: "SessionToken",
+                column: "SessionTokenHash",
                 unique: true);
 
             migrationBuilder.CreateIndex(

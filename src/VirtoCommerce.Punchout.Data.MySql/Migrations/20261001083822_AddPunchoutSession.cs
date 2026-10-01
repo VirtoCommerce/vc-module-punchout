@@ -22,8 +22,9 @@ namespace VirtoCommerce.Punchout.Data.MySql.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     StoreId = table.Column<string>(type: "varchar(128)", maxLength: 128, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    SessionToken = table.Column<string>(type: "varchar(128)", maxLength: 128, nullable: false)
+                    SessionTokenHash = table.Column<string>(type: "varchar(128)", maxLength: 128, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
+                    IsSessionTokenRedeemed = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     BuyerCookie = table.Column<string>(type: "varchar(512)", maxLength: 512, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     BuyerIdentity = table.Column<string>(type: "varchar(512)", maxLength: 512, nullable: true)
@@ -33,6 +34,7 @@ namespace VirtoCommerce.Punchout.Data.MySql.Migrations
                     ReturnUrl = table.Column<string>(type: "varchar(2048)", maxLength: 2048, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     ExpirationDate = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    TokenExpirationDate = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     Status = table.Column<string>(type: "varchar(64)", maxLength: 64, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     StartPage = table.Column<string>(type: "varchar(2048)", maxLength: 2048, nullable: true)
@@ -83,7 +85,7 @@ namespace VirtoCommerce.Punchout.Data.MySql.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_PunchoutSession_SessionToken",
                 table: "PunchoutSession",
-                column: "SessionToken",
+                column: "SessionTokenHash",
                 unique: true);
 
             migrationBuilder.CreateIndex(

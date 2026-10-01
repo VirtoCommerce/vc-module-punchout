@@ -22,11 +22,11 @@ public class PunchoutSessionManagementService : IPunchoutSessionManagementServic
         _punchoutSessionService = punchoutSessionService;
     }
 
-    public async Task<ReedeemPunchoutSessionResult> RedeemSessionAsync(ReedeemPunchoutSessionRequest request)
+    public async Task<RedeemPunchoutSessionResult> RedeemSessionAsync(RedeemPunchoutSessionRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var result = AbstractTypeFactory<ReedeemPunchoutSessionResult>.TryCreateInstance();
+        var result = AbstractTypeFactory<RedeemPunchoutSessionResult>.TryCreateInstance();
 
         var sessionTokenHash = SessionTokenHasher.Hash(request.SessionToken);
         if (sessionTokenHash is null)

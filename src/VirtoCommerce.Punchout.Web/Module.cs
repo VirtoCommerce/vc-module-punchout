@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using OpenIddict.Server;
 using VirtoCommerce.Platform.Core.Modularity;
 using VirtoCommerce.Platform.Core.Security;
 using VirtoCommerce.Platform.Core.Settings;
@@ -55,12 +54,6 @@ public class Module : IModule, IHasConfiguration
                     options.UseSqlServerDatabase(connectionString, typeof(SqlServerDataAssemblyMarker), Configuration);
                     break;
             }
-        });
-
-        // Register the Punchout Grant Type for using in connect/token endpoint
-        serviceCollection.PostConfigure<OpenIddictServerOptions>(options =>
-        {
-            options.GrantTypes.Add(ModuleConstants.Security.PunchoutGrantType);
         });
 
         // Register options

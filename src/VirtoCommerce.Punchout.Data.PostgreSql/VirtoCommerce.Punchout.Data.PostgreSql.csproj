@@ -15,4 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\VirtoCommerce.Punchout.Data\VirtoCommerce.Punchout.Data.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Migrations\" />
+  </ItemGroup>
 </Project>

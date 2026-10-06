@@ -11,6 +11,9 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
     [StringLength(128)]
     public string StoreId { get; set; }
 
+    [StringLength(128)]
+    public string ConfigurationId { get; set; }
+
     [Required]
     [StringLength(128)]
     public string SessionTokenHash { get; set; }
@@ -25,6 +28,12 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
 
     [StringLength(256)]
     public string BuyerDomain { get; set; }
+
+    [StringLength(512)]
+    public string SupplierIdentity { get; set; }
+
+    [StringLength(256)]
+    public string SupplierDomain { get; set; }
 
     [StringLength(2048)]
     public string ReturnUrl { get; set; }
@@ -52,11 +61,14 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
         model.ModifiedDate = ModifiedDate;
 
         model.StoreId = StoreId;
+        model.ConfigurationId = ConfigurationId;
         model.SessionTokenHash = SessionTokenHash;
         model.IsSessionTokenRedeemed = IsSessionTokenRedeemed;
         model.BuyerCookie = BuyerCookie;
         model.BuyerIdentity = BuyerIdentity;
         model.BuyerDomain = BuyerDomain;
+        model.SupplierIdentity = SupplierIdentity;
+        model.SupplierDomain = SupplierDomain;
         model.ReturnUrl = ReturnUrl;
         model.ExpirationDate = ExpirationDate;
         model.TokenExpirationDate = TokenExpirationDate;
@@ -78,11 +90,14 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
         ModifiedDate = model.ModifiedDate;
 
         StoreId = model.StoreId;
+        ConfigurationId = model.ConfigurationId;
         SessionTokenHash = model.SessionTokenHash;
         IsSessionTokenRedeemed = model.IsSessionTokenRedeemed;
         BuyerCookie = model.BuyerCookie;
         BuyerIdentity = model.BuyerIdentity;
         BuyerDomain = model.BuyerDomain;
+        SupplierIdentity = model.SupplierIdentity;
+        SupplierDomain = model.SupplierDomain;
         ReturnUrl = model.ReturnUrl;
         ExpirationDate = model.ExpirationDate;
         TokenExpirationDate = model.TokenExpirationDate;
@@ -96,11 +111,14 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
     public virtual void Patch(PunchoutSessionEntity target)
     {
         target.StoreId = StoreId;
+        target.ConfigurationId = ConfigurationId;
         target.SessionTokenHash = SessionTokenHash;
         target.IsSessionTokenRedeemed = IsSessionTokenRedeemed;
         target.BuyerCookie = BuyerCookie;
         target.BuyerIdentity = BuyerIdentity;
         target.BuyerDomain = BuyerDomain;
+        target.SupplierIdentity = SupplierIdentity;
+        target.SupplierDomain = SupplierDomain;
         target.ReturnUrl = ReturnUrl;
         target.ExpirationDate = ExpirationDate;
         target.TokenExpirationDate = TokenExpirationDate;

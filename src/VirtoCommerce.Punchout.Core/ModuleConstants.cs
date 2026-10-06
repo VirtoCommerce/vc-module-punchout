@@ -28,6 +28,8 @@ public static class ModuleConstants
         public const string PunchoutGrantType = "punchout";
     }
 
+    public const string DefaultPunchoutHandlerName = "DefaultPunchoutHandler";
+
     public static class ConfigurationSections
     {
         public const string ConfigurationKey = "Punchout";

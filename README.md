@@ -31,6 +31,7 @@ Integrations are defined in the `Punchout` section of the platform configuration
   "Punchout": {
     "Configurations": [
       {
+        "Id": "my-config",
         "StoreId": "B2B-store",
         "SenderDomain": "NetworkId",
         "SharedSecret": "<strong-random-secret>",
@@ -47,12 +48,14 @@ Integrations are defined in the `Punchout` section of the platform configuration
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
+| `Id` | String | — | Unique integration identifier. It is stored in the punchout session to find the integration in later transactions, so do not change it while sessions are active |
 | `StoreId` | String | — | Store that serves the punchout session. The store must have a `Url` or `SecureUrl`, which is used to build the start page |
 | `SharedSecret` | String | — | Value expected in `Header/Sender/Credential/SharedSecret`. Must be unique for each integration |
 | `SenderDomain` | String | *(not checked)* | Expected `domain` attribute of `Header/Sender/Credential`. Leave empty to skip the check |
 | `AllowedReturnUrls` | String[] | *(any URL)* | Allowed `BrowserFormPost` URLs, either exact or a prefix ending with `*`. If the list is empty, any URL is accepted |
 | `TokenLifeTime` | TimeSpan | `00:15:00` | How long the start page URL can be redeemed |
 | `SessionLifeTime` | TimeSpan | `04:00:00` | How long the buyer can shop after the setup request, which is also the access token lifetime |
+| `HandlerTypeName` | String | `DefaultPunchoutHandler` | Name of the `IPunchoutHandler` registered with `AddPunchoutHandler<THandler>()` that customizes this integration |
 
 ### Store Settings
 

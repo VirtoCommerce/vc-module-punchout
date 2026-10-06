@@ -7,6 +7,9 @@ public class PunchoutSession : AuditableEntity, ICloneable
 {
     public string StoreId { get; set; }
 
+    // Id of the punchout configuration the session was set up with
+    public string ConfigurationId { get; set; }
+
     // Supplier (storefront) correlation, SHA-256 hash of the session token
     public string SessionTokenHash { get; set; }
 
@@ -19,6 +22,11 @@ public class PunchoutSession : AuditableEntity, ICloneable
     public string BuyerIdentity { get; set; }
 
     public string BuyerDomain { get; set; }
+
+    // Supplier the setup request was addressed to, the order message is sent on its behalf
+    public string SupplierIdentity { get; set; }
+
+    public string SupplierDomain { get; set; }
 
     // URL from BrowserFormPost
     public string ReturnUrl { get; set; }

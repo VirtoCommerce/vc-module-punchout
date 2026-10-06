@@ -71,7 +71,7 @@ public class PunchoutSetupMapper(ICxmlResponseFactory responseFactory) : IPuncho
 
         var (code, text) = MapStatus(result.Status);
 
-        var document = responseFactory.CreateResponse(code, text, result.Message);
+        var document = responseFactory.CreateResponse(code, text, result.ErrorMessage);
 
         if (!string.IsNullOrEmpty(result.StartPage))
         {

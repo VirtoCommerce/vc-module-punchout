@@ -14,6 +14,7 @@ using VirtoCommerce.Platform.Security.OpenIddict;
 using VirtoCommerce.ProfileExperienceApiModule.Data.Models;
 using VirtoCommerce.Punchout.Core;
 using VirtoCommerce.Punchout.Core.Cxml.Services;
+using VirtoCommerce.Punchout.Core.Extensions;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Services;
 using VirtoCommerce.Punchout.Data.Cxml.Services;
@@ -24,8 +25,10 @@ using VirtoCommerce.Punchout.Data.Services;
 using VirtoCommerce.Punchout.Data.SqlServer;
 using VirtoCommerce.Punchout.ExperienceApi;
 using VirtoCommerce.Punchout.ExperienceApi.Middlewares;
+using VirtoCommerce.Punchout.ExperienceApi.Services;
 using VirtoCommerce.StoreModule.Core.Model;
 using VirtoCommerce.Xapi.Core.Extensions;
+using VirtoCommerce.Xapi.Core.Infrastructure;
 using VirtoCommerce.Xapi.Core.Pipelines;
 
 namespace VirtoCommerce.Punchout.Web;
@@ -75,8 +78,11 @@ public class Module : IModule, IHasConfiguration
         serviceCollection.AddTransient<IPunchoutSetupMapper, PunchoutSetupMapper>();
         serviceCollection.AddTransient<ICxmlRequestHandler, CxmlPunchoutSetupRequestHandler>();
 
-        serviceCollection.AddTransient<IPunchoutHandler, DefaultPunchoutHandler>();
+        serviceCollection.AddPunchoutHandler<DefaultPunchoutHandler>();
+        serviceCollection.AddTransient<IPunchoutHandlerFactory, PunchoutHandlerFactory>();
         serviceCollection.AddTransient<IPunchoutSetupService, PunchoutSetupService>();
+        serviceCollection.AddTransient<IPunchoutOrderMessageBuilder, PunchoutOrderMessageBuilder>();
+        serviceCollection.AddTransient<IPunchoutOrderMessageService, PunchoutOrderMessageService>();
 
         serviceCollection.AddTransient<IPunchoutSessionManagementService, PunchoutSessionManagementService>();
         serviceCollection.AddGrantTypeHandler<PunchoutGrantTypeHandler>(ModuleConstants.Security.PunchoutGrantType);
@@ -91,6 +97,8 @@ public class Module : IModule, IHasConfiguration
         {
             builder.AddMiddleware(typeof(PunchoutContactOrganizationsMiddleware));
         });
+
+        serviceCollection.AddSingleton<ScopedSchemaFactory<XapiAssemblyMarker>>();
     }
 
     public void PostInitialize(IApplicationBuilder appBuilder)
@@ -112,6 +120,9 @@ public class Module : IModule, IHasConfiguration
         using var serviceScope = serviceProvider.CreateScope();
         using var dbContext = serviceScope.ServiceProvider.GetRequiredService<PunchoutDbContext>();
         dbContext.Database.Migrate();
+
+        // Graphql schema
+        appBuilder.UseScopedSchema<XapiAssemblyMarker>("punchout");
     }
 
     public void Uninstall()

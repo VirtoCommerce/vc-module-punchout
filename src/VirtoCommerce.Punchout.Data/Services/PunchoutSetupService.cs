@@ -22,7 +22,7 @@ public class PunchoutSetupService(
     IPunchoutUserMappingSearchService userMappingSearchService,
     IPunchoutSessionService sessionService,
     IStoreService storeService,
-    IPunchoutHandler handler,
+    IPunchoutHandlerFactory handlerFactory,
     ILogger<PunchoutSetupService> logger)
     : IPunchoutSetupService
 {
@@ -46,24 +46,25 @@ public class PunchoutSetupService(
         var sessionToken = CreateSessionToken();
         var session = CreateSession(request, validationResult.UserMapping, validationResult.Configuration, validationResult.StorefrontUrl, sessionToken);
 
-        var handlerContext = CreateHandlerContext(request, validationResult, session);
+        var handlerContext = CreateHandlerContext(request, validationResult, session, sessionToken);
+        var handler = handlerFactory.Create(validationResult.Configuration);
         await handler.HandleSetupAsync(handlerContext);
 
         if (handlerContext.IsFailed)
         {
-            return PunchoutSetupResult.Error(handlerContext.ErrorStatus, handlerContext.ErrorMessage);
+            return PunchoutSetupResult.Error(handlerContext.ErrorCode, handlerContext.ErrorMessage);
         }
 
         await sessionService.SaveChangesAsync([handlerContext.Session]);
 
-        // The token goes to the buyer in the start page URL, only the hash is stored
-        return PunchoutSetupResult.Success(BuildStartPageUrl(handlerContext.Session.StartPage, sessionToken));
+        return PunchoutSetupResult.Success(handlerContext.StartPage);
     }
 
     protected virtual PunchoutSetupHandlerContext CreateHandlerContext(
         PunchoutSetupRequest request,
         PunchoutSetupValidationResult validationResult,
-        PunchoutSession session)
+        PunchoutSession session,
+        string sessionToken)
     {
         var context = AbstractTypeFactory<PunchoutSetupHandlerContext>.TryCreateInstance();
 
@@ -71,6 +72,8 @@ public class PunchoutSetupService(
         context.Configuration = validationResult.Configuration;
         context.UserMapping = validationResult.UserMapping;
         context.Session = session;
+        // The token goes to the buyer in the start page URL, only the hash is stored
+        context.StartPage = BuildStartPageUrl(session.StartPage, sessionToken);
 
         return context;
     }
@@ -96,11 +99,11 @@ public class PunchoutSetupService(
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.InvalidCredentials);
         }
 
-        if (string.IsNullOrEmpty(settings.StoreId))
+        if (string.IsNullOrEmpty(settings.Id) || string.IsNullOrEmpty(settings.StoreId))
         {
             logger.LogError("Punchout is not configured: the configuration matched for sender identity '{SenderIdentity}' has no {Missing}.",
                 request.Sender,
-                nameof(settings.StoreId));
+                string.IsNullOrEmpty(settings.Id) ? nameof(settings.Id) : nameof(settings.StoreId));
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
         }
@@ -237,11 +240,14 @@ public class PunchoutSetupService(
         var session = AbstractTypeFactory<PunchoutSession>.TryCreateInstance();
 
         session.StoreId = settings.StoreId;
+        session.ConfigurationId = settings.Id;
         session.UserId = userMapping.UserId;
         session.SessionTokenHash = SessionTokenHasher.Hash(sessionToken);
         session.BuyerCookie = request.BuyerCookie;
         session.BuyerIdentity = request.From;
         session.BuyerDomain = request.FromDomain;
+        session.SupplierIdentity = request.To;
+        session.SupplierDomain = request.ToDomain;
         session.ReturnUrl = request.ReturnUrl;
         session.Status = ModuleConstants.SessionStatus.Active;
         session.ExpirationDate = DateTime.UtcNow.Add(settings.SessionLifeTime ?? PunchoutConfiguration.DefaultSessionLifeTime);

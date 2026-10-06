@@ -17,7 +17,7 @@ namespace VirtoCommerce.Punchout.Data.PostgreSql.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -40,6 +40,10 @@ namespace VirtoCommerce.Punchout.Data.PostgreSql.Migrations
                     b.Property<string>("BuyerIdentity")
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
+
+                    b.Property<string>("ConfigurationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("CreatedBy")
                         .HasMaxLength(64)
@@ -82,6 +86,14 @@ namespace VirtoCommerce.Punchout.Data.PostgreSql.Migrations
                     b.Property<string>("StoreId")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SupplierDomain")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("SupplierIdentity")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
 
                     b.Property<DateTime?>("TokenExpirationDate")
                         .HasColumnType("timestamp with time zone");

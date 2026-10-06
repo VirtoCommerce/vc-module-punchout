@@ -9,4 +9,9 @@ namespace VirtoCommerce.Punchout.Core.Services;
 public interface IPunchoutHandler
 {
     Task HandleSetupAsync(PunchoutSetupHandlerContext context);
+
+    /// <summary>
+    /// Builds the cXML PunchOutOrderMessage returned to the buyer, see <see cref="PunchoutOrderMessageHandlerContext.Result"/>.
+    /// </summary>
+    Task HandleOrderMessageAsync(PunchoutOrderMessageHandlerContext context);
 }

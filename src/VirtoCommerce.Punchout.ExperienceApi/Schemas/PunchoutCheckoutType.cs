@@ -1,6 +1,3 @@
-//using System.Linq;
-//using GraphQL.Types;
-//using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Xapi.Core.Schemas;
 

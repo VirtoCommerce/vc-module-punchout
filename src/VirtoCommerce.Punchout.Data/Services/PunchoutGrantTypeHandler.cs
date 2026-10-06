@@ -62,7 +62,7 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
         }
 
         // set additional params to set to claims later
-        context.AdditionalParameters.Add("channelSessionId", session.Id);
+        context.AdditionalParameters.Add(ModuleConstants.Security.Claims.ChannelSessionId, session.Id);
         context.AdditionalParameters.Add("sessionExpirationDate", session.ExpirationDate.Value);
 
         return GrantValidationResult.Succeed(user);
@@ -90,10 +90,10 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
         principal.SetScopes([]);
 
         // Set claims here (most convinient place)
-        principal.SetClaim("channelId", "punchout");
-        if (context.AdditionalParameters.TryGetValue("channelSessionId", out var channelSessionId))
+        principal.SetClaim(ModuleConstants.Security.Claims.ChannelId, ModuleConstants.Security.PunchoutGrantType);
+        if (context.AdditionalParameters.TryGetValue(ModuleConstants.Security.Claims.ChannelSessionId, out var channelSessionId))
         {
-            principal.SetClaim("channelSessionId", (string)channelSessionId);
+            principal.SetClaim(ModuleConstants.Security.Claims.ChannelSessionId, (string)channelSessionId);
         }
         if (context.AdditionalParameters.TryGetValue("sessionExpirationDate", out var sessionExpirationDate))
         {

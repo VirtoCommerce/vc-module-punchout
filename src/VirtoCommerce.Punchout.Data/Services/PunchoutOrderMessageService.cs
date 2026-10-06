@@ -29,7 +29,10 @@ public class PunchoutOrderMessageService(
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var session = await sessionService.GetNoCloneAsync(request.SessionId);
+        // No session id if the access token is not issued by the punchout grant
+        var session = request.SessionId.IsNullOrEmpty()
+            ? null
+            : await sessionService.GetNoCloneAsync(request.SessionId);
 
         if (!IsSessionOwner(session, request))
         {

@@ -26,6 +26,19 @@ public static class ModuleConstants
         }
 
         public const string PunchoutGrantType = "punchout";
+
+        public static class Claims
+        {
+            /// <summary>
+            /// Set to <see cref="PunchoutGrantType"/> if the token is issued by the punchout grant.
+            /// </summary>
+            public const string ChannelId = "channelId";
+
+            /// <summary>
+            /// The punchout session id.
+            /// </summary>
+            public const string ChannelSessionId = "channelSessionId";
+        }
     }
 
     public const string DefaultPunchoutHandlerName = "DefaultPunchoutHandler";

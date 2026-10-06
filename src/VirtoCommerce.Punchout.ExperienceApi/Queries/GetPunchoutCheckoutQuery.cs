@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using GraphQL;
 using GraphQL.Types;
 using VirtoCommerce.Punchout.Core.Models;
+using VirtoCommerce.Punchout.ExperienceApi.Extensions;
 using VirtoCommerce.Xapi.Core.BaseQueries;
 using VirtoCommerce.Xapi.Core.Extensions;
 
@@ -23,7 +24,6 @@ public class GetPunchoutCheckoutQuery : Query<PunchoutCheckoutResult>
 
     public override IEnumerable<QueryArgument> GetArguments()
     {
-        yield return Argument<NonNullGraphType<StringGraphType>>(nameof(SessionId));
         yield return Argument<NonNullGraphType<StringGraphType>>(nameof(StoreId));
         yield return Argument<StringGraphType>(nameof(CultureName));
         yield return Argument<StringGraphType>(nameof(CurrencyCode));
@@ -34,7 +34,7 @@ public class GetPunchoutCheckoutQuery : Query<PunchoutCheckoutResult>
         StoreId = context.GetArgument<string>(nameof(StoreId));
         CultureName = context.GetArgument<string>(nameof(CultureName));
         CurrencyCode = context.GetArgument<string>(nameof(CurrencyCode));
-        SessionId = context.GetArgument<string>(nameof(SessionId));
+        SessionId = context.GetCurrentPunchoutSessionId();
         UserId = context.GetCurrentUserId();
         OrganizationId = context.GetCurrentOrganizationId();
     }

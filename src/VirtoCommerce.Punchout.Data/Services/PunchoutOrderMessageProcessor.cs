@@ -13,13 +13,13 @@ using VirtoCommerce.StoreModule.Core.Services;
 
 namespace VirtoCommerce.Punchout.Data.Services;
 
-public class PunchoutOrderMessageService(
+public class PunchoutOrderMessageProcessor(
     IOptions<PunchoutOptions> options,
     IPunchoutSessionService sessionService,
     IStoreService storeService,
     IPunchoutHandlerFactory handlerFactory,
-    ILogger<PunchoutOrderMessageService> logger)
-    : IPunchoutOrderMessageService
+    ILogger<PunchoutOrderMessageProcessor> logger)
+    : IPunchoutOrderMessageProcessor
 {
     protected const string FormField = "cxml-urlencoded";
 

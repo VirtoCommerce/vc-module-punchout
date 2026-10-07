@@ -7,7 +7,7 @@ using VirtoCommerce.Xapi.Core.Infrastructure;
 
 namespace VirtoCommerce.Punchout.ExperienceApi.Queries;
 
-public class GetPunchoutCheckoutQueryHandler(IPunchoutOrderMessageService orderMessageService)
+public class GetPunchoutCheckoutQueryHandler(IPunchoutOrderMessageProcessor orderMessageService)
     : IQueryHandler<GetPunchoutCheckoutQuery, PunchoutCheckoutResult>
 {
     public virtual Task<PunchoutCheckoutResult> Handle(GetPunchoutCheckoutQuery request, CancellationToken cancellationToken)

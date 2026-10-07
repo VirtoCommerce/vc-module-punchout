@@ -82,7 +82,7 @@ public class Module : IModule, IHasConfiguration
         serviceCollection.AddTransient<IPunchoutHandlerFactory, PunchoutHandlerFactory>();
         serviceCollection.AddTransient<IPunchoutSetupService, PunchoutSetupService>();
         serviceCollection.AddTransient<IPunchoutOrderMessageBuilder, PunchoutOrderMessageBuilder>();
-        serviceCollection.AddTransient<IPunchoutOrderMessageService, PunchoutOrderMessageService>();
+        serviceCollection.AddTransient<IPunchoutOrderMessageProcessor, PunchoutOrderMessageProcessor>();
 
         serviceCollection.AddTransient<IPunchoutSessionManagementService, PunchoutSessionManagementService>();
         serviceCollection.AddGrantTypeHandler<PunchoutGrantTypeHandler>(ModuleConstants.Security.PunchoutGrantType);

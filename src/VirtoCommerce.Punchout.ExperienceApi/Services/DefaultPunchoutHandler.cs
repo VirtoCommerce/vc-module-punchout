@@ -10,8 +10,7 @@ using VirtoCommerce.XCart.Core.Queries;
 namespace VirtoCommerce.Punchout.ExperienceApi.Services;
 
 /// <summary>
-/// Default handler: the setup is not customized, the order message is built from the buyer cart.
-/// Override it to customize a punchout transaction.
+/// Default handler: the setup is not customized, the order message is built from the default cart.
 /// </summary>
 public class DefaultPunchoutHandler(
     IMediator mediator,

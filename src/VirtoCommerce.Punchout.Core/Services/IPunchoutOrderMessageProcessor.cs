@@ -6,7 +6,7 @@ namespace VirtoCommerce.Punchout.Core.Services;
 /// <summary>
 /// Validates the punchout session and lets the configuration handler build the PunchOutOrderMessage.
 /// </summary>
-public interface IPunchoutOrderMessageService
+public interface IPunchoutOrderMessageProcessor
 {
     Task<PunchoutCheckoutResult> ProcessAsync(PunchoutOrderMessageRequest request);
 }

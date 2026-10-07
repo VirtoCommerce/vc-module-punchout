@@ -7,7 +7,7 @@ using VirtoCommerce.Punchout.Core.Services;
 
 namespace VirtoCommerce.Punchout.ExperienceApi.Commands;
 
-public class CreatePunchoutRequisitionCommandHandler(IPunchoutOrderMessageService orderMessageService)
+public class CreatePunchoutRequisitionCommandHandler(IPunchoutOrderMessageProcessor orderMessageService)
     : IRequestHandler<CreatePunchoutRequisitionCommand, PunchoutCheckoutResult>
 {
     public Task<PunchoutCheckoutResult> Handle(CreatePunchoutRequisitionCommand request, CancellationToken cancellationToken)

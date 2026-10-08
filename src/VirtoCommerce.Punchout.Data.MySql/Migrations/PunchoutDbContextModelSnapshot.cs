@@ -17,7 +17,7 @@ namespace VirtoCommerce.Punchout.Data.MySql.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
@@ -64,6 +64,14 @@ namespace VirtoCommerce.Punchout.Data.MySql.Migrations
                     b.Property<string>("ReturnUrl")
                         .HasMaxLength(2048)
                         .HasColumnType("varchar(2048)");
+
+                    b.Property<string>("SenderDomain")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<string>("SenderIdentity")
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
 
                     b.Property<string>("SessionTokenHash")
                         .IsRequired()

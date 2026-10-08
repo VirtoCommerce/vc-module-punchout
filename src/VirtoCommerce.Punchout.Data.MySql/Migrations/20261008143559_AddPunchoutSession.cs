@@ -31,6 +31,10 @@ namespace VirtoCommerce.Punchout.Data.MySql.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     BuyerDomain = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
+                    SenderIdentity = table.Column<string>(type: "varchar(512)", maxLength: 512, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    SenderDomain = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
                     ReturnUrl = table.Column<string>(type: "varchar(2048)", maxLength: 2048, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     ExpirationDate = table.Column<DateTime>(type: "datetime(6)", nullable: true),

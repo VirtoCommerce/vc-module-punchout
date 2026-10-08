@@ -22,6 +22,8 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
                     BuyerCookie = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: true),
                     BuyerIdentity = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: true),
                     BuyerDomain = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    SenderIdentity = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: true),
+                    SenderDomain = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     ReturnUrl = table.Column<string>(type: "nvarchar(2048)", maxLength: 2048, nullable: true),
                     ExpirationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     TokenExpirationDate = table.Column<DateTime>(type: "datetime2", nullable: true),

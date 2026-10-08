@@ -22,6 +22,8 @@ namespace VirtoCommerce.Punchout.Data.PostgreSql.Migrations
                     BuyerCookie = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
                     BuyerIdentity = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
                     BuyerDomain = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    SenderIdentity = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
+                    SenderDomain = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     ReturnUrl = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
                     ExpirationDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     TokenExpirationDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),

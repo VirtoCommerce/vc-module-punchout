@@ -20,6 +20,11 @@ public class PunchoutSession : AuditableEntity, ICloneable
 
     public string BuyerDomain { get; set; }
 
+    // System that sent the setup request (cXML Header/Sender/Credential/Identity), used to find the user mapping
+    public string SenderIdentity { get; set; }
+
+    public string SenderDomain { get; set; }
+
     // URL from BrowserFormPost
     public string ReturnUrl { get; set; }
 

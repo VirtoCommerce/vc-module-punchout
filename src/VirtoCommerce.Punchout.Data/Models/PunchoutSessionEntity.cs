@@ -26,6 +26,12 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
     [StringLength(256)]
     public string BuyerDomain { get; set; }
 
+    [StringLength(512)]
+    public string SenderIdentity { get; set; }
+
+    [StringLength(256)]
+    public string SenderDomain { get; set; }
+
     [StringLength(2048)]
     public string ReturnUrl { get; set; }
 
@@ -57,6 +63,8 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
         model.BuyerCookie = BuyerCookie;
         model.BuyerIdentity = BuyerIdentity;
         model.BuyerDomain = BuyerDomain;
+        model.SenderIdentity = SenderIdentity;
+        model.SenderDomain = SenderDomain;
         model.ReturnUrl = ReturnUrl;
         model.ExpirationDate = ExpirationDate;
         model.TokenExpirationDate = TokenExpirationDate;
@@ -83,6 +91,8 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
         BuyerCookie = model.BuyerCookie;
         BuyerIdentity = model.BuyerIdentity;
         BuyerDomain = model.BuyerDomain;
+        SenderIdentity = model.SenderIdentity;
+        SenderDomain = model.SenderDomain;
         ReturnUrl = model.ReturnUrl;
         ExpirationDate = model.ExpirationDate;
         TokenExpirationDate = model.TokenExpirationDate;
@@ -101,6 +111,8 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
         target.BuyerCookie = BuyerCookie;
         target.BuyerIdentity = BuyerIdentity;
         target.BuyerDomain = BuyerDomain;
+        target.SenderIdentity = SenderIdentity;
+        target.SenderDomain = SenderDomain;
         target.ReturnUrl = ReturnUrl;
         target.ExpirationDate = ExpirationDate;
         target.TokenExpirationDate = TokenExpirationDate;

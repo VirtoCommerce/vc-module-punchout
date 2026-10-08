@@ -242,6 +242,8 @@ public class PunchoutSetupService(
         session.BuyerCookie = request.BuyerCookie;
         session.BuyerIdentity = request.From;
         session.BuyerDomain = request.FromDomain;
+        session.SenderIdentity = request.Sender;
+        session.SenderDomain = request.SenderDomain;
         session.ReturnUrl = request.ReturnUrl;
         session.Status = ModuleConstants.SessionStatus.Active;
         session.ExpirationDate = DateTime.UtcNow.Add(settings.SessionLifeTime ?? PunchoutConfiguration.DefaultSessionLifeTime);

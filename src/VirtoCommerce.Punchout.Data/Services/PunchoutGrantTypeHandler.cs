@@ -19,6 +19,7 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IPunchoutSessionManagementService _sessionManagementService;
+    private readonly IPunchoutUserMappingSearchService _userMappingSearchService;
 
     public PunchoutGrantTypeHandler(
         SignInManager<ApplicationUser> signInManager,
@@ -27,11 +28,13 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
         IEnumerable<ITokenClaimProvider> claimProviders,
         IEnumerable<ITokenRequestHandler> requestHandlers,
         IEventPublisher eventPublisher,
-        IPunchoutSessionManagementService sessionManagementService)
+        IPunchoutSessionManagementService sessionManagementService,
+        IPunchoutUserMappingSearchService userMappingSearchService)
         : base(signInManager, identityOptions, requestValidators, claimProviders, requestHandlers, eventPublisher)
     {
         _signInManager = signInManager;
         _sessionManagementService = sessionManagementService;
+        _userMappingSearchService = userMappingSearchService;
     }
 
     public override string GrantType => ModuleConstants.Security.PunchoutGrantType;
@@ -53,6 +56,11 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
             return GrantValidationResult.Fail(SecurityErrorDescriber.LoginFailed());
         }
 
+        if (!await HasActiveUserMappingAsync(session))
+        {
+            return GrantValidationResult.Fail(SecurityErrorDescriber.LoginFailed());
+        }
+
         var user = await _signInManager.UserManager.FindByIdAsync(session.UserId);
         if (user == null
             || user.IsAdministrator
@@ -68,6 +76,24 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
         context.AdditionalParameters.Add("sessionExpirationDate", session.ExpirationDate.Value);
 
         return GrantValidationResult.Succeed(user);
+    }
+
+    protected virtual async Task<bool> HasActiveUserMappingAsync(PunchoutSession session)
+    {
+        if (session.SenderIdentity.IsNullOrEmpty())
+        {
+            return false;
+        }
+
+        var criteria = AbstractTypeFactory<PunchoutUserMappingSearchCriteria>.TryCreateInstance();
+        criteria.ExternalIds = [session.SenderIdentity];
+        criteria.UserIds = [session.UserId];
+        criteria.IsActive = true;
+        criteria.Take = 0;
+
+        var searchResult = await _userMappingSearchService.SearchNoCloneAsync(criteria);
+
+        return searchResult.TotalCount > 0;
     }
 
     protected virtual RedeemPunchoutSessionRequest GetRedeemPunchoutSessionRequest(TokenRequestContext context)

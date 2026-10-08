@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -86,10 +87,10 @@ public class PunchoutUserMappingController(
 
         var criteria = AbstractTypeFactory<PunchoutUserMappingSearchCriteria>.TryCreateInstance();
         criteria.ExternalIds = [model.ExternalId];
-        criteria.Take = 0;
+        criteria.Take = 1;
 
-        var existingMappings = await searchService.SearchNoCloneAsync(criteria);
-        if (existingMappings.TotalCount > 0)
+        var existing = await searchService.SearchNoCloneAsync(criteria);
+        if (existing.Results.Any(x => x.Id != model.Id))
         {
             return $"A mapping with ExternalId '{model.ExternalId}' already exists.";
         }

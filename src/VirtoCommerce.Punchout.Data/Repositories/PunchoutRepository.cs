@@ -18,6 +18,8 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
 
     public IQueryable<PunchoutUserMappingEntity> PunchoutUserMappings => DbContext.Set<PunchoutUserMappingEntity>();
 
+    public IQueryable<PunchoutOrderMessageEntity> PunchoutOrderMessages => DbContext.Set<PunchoutOrderMessageEntity>();
+
     public virtual async Task<IList<PunchoutSessionEntity>> GetPunchoutSessionsByIdsAsync(IList<string> ids, string responseGroup)
     {
         if (ids.IsNullOrEmpty())
@@ -40,6 +42,18 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
         return ids.Count == 1
             ? await PunchoutUserMappings.Where(x => x.Id == ids.First()).ToListAsync()
             : await PunchoutUserMappings.Where(x => ids.Contains(x.Id)).ToListAsync();
+    }
+
+    public virtual async Task<IList<PunchoutOrderMessageEntity>> GetPunchoutOrderMessagesByIdsAsync(IList<string> ids, string responseGroup)
+    {
+        if (ids.IsNullOrEmpty())
+        {
+            return [];
+        }
+
+        return ids.Count == 1
+            ? await PunchoutOrderMessages.Where(x => x.Id == ids.First()).ToListAsync()
+            : await PunchoutOrderMessages.Where(x => ids.Contains(x.Id)).ToListAsync();
     }
 
     public virtual async Task<string> RedeemSessionTokenAsync(string sessionTokenHash, DateTime now)

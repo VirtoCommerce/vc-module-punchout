@@ -17,14 +17,14 @@ using VirtoCommerce.StoreModule.Core.Services;
 
 namespace VirtoCommerce.Punchout.Data.Services;
 
-public class PunchoutSetupService(
+public class PunchoutSetupProcessor(
     IOptions<PunchoutOptions> options,
     IPunchoutUserMappingSearchService userMappingSearchService,
     IPunchoutSessionService sessionService,
     IStoreService storeService,
     IPunchoutHandlerFactory handlerFactory,
-    ILogger<PunchoutSetupService> logger)
-    : IPunchoutSetupService
+    ILogger<PunchoutSetupProcessor> logger)
+    : IPunchoutSetupProcessor
 {
     protected const string StartPagePath = "punchout";
 

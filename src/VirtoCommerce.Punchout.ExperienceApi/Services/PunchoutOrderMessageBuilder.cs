@@ -14,9 +14,7 @@ public class PunchoutOrderMessageBuilder(ICxmlResponseFactory cxmlFactory) : IPu
 {
     protected const string UserAgent = "Virto Commerce Punchout";
     protected const string DefaultLanguage = "en-US";
-    protected const string DefaultUnitOfMeasure = "none";
-    protected const string DefaultClassificationDomain = "Custom";
-    protected const string DefaultClassificationCode = "00000000";
+    protected const string DefaultUnitOfMeasure = "EA";
 
     public virtual CxmlDocument Build(PunchoutSession session, CartAggregate cartAggregate)
     {
@@ -33,8 +31,6 @@ public class PunchoutOrderMessageBuilder(ICxmlResponseFactory cxmlFactory) : IPu
 
     protected virtual CxmlHeader BuildHeader(PunchoutSession session)
     {
-        // The message goes from the supplier back to the buyer that started the session.
-        // The shared secret is not included: the message is posted through the buyer's browser.
         return new CxmlHeader
         {
             From = new CxmlFrom
@@ -65,7 +61,7 @@ public class PunchoutOrderMessageBuilder(ICxmlResponseFactory cxmlFactory) : IPu
     protected virtual CxmlPunchoutOrderMessage BuildPunchoutOrderMessage(PunchoutSession session, CartAggregate cartAggregate)
     {
         var cart = cartAggregate.Cart;
-        var lineItems = cart.Items ?? [];
+        var lineItems = cart.Items?.Where(x => x.SelectedForCheckout)?.ToArray() ?? [];
 
         return new CxmlPunchoutOrderMessage
         {
@@ -123,18 +119,11 @@ public class PunchoutOrderMessageBuilder(ICxmlResponseFactory cxmlFactory) : IPu
     }
 
     /// <summary>
-    /// Placeholder: the classification depends on the project catalog, override to provide real codes.
+    /// Placeholder: the classification depends on the project, override to provide real codes.
     /// </summary>
     protected virtual List<CxmlClassification> GetClassifications(CartAggregate cartAggregate, LineItem lineItem)
     {
-        return
-        [
-            new CxmlClassification
-            {
-                Domain = DefaultClassificationDomain,
-                Value = DefaultClassificationCode,
-            },
-        ];
+        return [];
     }
 
     protected virtual CxmlAmount CreateAmount(decimal amount, string currency)

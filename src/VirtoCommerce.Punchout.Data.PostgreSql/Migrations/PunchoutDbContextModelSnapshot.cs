@@ -22,6 +22,43 @@ namespace VirtoCommerce.Punchout.Data.PostgreSql.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("VirtoCommerce.Punchout.Data.Models.PunchoutOrderMessageEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Cxml")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId")
+                        .HasDatabaseName("IX_PunchoutOrderMessage_SessionId");
+
+                    b.ToTable("PunchoutOrderMessage", (string)null);
+                });
+
             modelBuilder.Entity("VirtoCommerce.Punchout.Data.Models.PunchoutSessionEntity", b =>
                 {
                     b.Property<string>("Id")
@@ -166,6 +203,15 @@ namespace VirtoCommerce.Punchout.Data.PostgreSql.Migrations
                         .HasDatabaseName("IX_PunchoutUserMapping_UserId");
 
                     b.ToTable("PunchoutUserMapping", (string)null);
+                });
+
+            modelBuilder.Entity("VirtoCommerce.Punchout.Data.Models.PunchoutOrderMessageEntity", b =>
+                {
+                    b.HasOne("VirtoCommerce.Punchout.Data.Models.PunchoutSessionEntity", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

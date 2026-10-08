@@ -72,6 +72,9 @@ public class Module : IModule, IHasConfiguration
         serviceCollection.AddTransient<IPunchoutUserMappingService, PunchoutUserMappingService>();
         serviceCollection.AddTransient<IPunchoutUserMappingSearchService, PunchoutUserMappingSearchService>();
 
+        serviceCollection.AddTransient<IPunchoutOrderMessageService, PunchoutOrderMessageService>();
+        serviceCollection.AddTransient<IPunchoutOrderMessageSearchService, PunchoutOrderMessageSearchService>();
+
         serviceCollection.AddTransient<ICxmlSerializer, CxmlSerializer>();
         serviceCollection.AddTransient<ICxmlResponseFactory, CxmlResponseFactory>();
         serviceCollection.AddTransient<ICxmlRequestDispatcher, CxmlRequestDispatcher>();
@@ -80,7 +83,7 @@ public class Module : IModule, IHasConfiguration
 
         serviceCollection.AddPunchoutHandler<DefaultPunchoutHandler>();
         serviceCollection.AddTransient<IPunchoutHandlerFactory, PunchoutHandlerFactory>();
-        serviceCollection.AddTransient<IPunchoutSetupService, PunchoutSetupService>();
+        serviceCollection.AddTransient<IPunchoutSetupProcessor, PunchoutSetupProcessor>();
         serviceCollection.AddTransient<IPunchoutOrderMessageBuilder, PunchoutOrderMessageBuilder>();
         serviceCollection.AddTransient<IPunchoutOrderMessageProcessor, PunchoutOrderMessageProcessor>();
 

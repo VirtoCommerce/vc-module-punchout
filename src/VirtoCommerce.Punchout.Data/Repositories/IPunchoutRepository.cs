@@ -13,9 +13,13 @@ public interface IPunchoutRepository : IRepository
 
     IQueryable<PunchoutUserMappingEntity> PunchoutUserMappings { get; }
 
+    IQueryable<PunchoutOrderMessageEntity> PunchoutOrderMessages { get; }
+
     Task<IList<PunchoutSessionEntity>> GetPunchoutSessionsByIdsAsync(IList<string> ids, string responseGroup);
 
     Task<IList<PunchoutUserMappingEntity>> GetPunchoutUserMappingsByIdsAsync(IList<string> ids, string responseGroup);
+
+    Task<IList<PunchoutOrderMessageEntity>> GetPunchoutOrderMessagesByIdsAsync(IList<string> ids, string responseGroup);
 
     /// <summary>
     /// Atomically marks the session token as redeemed.

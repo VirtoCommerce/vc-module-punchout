@@ -16,12 +16,13 @@ namespace VirtoCommerce.Punchout.Data.Services;
 public class PunchoutOrderMessageProcessor(
     IOptions<PunchoutOptions> options,
     IPunchoutSessionService sessionService,
+    IPunchoutOrderMessageService orderMessageService,
     IStoreService storeService,
     IPunchoutHandlerFactory handlerFactory,
     ILogger<PunchoutOrderMessageProcessor> logger)
     : IPunchoutOrderMessageProcessor
 {
-    protected const string FormField = "cxml-urlencoded";
+    private const string FormField = "cxml-urlencoded";
 
     protected PunchoutOptions Options => options.Value;
 
@@ -82,7 +83,21 @@ public class PunchoutOrderMessageProcessor(
             return CreateErrorResult(PunchoutOrderMessageStatus.Error);
         }
 
+        // Keep the log of what is sent to the buyer
+        var orderMessage = CreateOrderMessage(handlerContext);
+        await orderMessageService.SaveChangesAsync([orderMessage]);
+
         return handlerContext.Result;
+    }
+
+    protected virtual PunchoutOrderMessage CreateOrderMessage(PunchoutOrderMessageHandlerContext context)
+    {
+        var orderMessage = AbstractTypeFactory<PunchoutOrderMessage>.TryCreateInstance();
+
+        orderMessage.SessionId = context.Session.Id;
+        orderMessage.Cxml = context.Result.Cxml;
+
+        return orderMessage;
     }
 
     /// <summary>

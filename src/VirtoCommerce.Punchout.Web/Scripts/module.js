@@ -6,16 +6,16 @@ if (AppDependencies !== undefined) {
 }
 
 angular.module(moduleName, [])
-    .run(['platformWebApp.widgetService', 'platformWebApp.metaFormsService',
-        function (widgetService, metaFormsService) {
+    .run(['platformWebApp.widgetService', 'platformWebApp.metaFormsService', 'platformWebApp.authService',
+        function (widgetService, metaFormsService, authService) {
             // widgets
             var memberPunchoutUserMappingWidget = {
                 controller: 'VirtoCommerce.Punchout.memberPunchoutUserMappingWidgetController',
                 template: 'Modules/$(VirtoCommerce.Punchout)/Scripts/widgets/member-punchout-user-mapping-widget.html',
                 size: [2, 1],
-                permission: 'punchout:read',
                 isVisible: function (blade) {
-                    return !blade.isNew;
+                    // widget.permission and isVisible() don't work together 
+                    return !blade.isNew && authService.checkPermission('punchout:read')
                 }
             };
 

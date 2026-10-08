@@ -55,7 +55,7 @@ angular.module('VirtoCommerce.Punchout')
 
             function onError(error) {
                 blade.isLoading = false;
-                bladeNavigationService.setError('Error ' + error.status, blade);
+                bladeNavigationService.setError(angular.isString(error.data) && error.data ? error.data : 'Error ' + error.status, blade);
             }
 
             function isDirty() {

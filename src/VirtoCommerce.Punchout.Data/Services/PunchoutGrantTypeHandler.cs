@@ -55,6 +55,8 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
 
         var user = await _signInManager.UserManager.FindByIdAsync(session.UserId);
         if (user == null
+            || user.IsAdministrator
+            || user.UserType != nameof(UserType.Customer)
             || await _signInManager.UserManager.IsLockedOutAsync(user)
             || !await _signInManager.CanSignInAsync(user))
         {
@@ -89,7 +91,7 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
         // Explicitly no offline_access scope so no refresh_access is generated
         principal.SetScopes([]);
 
-        // Set claims here (most convinient place)
+        // Set claims here (most convenient place)
         principal.SetClaim("channelId", "punchout");
         if (context.AdditionalParameters.TryGetValue("channelSessionId", out var channelSessionId))
         {

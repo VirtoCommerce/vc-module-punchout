@@ -14,7 +14,7 @@ angular.module(moduleName, [])
                 template: 'Modules/$(VirtoCommerce.Punchout)/Scripts/widgets/member-punchout-user-mapping-widget.html',
                 size: [2, 1],
                 isVisible: function (blade) {
-                    // widget.permission and isVisible() don't work together 
+                    // widget.permission and isVisible() don't work together
                     return !blade.isNew && authService.checkPermission('punchout:read')
                 }
             };

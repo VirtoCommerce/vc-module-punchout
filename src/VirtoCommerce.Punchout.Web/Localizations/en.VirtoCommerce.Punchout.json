@@ -18,6 +18,13 @@
         "validation": {
           "externalId-required": "External identity is required",
           "userId-required": "Account is required"
+        },
+        "errors": {
+          "externalId-required": "ExternalId is required",
+          "mapping-exists": "A mapping with ExternalId '{{externalId}}' already exists.",
+          "userId-memberId-required": "UserId and MemberId are required.",
+          "memberId-mismatch": "The user is not a security account of the specified contact.",
+          "user-is-admin-or-customer": "Only non-administrator accounts of Customer type can be mapped."
         }
       }
     },

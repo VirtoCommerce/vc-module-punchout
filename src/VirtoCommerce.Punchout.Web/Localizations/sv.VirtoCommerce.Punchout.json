@@ -18,6 +18,13 @@
         "validation": {
           "externalId-required": "Extern identitet krävs",
           "userId-required": "Konto krävs"
+        },
+        "errors": {
+          "externalId-required": "ExternalId krävs",
+          "mapping-exists": "En mappning med ExternalId '{{externalId}}' finns redan.",
+          "userId-memberId-required": "UserId och MemberId krävs.",
+          "memberId-mismatch": "Användaren är inte ett säkerhetskonto för den angivna kontakten.",
+          "user-is-admin-or-customer": "Endast konton av typen Customer som inte är administratörer kan mappas."
         }
       }
     },

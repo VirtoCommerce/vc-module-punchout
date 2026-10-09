@@ -1,11 +1,12 @@
 angular.module('VirtoCommerce.Punchout')
     .controller('VirtoCommerce.Punchout.userMappingDetailController', [
         '$scope',
+        '$translate',
         'platformWebApp.bladeNavigationService',
         'platformWebApp.dialogService',
         'platformWebApp.metaFormsService',
         'VirtoCommerce.Punchout.UserMappings',
-        function ($scope, bladeNavigationService, dialogService, metaFormsService, userMappings) {
+        function ($scope, $translate, bladeNavigationService, dialogService, metaFormsService, userMappings) {
             var blade = $scope.blade;
             blade.headIcon = 'fas fa-id-badge';
             blade.updatePermission = 'punchout:update';
@@ -55,7 +56,17 @@ angular.module('VirtoCommerce.Punchout')
 
             function onError(error) {
                 blade.isLoading = false;
-                bladeNavigationService.setError(angular.isString(error.data) && error.data ? error.data : 'Error ' + error.status, blade);
+
+                var message;
+                if (error.data && error.data.errorCode) {
+                    message = $translate.instant('punchout.blades.user-mapping-detail.errors.' + error.data.errorCode, error.data.errorParameters);
+                } else if (angular.isString(error.data) && error.data) {
+                    message = error.data;
+                } else {
+                    message = 'Error ' + error.status;
+                }
+
+                bladeNavigationService.setError(message, blade);
             }
 
             function isDirty() {

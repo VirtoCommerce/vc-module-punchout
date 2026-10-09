@@ -18,6 +18,13 @@
         "validation": {
           "externalId-required": "La identidad externa es obligatoria",
           "userId-required": "La cuenta es obligatoria"
+        },
+        "errors": {
+          "externalId-required": "ExternalId es obligatorio",
+          "mapping-exists": "Ya existe una asignación con ExternalId '{{externalId}}'.",
+          "userId-memberId-required": "UserId y MemberId son obligatorios.",
+          "memberId-mismatch": "El usuario no es una cuenta de seguridad del contacto especificado.",
+          "user-is-admin-or-customer": "Solo se pueden asignar cuentas de tipo Customer que no sean de administrador."
         }
       }
     },

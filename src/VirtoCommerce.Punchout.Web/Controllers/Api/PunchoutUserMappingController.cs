@@ -1,11 +1,10 @@
 using System.Linq;
 using System.Threading.Tasks;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using VirtoCommerce.Platform.Core.Common;
-using VirtoCommerce.Platform.Core.Security;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Services;
 using Permissions = VirtoCommerce.Punchout.Core.ModuleConstants.Security.Permissions;
@@ -17,7 +16,7 @@ namespace VirtoCommerce.Punchout.Web.Controllers.Api;
 public class PunchoutUserMappingController(
     IPunchoutUserMappingService crudService,
     IPunchoutUserMappingSearchService searchService,
-    UserManager<ApplicationUser> userManager)
+    AbstractValidator<PunchoutUserMapping> validator)
     : Controller
 {
     [HttpPost("search")]
@@ -59,10 +58,11 @@ public class PunchoutUserMappingController(
     [Authorize(Permissions.Update)]
     public async Task<ActionResult<PunchoutUserMapping>> Update([FromBody] PunchoutUserMapping model)
     {
-        var error = await ValidateExternalIdAsync(model) ?? await ValidateUserAsync(model);
-        if (error != null)
+        var validationResult = await validator.ValidateAsync(model);
+        if (!validationResult.IsValid)
         {
-            return BadRequest(error);
+            var error = validationResult.Errors.First();
+            return BadRequest(new { error.ErrorCode, ErrorParameters = error.CustomState });
         }
 
         await crudService.SaveChangesAsync([model]);
@@ -76,46 +76,5 @@ public class PunchoutUserMappingController(
     {
         await crudService.DeleteAsync(ids);
         return NoContent();
-    }
-
-    private async Task<string> ValidateExternalIdAsync(PunchoutUserMapping model)
-    {
-        if (model.ExternalId.IsNullOrEmpty())
-        {
-            return "ExternalId is required.";
-        }
-
-        var criteria = AbstractTypeFactory<PunchoutUserMappingSearchCriteria>.TryCreateInstance();
-        criteria.ExternalIds = [model.ExternalId];
-        criteria.Take = 1;
-
-        var existing = await searchService.SearchNoCloneAsync(criteria);
-        if (existing.Results.Any(x => x.Id != model.Id))
-        {
-            return $"A mapping with ExternalId '{model.ExternalId}' already exists.";
-        }
-
-        return null;
-    }
-
-    private async Task<string> ValidateUserAsync(PunchoutUserMapping model)
-    {
-        if (model.UserId.IsNullOrEmpty() || model.MemberId.IsNullOrEmpty())
-        {
-            return "UserId and MemberId are required.";
-        }
-
-        var user = await userManager.FindByIdAsync(model.UserId);
-        if (user == null || user.MemberId != model.MemberId)
-        {
-            return "The user is not a security account of the specified contact.";
-        }
-
-        if (user.IsAdministrator || user.UserType != nameof(UserType.Customer))
-        {
-            return "Only non-administrator customer accounts can be mapped.";
-        }
-
-        return null;
     }
 }

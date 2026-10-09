@@ -18,6 +18,13 @@
         "validation": {
           "externalId-required": "Ekstern identitet er påkrevd",
           "userId-required": "Konto er påkrevd"
+        },
+        "errors": {
+          "externalId-required": "ExternalId er påkrevd",
+          "mapping-exists": "En tilordning med ExternalId '{{externalId}}' finnes allerede.",
+          "userId-memberId-required": "UserId og MemberId er påkrevd.",
+          "memberId-mismatch": "Brukeren er ikke en sikkerhetskonto for den angitte kontakten.",
+          "user-is-admin-or-customer": "Bare kontoer av typen Customer som ikke er administratorer, kan tilordnes."
         }
       }
     },

@@ -18,6 +18,13 @@
         "validation": {
           "externalId-required": "外部身份为必填项",
           "userId-required": "账户为必填项"
+        },
+        "errors": {
+          "externalId-required": "ExternalId 为必填项",
+          "mapping-exists": "ExternalId 为 '{{externalId}}' 的映射已存在。",
+          "userId-memberId-required": "UserId 和 MemberId 为必填项。",
+          "memberId-mismatch": "该用户不是指定联系人的安全账户。",
+          "user-is-admin-or-customer": "只能映射非管理员的 Customer 类型账户。"
         }
       }
     },

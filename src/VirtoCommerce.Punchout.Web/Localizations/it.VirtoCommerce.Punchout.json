@@ -18,6 +18,13 @@
         "validation": {
           "externalId-required": "L'identità esterna è obbligatoria",
           "userId-required": "L'account è obbligatorio"
+        },
+        "errors": {
+          "externalId-required": "ExternalId è obbligatorio",
+          "mapping-exists": "Esiste già una mappatura con ExternalId '{{externalId}}'.",
+          "userId-memberId-required": "UserId e MemberId sono obbligatori.",
+          "memberId-mismatch": "L'utente non è un account di sicurezza del contatto specificato.",
+          "user-is-admin-or-customer": "È possibile mappare solo account di tipo Customer non amministratori."
         }
       }
     },

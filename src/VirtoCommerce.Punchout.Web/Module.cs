@@ -1,4 +1,5 @@
 using System;
+using FluentValidation;
 using GraphQL.MicrosoftDI;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +23,7 @@ using VirtoCommerce.Punchout.Data.PostgreSql;
 using VirtoCommerce.Punchout.Data.Repositories;
 using VirtoCommerce.Punchout.Data.Services;
 using VirtoCommerce.Punchout.Data.SqlServer;
+using VirtoCommerce.Punchout.Data.Validators;
 using VirtoCommerce.Punchout.ExperienceApi;
 using VirtoCommerce.Punchout.ExperienceApi.Middlewares;
 using VirtoCommerce.StoreModule.Core.Model;
@@ -68,6 +70,7 @@ public class Module : IModule, IHasConfiguration
 
         serviceCollection.AddTransient<IPunchoutUserMappingService, PunchoutUserMappingService>();
         serviceCollection.AddTransient<IPunchoutUserMappingSearchService, PunchoutUserMappingSearchService>();
+        serviceCollection.AddTransient<AbstractValidator<PunchoutUserMapping>, PunchoutUserMappingValidator>();
 
         serviceCollection.AddTransient<ICxmlSerializer, CxmlSerializer>();
         serviceCollection.AddTransient<ICxmlResponseFactory, CxmlResponseFactory>();

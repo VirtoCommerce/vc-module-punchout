@@ -18,6 +18,13 @@
         "validation": {
           "externalId-required": "外部 ID は必須です",
           "userId-required": "アカウントは必須です"
+        },
+        "errors": {
+          "externalId-required": "ExternalId は必須です",
+          "mapping-exists": "ExternalId '{{externalId}}' のマッピングは既に存在します。",
+          "userId-memberId-required": "UserId と MemberId は必須です。",
+          "memberId-mismatch": "このユーザーは指定された連絡先のセキュリティアカウントではありません。",
+          "user-is-admin-or-customer": "マッピングできるのは、管理者以外の Customer タイプのアカウントのみです。"
         }
       }
     },

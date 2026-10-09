@@ -18,6 +18,13 @@
         "validation": {
           "externalId-required": "Внешний идентификатор обязателен",
           "userId-required": "Учётная запись обязательна"
+        },
+        "errors": {
+          "externalId-required": "ExternalId обязателен",
+          "mapping-exists": "Сопоставление с ExternalId '{{externalId}}' уже существует.",
+          "userId-memberId-required": "UserId и MemberId обязательны.",
+          "memberId-mismatch": "Пользователь не является учётной записью указанного контакта.",
+          "user-is-admin-or-customer": "Сопоставлять можно только учётные записи типа Customer без прав администратора."
         }
       }
     },

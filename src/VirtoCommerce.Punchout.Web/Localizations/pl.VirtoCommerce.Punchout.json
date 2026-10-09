@@ -18,6 +18,13 @@
         "validation": {
           "externalId-required": "Tożsamość zewnętrzna jest wymagana",
           "userId-required": "Konto jest wymagane"
+        },
+        "errors": {
+          "externalId-required": "ExternalId jest wymagany",
+          "mapping-exists": "Mapowanie z ExternalId '{{externalId}}' już istnieje.",
+          "userId-memberId-required": "UserId i MemberId są wymagane.",
+          "memberId-mismatch": "Użytkownik nie jest kontem zabezpieczeń wskazanego kontaktu.",
+          "user-is-admin-or-customer": "Można mapować tylko konta typu Customer niebędące kontami administratora."
         }
       }
     },

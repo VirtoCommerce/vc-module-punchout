@@ -18,6 +18,13 @@
         "validation": {
           "externalId-required": "Ulkoinen tunniste on pakollinen",
           "userId-required": "Tili on pakollinen"
+        },
+        "errors": {
+          "externalId-required": "ExternalId on pakollinen",
+          "mapping-exists": "Määritys, jonka ExternalId on '{{externalId}}', on jo olemassa.",
+          "userId-memberId-required": "UserId ja MemberId ovat pakollisia.",
+          "memberId-mismatch": "Käyttäjä ei ole määritetyn yhteyshenkilön suojaustili.",
+          "user-is-admin-or-customer": "Vain Customer-tyyppisiä tilejä, jotka eivät ole järjestelmänvalvojia, voidaan määrittää."
         }
       }
     },

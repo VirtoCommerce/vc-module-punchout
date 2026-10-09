@@ -31,4 +31,11 @@ public static class PunchoutSetupStatus
     /// The URL the request asks to return to is not in the allow list of the configuration.
     /// </summary>
     public const string ReturnUrlNotAllowed = "ReturnUrlNotAllowed";
+
+    public const string SetupError = "SetupError";
+
+    /// <summary>
+    /// Generic issues with configurations.
+    /// </summary>
+    public const string ConfigurationError = "ConfigurationError";
 }

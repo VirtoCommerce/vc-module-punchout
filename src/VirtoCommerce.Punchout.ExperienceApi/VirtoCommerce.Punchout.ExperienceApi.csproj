@@ -4,7 +4,8 @@
     <SonarQubeTestProject>false</SonarQubeTestProject>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="VirtoCommerce.ProfileExperienceApiModule.Data" Version="3.1021.0" />
+	<PackageReference Include="VirtoCommerce.ProfileExperienceApiModule.Data" Version="3.1021.0" />
+    <PackageReference Include="VirtoCommerce.XCart.Core" Version="3.1038.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\VirtoCommerce.Punchout.Core\VirtoCommerce.Punchout.Core.csproj" />
@@ -12,7 +13,6 @@
   <ItemGroup>
     <Folder Include="Authorization\" />
     <Folder Include="Commands\" />
-    <Folder Include="Queries\" />
     <Folder Include="Schemas\" />
   </ItemGroup>
 </Project>

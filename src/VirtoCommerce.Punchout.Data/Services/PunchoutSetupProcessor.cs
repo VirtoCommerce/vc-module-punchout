@@ -7,8 +7,8 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VirtoCommerce.Platform.Core.Common;
-using VirtoCommerce.Platform.Core.Settings;
 using VirtoCommerce.Punchout.Core;
+using VirtoCommerce.Punchout.Core.Extensions;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Security;
 using VirtoCommerce.Punchout.Core.Services;
@@ -17,14 +17,14 @@ using VirtoCommerce.StoreModule.Core.Services;
 
 namespace VirtoCommerce.Punchout.Data.Services;
 
-public class PunchoutSetupService(
+public class PunchoutSetupProcessor(
     IOptions<PunchoutOptions> options,
     IPunchoutUserMappingSearchService userMappingSearchService,
     IPunchoutSessionService sessionService,
     IStoreService storeService,
-    IPunchoutHandler handler,
-    ILogger<PunchoutSetupService> logger)
-    : IPunchoutSetupService
+    IPunchoutHandlerFactory handlerFactory,
+    ILogger<PunchoutSetupProcessor> logger)
+    : IPunchoutSetupProcessor
 {
     protected const string StartPagePath = "punchout";
 
@@ -46,24 +46,43 @@ public class PunchoutSetupService(
         var sessionToken = CreateSessionToken();
         var session = CreateSession(request, validationResult.UserMapping, validationResult.Configuration, validationResult.StorefrontUrl, sessionToken);
 
-        var handlerContext = CreateHandlerContext(request, validationResult, session);
-        await handler.HandleSetupAsync(handlerContext);
+        var handler = handlerFactory.Create(validationResult.Configuration);
+        if (handler == null)
+        {
+            return PunchoutSetupResult.Error(PunchoutSetupStatus.ConfigurationError);
+        }
+
+        var handlerContext = CreateHandlerContext(request, validationResult, session, sessionToken);
+        try
+        {
+            await handler.HandleSetupAsync(handlerContext);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Punchout '{HandlerName}' handler failed to process setup for sender identity '{SenderIdentity}'.",
+                handler.GetType().Name, request.Sender);
+
+            return PunchoutSetupResult.Error(PunchoutSetupStatus.SetupError);
+        }
 
         if (handlerContext.IsFailed)
         {
-            return PunchoutSetupResult.Error(handlerContext.ErrorStatus, handlerContext.ErrorMessage);
+            logger.LogWarning("Punchout '{HandlerName}' handler failed to process setup  for session '{SessionId}' with status '{Status}': {Message}",
+                handler.GetType().Name, session.Id, handlerContext.ErrorCode, handlerContext.ErrorMessage);
+
+            return PunchoutSetupResult.Error(handlerContext.ErrorCode, handlerContext.ErrorMessage);
         }
 
         await sessionService.SaveChangesAsync([handlerContext.Session]);
 
-        // The token goes to the buyer in the start page URL, only the hash is stored
-        return PunchoutSetupResult.Success(BuildStartPageUrl(handlerContext.Session.StartPage, sessionToken));
+        return PunchoutSetupResult.Success(handlerContext.StartPage);
     }
 
     protected virtual PunchoutSetupHandlerContext CreateHandlerContext(
         PunchoutSetupRequest request,
         PunchoutSetupValidationResult validationResult,
-        PunchoutSession session)
+        PunchoutSession session,
+        string sessionToken)
     {
         var context = AbstractTypeFactory<PunchoutSetupHandlerContext>.TryCreateInstance();
 
@@ -71,6 +90,8 @@ public class PunchoutSetupService(
         context.Configuration = validationResult.Configuration;
         context.UserMapping = validationResult.UserMapping;
         context.Session = session;
+        // The token goes to the buyer in the start page URL, only the hash is stored
+        context.StartPage = BuildStartPageUrl(session.StartPage, sessionToken);
 
         return context;
     }
@@ -96,11 +117,11 @@ public class PunchoutSetupService(
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.InvalidCredentials);
         }
 
-        if (string.IsNullOrEmpty(settings.StoreId))
+        if (string.IsNullOrEmpty(settings.Id) || string.IsNullOrEmpty(settings.StoreId))
         {
             logger.LogError("Punchout is not configured: the configuration matched for sender identity '{SenderIdentity}' has no {Missing}.",
                 request.Sender,
-                nameof(settings.StoreId));
+                string.IsNullOrEmpty(settings.Id) ? nameof(settings.Id) : nameof(settings.StoreId));
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
         }
@@ -131,20 +152,12 @@ public class PunchoutSetupService(
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.UserNotFound);
         }
 
-        var store = await storeService.GetByIdAsync(settings.StoreId);
+        var store = await storeService.GetPunchoutStoreAsync(settings.StoreId);
 
         if (store is null)
         {
-            logger.LogError("Punchout is configured for store '{StoreId}', which does not exist.",
-                settings.StoreId);
-
-            return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
-        }
-
-        if (!IsPunchoutEnabled(store))
-        {
-            logger.LogWarning("Punchout setup rejected for sender identity '{SenderIdentity}': punchout is disabled for store '{StoreId}'.",
-                request.Sender, store.Id);
+            logger.LogWarning("Punchout setup rejected for sender identity '{SenderIdentity}': store '{StoreId}' does not exist or punchout is disabled for it.",
+                request.Sender, settings.StoreId);
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
         }
@@ -237,11 +250,14 @@ public class PunchoutSetupService(
         var session = AbstractTypeFactory<PunchoutSession>.TryCreateInstance();
 
         session.StoreId = settings.StoreId;
+        session.ConfigurationId = settings.Id;
         session.UserId = userMapping.UserId;
         session.SessionTokenHash = SessionTokenHasher.Hash(sessionToken);
         session.BuyerCookie = request.BuyerCookie;
         session.BuyerIdentity = request.From;
         session.BuyerDomain = request.FromDomain;
+        session.SupplierIdentity = request.To;
+        session.SupplierDomain = request.ToDomain;
         session.SenderIdentity = request.Sender;
         session.SenderDomain = request.SenderDomain;
         session.ReturnUrl = request.ReturnUrl;
@@ -251,11 +267,6 @@ public class PunchoutSetupService(
         session.StartPage = BuildStartPage(storefrontUrl);
 
         return session;
-    }
-
-    protected virtual bool IsPunchoutEnabled(Store store)
-    {
-        return store.Settings.GetValue<bool>(ModuleConstants.Settings.General.PunchoutEnabled);
     }
 
     protected virtual string GetStorefrontUrl(Store store)

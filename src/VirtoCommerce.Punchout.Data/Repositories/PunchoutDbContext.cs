@@ -40,6 +40,17 @@ public class PunchoutDbContext : DbContextBase
             .HasIndex(x => x.UserId)
             .HasDatabaseName("IX_PunchoutUserMapping_UserId");
 
+        modelBuilder.Entity<PunchoutOrderMessageEntity>().ToAuditableEntityTable("PunchoutOrderMessage");
+        modelBuilder.Entity<PunchoutOrderMessageEntity>()
+            .HasOne<PunchoutSessionEntity>()
+            .WithMany()
+            .HasForeignKey(x => x.SessionId)
+            .IsRequired()
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PunchoutOrderMessageEntity>()
+            .HasIndex(x => x.SessionId)
+            .HasDatabaseName("IX_PunchoutOrderMessage_SessionId");
+
         switch (Database.ProviderName)
         {
             case "Pomelo.EntityFrameworkCore.MySql":

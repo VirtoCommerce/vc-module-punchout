@@ -71,7 +71,7 @@ public class PunchoutSetupMapper(ICxmlResponseFactory responseFactory) : IPuncho
 
         var (code, text) = MapStatus(result.Status);
 
-        var document = responseFactory.CreateResponse(code, text, result.Message);
+        var document = responseFactory.CreateResponse(code, text, result.ErrorMessage);
 
         if (!string.IsNullOrEmpty(result.StartPage))
         {
@@ -94,6 +94,7 @@ public class PunchoutSetupMapper(ICxmlResponseFactory responseFactory) : IPuncho
             PunchoutSetupStatus.UserNotFound => (CxmlConstants.Status.UnauthorizedCode, CxmlConstants.Status.UnauthorizedText),
             PunchoutSetupStatus.ReturnUrlNotAllowed => (CxmlConstants.Status.BadRequestCode, CxmlConstants.Status.BadRequestText),
             PunchoutSetupStatus.StoreNotConfigured => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
+            PunchoutSetupStatus.ConfigurationError => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
             _ => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
         };
     }

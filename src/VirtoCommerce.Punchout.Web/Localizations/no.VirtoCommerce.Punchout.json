@@ -1,0 +1,63 @@
+{
+  "punchout": {
+    "blades": {
+      "user-mapping-detail": {
+        "title": "Punchout-bruker",
+        "labels": {
+          "externalId": "Ekstern identitet",
+          "userId": "Konto",
+          "isActive": "Aktiv",
+          "no-accounts": "Denne kontakten har ingen sikkerhetskonto ennå. Opprett en først: en Punchout-økt åpnes for en konto, ikke for en kontakt."
+        },
+        "placeholders": {
+          "externalId": "Angi brukeridentiteten til innkjøpssystemet"
+        },
+        "notations": {
+          "externalId": "Verdien innkjøpssystemet sender i cXML Header/Sender/Credential/Identity."
+        },
+        "validation": {
+          "externalId-required": "Ekstern identitet er påkrevd",
+          "userId-required": "Konto er påkrevd"
+        },
+        "errors": {
+          "externalId-required": "ExternalId er påkrevd",
+          "mapping-exists": "En tilordning med ExternalId '{{externalId}}' finnes allerede.",
+          "userId-memberId-required": "UserId og MemberId er påkrevd.",
+          "memberId-mismatch": "Brukeren er ikke en sikkerhetskonto for den angitte kontakten.",
+          "user-is-admin-or-customer": "Bare kontoer av typen Customer som ikke er administratorer, kan tilordnes."
+        }
+      }
+    },
+    "dialogs": {
+      "user-mapping-save": {
+        "title": "Lagre endringer",
+        "message": "Punchout-brukeren er endret. Vil du lagre endringene?"
+      },
+      "user-mapping-delete": {
+        "title": "Bekreft sletting",
+        "message": "Er du sikker på at du vil slette Punchout-brukertilordningen '{{externalId}}'?"
+      }
+    },
+    "widgets": {
+      "user-mapping": {
+        "title": "Punchout-bruker",
+        "not-set": "Ikke koblet"
+      }
+    }
+  },
+  "permissions": {
+    "punchout:access": "Åpne Punchout-menyen",
+    "punchout:create": "Opprette Punchout-relaterte data",
+    "punchout:read": "Vise Punchout-relaterte data",
+    "punchout:update": "Oppdatere Punchout-relaterte data",
+    "punchout:delete": "Slette Punchout-relaterte data"
+  },
+  "settings": {
+    "Punchout": {
+      "Enabled": {
+        "title": "Punchout aktivert",
+        "description": "Innstilling for Punchout aktivert"
+      }
+    }
+  }
+}

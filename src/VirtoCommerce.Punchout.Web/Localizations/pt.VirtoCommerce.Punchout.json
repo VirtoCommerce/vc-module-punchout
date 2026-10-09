@@ -1,0 +1,63 @@
+{
+  "punchout": {
+    "blades": {
+      "user-mapping-detail": {
+        "title": "Usuário Punchout",
+        "labels": {
+          "externalId": "Identidade externa",
+          "userId": "Conta",
+          "isActive": "Ativo",
+          "no-accounts": "Este contato ainda não tem uma conta de segurança. Crie uma primeiro: uma sessão Punchout é aberta para uma conta, não para um contato."
+        },
+        "placeholders": {
+          "externalId": "Insira a identidade do usuário do sistema de compras"
+        },
+        "notations": {
+          "externalId": "O valor que o sistema de compras envia em cXML Header/Sender/Credential/Identity."
+        },
+        "validation": {
+          "externalId-required": "A identidade externa é obrigatória",
+          "userId-required": "A conta é obrigatória"
+        },
+        "errors": {
+          "externalId-required": "ExternalId é obrigatório",
+          "mapping-exists": "Já existe um mapeamento com ExternalId '{{externalId}}'.",
+          "userId-memberId-required": "UserId e MemberId são obrigatórios.",
+          "memberId-mismatch": "O usuário não é uma conta de segurança do contato especificado.",
+          "user-is-admin-or-customer": "Somente contas do tipo Customer que não sejam de administrador podem ser mapeadas."
+        }
+      }
+    },
+    "dialogs": {
+      "user-mapping-save": {
+        "title": "Salvar alterações",
+        "message": "O usuário Punchout foi modificado. Deseja salvar as alterações?"
+      },
+      "user-mapping-delete": {
+        "title": "Confirmação de exclusão",
+        "message": "Tem certeza de que deseja excluir o mapeamento de usuário Punchout '{{externalId}}'?"
+      }
+    },
+    "widgets": {
+      "user-mapping": {
+        "title": "Usuário Punchout",
+        "not-set": "Não vinculado"
+      }
+    }
+  },
+  "permissions": {
+    "punchout:access": "Abrir o menu Punchout",
+    "punchout:create": "Criar dados relacionados ao Punchout",
+    "punchout:read": "Visualizar dados relacionados ao Punchout",
+    "punchout:update": "Atualizar dados relacionados ao Punchout",
+    "punchout:delete": "Excluir dados relacionados ao Punchout"
+  },
+  "settings": {
+    "Punchout": {
+      "Enabled": {
+        "title": "Punchout habilitado",
+        "description": "Configuração de Punchout habilitado"
+      }
+    }
+  }
+}

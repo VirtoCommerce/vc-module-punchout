@@ -15,6 +15,6 @@ public class PunchoutSetupValidationResult
     public static PunchoutSetupValidationResult Valid(PunchoutConfiguration configuration, PunchoutUserMapping userMapping, string storefrontUrl) =>
         new() { Configuration = configuration, UserMapping = userMapping, StorefrontUrl = storefrontUrl };
 
-    public static PunchoutSetupValidationResult Invalid(string status, string message = null) =>
-        new() { Error = PunchoutSetupResult.Error(status, message) };
+    public static PunchoutSetupValidationResult Invalid(string status, string errorMessage = null) =>
+        new() { Error = PunchoutSetupResult.Error(status, errorMessage) };
 }

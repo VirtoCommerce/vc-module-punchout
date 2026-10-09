@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Platform.Core.Domain;
 using VirtoCommerce.Platform.Data.Infrastructure;
+using VirtoCommerce.Punchout.Core;
 using VirtoCommerce.Punchout.Data.Models;
 
 namespace VirtoCommerce.Punchout.Data.Repositories;
@@ -17,6 +18,8 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
     public IQueryable<PunchoutSessionEntity> PunchoutSessions => DbContext.Set<PunchoutSessionEntity>();
 
     public IQueryable<PunchoutUserMappingEntity> PunchoutUserMappings => DbContext.Set<PunchoutUserMappingEntity>();
+
+    public IQueryable<PunchoutOrderMessageEntity> PunchoutOrderMessages => DbContext.Set<PunchoutOrderMessageEntity>();
 
     public virtual async Task<IList<PunchoutSessionEntity>> GetPunchoutSessionsByIdsAsync(IList<string> ids, string responseGroup)
     {
@@ -40,6 +43,18 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
         return ids.Count == 1
             ? await PunchoutUserMappings.Where(x => x.Id == ids.First()).ToListAsync()
             : await PunchoutUserMappings.Where(x => ids.Contains(x.Id)).ToListAsync();
+    }
+
+    public virtual async Task<IList<PunchoutOrderMessageEntity>> GetPunchoutOrderMessagesByIdsAsync(IList<string> ids, string responseGroup)
+    {
+        if (ids.IsNullOrEmpty())
+        {
+            return [];
+        }
+
+        return ids.Count == 1
+            ? await PunchoutOrderMessages.Where(x => x.Id == ids.First()).ToListAsync()
+            : await PunchoutOrderMessages.Where(x => ids.Contains(x.Id)).ToListAsync();
     }
 
     public virtual async Task<string> RedeemSessionTokenAsync(string sessionTokenHash, DateTime now)
@@ -69,5 +84,24 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
                 .SetProperty(x => x.ModifiedDate, now));
 
         return affected == 1 ? sessionId : null;
+    }
+
+    public virtual async Task<bool> ReturnSessionAsync(string sessionId, DateTime now)
+    {
+        if (sessionId.IsNullOrEmpty())
+        {
+            return false;
+        }
+
+        // Atomic conditional update
+        var affected = await DbContext.Set<PunchoutSessionEntity>()
+            .Where(x => x.Id == sessionId &&
+                        x.Status == ModuleConstants.SessionStatus.Active &&
+                        x.ExpirationDate != null && x.ExpirationDate > now)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.Status, ModuleConstants.SessionStatus.Returned)
+                .SetProperty(x => x.ModifiedDate, now));
+
+        return affected == 1;
     }
 }

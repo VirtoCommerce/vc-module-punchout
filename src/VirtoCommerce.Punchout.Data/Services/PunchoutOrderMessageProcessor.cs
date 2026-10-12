@@ -92,13 +92,25 @@ public class PunchoutOrderMessageProcessor(
     protected virtual async Task<PunchoutOrderMessageValidationResult> ValidateAsync(PunchoutOrderMessageRequest request)
     {
         // No session id if the access token is not issued by the punchout grant
-        var session = request.SessionId.IsNullOrEmpty()
-            ? null
-            : await sessionService.GetByIdAsync(request.SessionId);
+        if (request.SessionId.IsNullOrEmpty())
+        {
+            logger.LogWarning("Punchout order message rejected: sessionId is not found in PunchoutOrderMessageRequest.");
+
+            return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.SessionNotFound);
+        }
+
+        var session = await sessionService.GetByIdAsync(request.SessionId);
+        if (session == null)
+        {
+            logger.LogWarning("Punchout order message rejected: session '{SessionId}' is not found.",
+                request.SessionId);
+
+            return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.SessionNotFound);
+        }
 
         if (!IsSessionOwner(session, request))
         {
-            logger.LogWarning("Punchout order message rejected: session '{SessionId}' is not found for user '{UserId}' in store '{StoreId}'.",
+            logger.LogWarning("Punchout order message rejected: session '{SessionId}' is not for user '{UserId}' in store '{StoreId}'.",
                 request.SessionId, request.UserId, request.StoreId);
 
             return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.SessionNotFound);

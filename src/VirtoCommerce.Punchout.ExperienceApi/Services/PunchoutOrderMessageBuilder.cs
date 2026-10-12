@@ -64,7 +64,7 @@ public class PunchoutOrderMessageBuilder(ICxmlResponseFactory cxmlFactory) : IPu
     protected virtual CxmlPunchoutOrderMessage BuildPunchoutOrderMessage(PunchoutSession session, CartAggregate cartAggregate)
     {
         var cart = cartAggregate.Cart;
-        var lineItems = cart.Items?.Where(x => x.SelectedForCheckout)?.ToArray() ?? [];
+        var lineItems = cart.Items?.Where(x => x.SelectedForCheckout).ToArray() ?? [];
 
         return new CxmlPunchoutOrderMessage
         {

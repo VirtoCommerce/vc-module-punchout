@@ -9,4 +9,7 @@ public class CxmlRequest
 
     [XmlElement("PunchOutSetupRequest")]
     public CxmlPunchoutSetupRequest PunchOutSetupRequest { get; set; }
+
+    [XmlElement("PunchOutOrderRequest")]
+    public CxmlPunchoutOrderRequest PunchOutOrderRequest { get; set; }
 }

@@ -12,11 +12,11 @@ namespace VirtoCommerce.Punchout.Data.Cxml.Services;
 
 public class PunchoutOrderMapper(ICxmlResponseFactory responseFactory) : IPunchoutOrderMapper
 {
-    public virtual PunchoutOrderRequest MapRequest(CxmlDocument document)
+    public virtual PunchoutOrderRequestData MapRequest(CxmlDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
 
-        var orderContext = AbstractTypeFactory<PunchoutOrderRequest>.TryCreateInstance();
+        var orderContext = AbstractTypeFactory<PunchoutOrderRequestData>.TryCreateInstance();
 
         var header = document.Header;
         var orderRequest = document.Request?.OrderRequest;
@@ -62,10 +62,24 @@ public class PunchoutOrderMapper(ICxmlResponseFactory responseFactory) : IPuncho
     {
         ArgumentNullException.ThrowIfNull(result);
 
-        // todo: map response codes when finalized
-        var document = responseFactory.CreateResponse(CxmlConstants.Status.OkCode, CxmlConstants.Status.OkText, result.ErrorMessage);
+        var (code, text) = MapStatus(result.Status);
 
-        return document;
+        return responseFactory.CreateResponse(code, text, result.ErrorMessage);
+    }
+
+    protected virtual (string Code, string Text) MapStatus(string status)
+    {
+        return status switch
+        {
+            PunchoutOrderStatus.Success => (CxmlConstants.Status.OkCode, CxmlConstants.Status.OkText),
+            PunchoutOrderStatus.InvalidCredentials => (CxmlConstants.Status.UnauthorizedCode, CxmlConstants.Status.UnauthorizedText),
+            PunchoutOrderStatus.UserNotFound => (CxmlConstants.Status.UnauthorizedCode, CxmlConstants.Status.UnauthorizedText),
+            PunchoutOrderStatus.InvalidRequest => (CxmlConstants.Status.BadRequestCode, CxmlConstants.Status.BadRequestText),
+            PunchoutOrderStatus.CurrencyNotSupported => (CxmlConstants.Status.BadRequestCode, CxmlConstants.Status.BadRequestText),
+            PunchoutOrderStatus.UnsupportedOrderType => (CxmlConstants.Status.NotImplementedCode, CxmlConstants.Status.NotImplementedText),
+            PunchoutOrderStatus.StoreNotConfigured => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
+            _ => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
+        };
     }
 
     protected virtual PunchoutUserContext MapUser(IList<CxmlContact> contacts)

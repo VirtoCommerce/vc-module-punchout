@@ -5,5 +5,5 @@ namespace VirtoCommerce.Punchout.Core.Services;
 
 public interface IPunchoutOrderRequestProcessor
 {
-    Task<PunchoutOrderResult> ProcessAsync(PunchoutOrderRequest request);
+    Task<PunchoutOrderResult> ProcessAsync(PunchoutOrderRequestData request);
 }

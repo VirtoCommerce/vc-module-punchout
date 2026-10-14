@@ -2,7 +2,6 @@ using System;
 using System.Buffers.Text;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -24,13 +23,11 @@ public class PunchoutSetupProcessor(
     IStoreService storeService,
     IPunchoutHandlerFactory handlerFactory,
     ILogger<PunchoutSetupProcessor> logger)
-    : IPunchoutSetupProcessor
+    : BasePunchoutProcessor(options, userMappingSearchService), IPunchoutSetupProcessor
 {
     protected const string StartPagePath = "punchout";
 
     protected const int SessionTokenByteCount = 32;
-
-    protected PunchoutOptions Options => options.Value;
 
     public virtual async Task<PunchoutSetupResult> ProcessAsync(PunchoutSetupRequest request)
     {
@@ -175,35 +172,6 @@ public class PunchoutSetupProcessor(
         return PunchoutSetupValidationResult.Valid(settings, userMapping, storefrontUrl);
     }
 
-    protected virtual PunchoutConfiguration FindConfiguration(PunchoutSetupRequest request)
-    {
-        if (request.SharedSecret.IsNullOrEmpty())
-        {
-            return null;
-        }
-
-        var secret = Encoding.UTF8.GetBytes(request.SharedSecret);
-        PunchoutConfiguration result = null;
-
-        // Compare with every configuration, so the response time does not depend on the matched position
-        foreach (var configuration in Options.Configurations.Where(x => !x.SharedSecret.IsNullOrEmpty()))
-        {
-            if (CryptographicOperations.FixedTimeEquals(secret, Encoding.UTF8.GetBytes(configuration.SharedSecret)))
-            {
-                result ??= configuration;
-            }
-        }
-
-        return result;
-    }
-
-    protected virtual bool AreCredentialsValid(PunchoutSetupRequest request, PunchoutConfiguration settings)
-    {
-        // An empty configured domain is not checked
-        return settings.SenderDomain.IsNullOrEmpty() ||
-               settings.SenderDomain.EqualsIgnoreCase(request.SenderDomain);
-    }
-
     protected virtual bool IsReturnUrlAllowed(string returnUrl, PunchoutConfiguration settings)
     {
         if (settings.AllowedReturnUrls.IsNullOrEmpty())
@@ -221,23 +189,6 @@ public class PunchoutSetupProcessor(
             .Any(pattern => pattern.EndsWith('*')
                 ? returnUrl.StartsWith(pattern[..^1], StringComparison.OrdinalIgnoreCase)
                 : returnUrl.EqualsIgnoreCase(pattern));
-    }
-
-    protected virtual async Task<PunchoutUserMapping> FindUserMappingAsync(string senderIdentity)
-    {
-        if (string.IsNullOrEmpty(senderIdentity))
-        {
-            return null;
-        }
-
-        var criteria = AbstractTypeFactory<PunchoutUserMappingSearchCriteria>.TryCreateInstance();
-        criteria.ExternalIds = [senderIdentity];
-        criteria.IsActive = true;
-        criteria.Take = 1;
-
-        var searchResult = await userMappingSearchService.SearchNoCloneAsync(criteria);
-
-        return searchResult.Results.FirstOrDefault();
     }
 
     protected virtual PunchoutSession CreateSession(

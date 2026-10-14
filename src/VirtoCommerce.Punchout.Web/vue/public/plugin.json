@@ -1,4 +1,3 @@
 {
-  // Punchout admin UI for the Admin Shell host (Module Federation remote): the punchout user widget on the contact blade
   "remote": { "name": "punchout_admin", "exposed": "./Module" }
 }

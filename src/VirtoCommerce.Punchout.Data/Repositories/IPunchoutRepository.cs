@@ -15,11 +15,15 @@ public interface IPunchoutRepository : IRepository
 
     IQueryable<PunchoutOrderMessageEntity> PunchoutOrderMessages { get; }
 
+    IQueryable<PunchoutOrderRequestEntity> PunchoutOrderRequests { get; }
+
     Task<IList<PunchoutSessionEntity>> GetPunchoutSessionsByIdsAsync(IList<string> ids, string responseGroup);
 
     Task<IList<PunchoutUserMappingEntity>> GetPunchoutUserMappingsByIdsAsync(IList<string> ids, string responseGroup);
 
     Task<IList<PunchoutOrderMessageEntity>> GetPunchoutOrderMessagesByIdsAsync(IList<string> ids, string responseGroup);
+
+    Task<IList<PunchoutOrderRequestEntity>> GetPunchoutOrderRequestsByIdsAsync(IList<string> ids, string responseGroup);
 
     /// <summary>
     /// Atomically marks the session token as redeemed.

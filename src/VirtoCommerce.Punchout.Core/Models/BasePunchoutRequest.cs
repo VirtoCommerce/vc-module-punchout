@@ -3,6 +3,11 @@ namespace VirtoCommerce.Punchout.Core.Models;
 public abstract class BasePunchoutRequest
 {
     /// <summary>
+    /// Unique id of the cXML document, can be used to detect duplicate submissions.
+    /// </summary>
+    public string PayloadId { get; set; }
+
+    /// <summary>
     /// Buying organization (cXML Header/From/Credential/Identity).
     /// </summary>
     public string From { get; set; }

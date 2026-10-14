@@ -18,6 +18,13 @@ public static class CxmlConstants
         public const string Edit = "edit";
     }
 
+    public static class OrderRequestType
+    {
+        public const string New = "new";
+        public const string Update = "update";
+        public const string Delete = "delete";
+    }
+
     public static class ContactRole
     {
         public const string EndUser = "endUser";

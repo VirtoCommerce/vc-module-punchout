@@ -13,7 +13,7 @@ public class CxmlPunchoutOrderRequestHandler(
 {
     public bool CanHandle(CxmlDocument document)
     {
-        return document?.Request?.PunchOutOrderRequest is not null;
+        return document?.Request?.OrderRequest is not null;
     }
 
     public async Task<CxmlDocument> HandleAsync(CxmlDocument document)

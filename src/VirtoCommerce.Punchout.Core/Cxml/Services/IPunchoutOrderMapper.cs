@@ -5,7 +5,7 @@ namespace VirtoCommerce.Punchout.Core.Cxml.Services;
 
 public interface IPunchoutOrderMapper
 {
-    PunchoutOrderRequest MapRequest(CxmlDocument document);
+    PunchoutOrderRequestData MapRequest(CxmlDocument document);
 
     public CxmlDocument MapResponse(PunchoutOrderResult result);
 }

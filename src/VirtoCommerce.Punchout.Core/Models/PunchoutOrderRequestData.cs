@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace VirtoCommerce.Punchout.Core.Models;
 
-public class PunchoutOrderRequest : BasePunchoutRequest
+public class PunchoutOrderRequestData : BasePunchoutRequest
 {
     /// <summary>
     /// Purchase order number assigned by the buying organization.
@@ -13,7 +13,7 @@ public class PunchoutOrderRequest : BasePunchoutRequest
     public DateTimeOffset? OrderDate { get; set; }
 
     /// <summary>
-    /// 'new', 'update' or 'delete', see <see cref="Cxml.CxmlConstants.OrderRequestType"/>.
+    /// 'new', 'update' or 'delete'.
     /// </summary>
     public string OrderType { get; set; }
 

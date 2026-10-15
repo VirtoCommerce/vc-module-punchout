@@ -11,6 +11,13 @@ public static class CxmlConstants
     /// </summary>
     public const string TimestampFormat = "yyyy-MM-ddTHH:mm:sszzz";
 
+    public static class OperationAllowed
+    {
+        public const string Create = "create";
+        public const string Inspect = "inspect";
+        public const string Edit = "edit";
+    }
+
     public static class ContactRole
     {
         public const string EndUser = "endUser";

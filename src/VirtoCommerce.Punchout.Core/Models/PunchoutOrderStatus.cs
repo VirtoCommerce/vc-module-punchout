@@ -37,5 +37,10 @@ public static class PunchoutOrderStatus
     /// </summary>
     public const string StoreNotConfigured = "StoreNotConfigured";
 
+    /// <summary>
+    /// The same order is being processed by another request. The buyer may retry later.
+    /// </summary>
+    public const string OrderInProgress = "OrderInProgress";
+
     public const string OrderError = "OrderError";
 }

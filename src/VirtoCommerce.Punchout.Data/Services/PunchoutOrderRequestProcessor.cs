@@ -18,6 +18,7 @@ public class PunchoutOrderRequestProcessor(
     IOptions<PunchoutOptions> options,
     IPunchoutUserMappingSearchService userMappingSearchService,
     IStoreService storeService,
+    IPunchoutOrderRequestSearchService orderRequestSearchService,
     ILogger<PunchoutOrderRequestProcessor> logger)
     : BasePunchoutProcessor(options, userMappingSearchService), IPunchoutOrderRequestProcessor
 {
@@ -32,8 +33,76 @@ public class PunchoutOrderRequestProcessor(
             return validationResult.Error;
         }
 
+        var existingRequest = await FindExistingRequestAsync(request, validationResult.Configuration);
+
+        if (existingRequest is not null)
+        {
+            var existingResult = GetExistingRequestResult(request, existingRequest);
+
+            if (existingResult is not null)
+            {
+                return existingResult;
+            }
+        }
+
         // todo: create the order
         return PunchoutOrderResult.Error(PunchoutOrderStatus.OrderError, "Order processing is not implemented yet.");
+    }
+
+    /// <summary>
+    /// Finds a stored request for the same cXML document, or for the same purchase order sent in another document.
+    /// </summary>
+    protected virtual async Task<PunchoutOrderRequest> FindExistingRequestAsync(PunchoutOrderRequestData request, PunchoutConfiguration configuration)
+    {
+        // The same document sent again, e.g. the buyer did not receive the response
+        var criteria = AbstractTypeFactory<PunchoutOrderRequestSearchCriteria>.TryCreateInstance();
+        criteria.ConfigurationId = configuration.Id;
+        criteria.PayloadId = request.PayloadId;
+        criteria.Take = 1;
+
+        var searchResult = await orderRequestSearchService.SearchNoCloneAsync(criteria);
+        var existingRequest = searchResult.Results.FirstOrDefault();
+
+        if (existingRequest is not null)
+        {
+            return existingRequest;
+        }
+
+        // The same purchase order resent with a new payloadID. Failed and rejected attempts do not block it.
+        criteria = AbstractTypeFactory<PunchoutOrderRequestSearchCriteria>.TryCreateInstance();
+        criteria.ConfigurationId = configuration.Id;
+        criteria.PurchaseOrderNumber = request.OrderId;
+        criteria.OrderType = CxmlConstants.OrderRequestType.New;
+        criteria.Statuses = [PunchoutOrderRequestStatus.Completed, PunchoutOrderRequestStatus.Processing];
+        criteria.Take = 1;
+
+        searchResult = await orderRequestSearchService.SearchNoCloneAsync(criteria);
+
+        return searchResult.Results.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Returns the result for a request that was already received, or null when it has to be processed again.
+    /// </summary>
+    protected virtual PunchoutOrderResult GetExistingRequestResult(PunchoutOrderRequestData request, PunchoutOrderRequest existingRequest)
+    {
+        switch (existingRequest.Status)
+        {
+            case PunchoutOrderRequestStatus.Completed:
+                logger.LogInformation("Punchout order request '{OrderId}' with payload '{PayloadId}' is already processed by request '{ExistingRequestId}', returning the stored result.",
+                    request.OrderId, request.PayloadId, existingRequest.Id);
+
+                return PunchoutOrderResult.Success(existingRequest.CustomerOrderId, existingRequest.PurchaseOrderNumber);
+
+            case PunchoutOrderRequestStatus.Processing:
+                logger.LogWarning("Punchout order request '{OrderId}' with payload '{PayloadId}' is being processed by request '{ExistingRequestId}'.",
+                    request.OrderId, request.PayloadId, existingRequest.Id);
+
+                return PunchoutOrderResult.Error(PunchoutOrderStatus.OrderInProgress, "The order is being processed, please retry later.");
+
+            default:
+                return null;
+        }
     }
 
     protected virtual async Task<PunchoutOrderValidationResult> ValidateAsync(PunchoutOrderRequestData request)
@@ -136,6 +205,11 @@ public class PunchoutOrderRequestProcessor(
     /// </summary>
     protected virtual string ValidateOrder(PunchoutOrderRequestData request)
     {
+        if (string.IsNullOrEmpty(request.PayloadId))
+        {
+            return "The cXML document has no payloadID.";
+        }
+
         if (string.IsNullOrEmpty(request.OrderId))
         {
             return "The order has no orderID.";

@@ -78,6 +78,8 @@ public class PunchoutOrderMapper(ICxmlResponseFactory responseFactory) : IPuncho
             PunchoutOrderStatus.CurrencyNotSupported => (CxmlConstants.Status.BadRequestCode, CxmlConstants.Status.BadRequestText),
             PunchoutOrderStatus.UnsupportedOrderType => (CxmlConstants.Status.NotImplementedCode, CxmlConstants.Status.NotImplementedText),
             PunchoutOrderStatus.StoreNotConfigured => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
+            // 5xx tells the buyer to retry later
+            PunchoutOrderStatus.OrderInProgress => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
             _ => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
         };
     }

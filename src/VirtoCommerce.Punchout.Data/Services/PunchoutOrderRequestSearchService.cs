@@ -25,6 +25,42 @@ public class PunchoutOrderRequestSearchService(
     protected override IQueryable<PunchoutOrderRequestEntity> BuildQuery(IRepository repository, PunchoutOrderRequestSearchCriteria criteria)
     {
         var query = ((IPunchoutRepository)repository).PunchoutOrderRequests;
+
+        if (!string.IsNullOrEmpty(criteria.ConfigurationId))
+        {
+            query = query.Where(x => x.ConfigurationId == criteria.ConfigurationId);
+        }
+
+        if (!string.IsNullOrEmpty(criteria.StoreId))
+        {
+            query = query.Where(x => x.StoreId == criteria.StoreId);
+        }
+
+        if (!string.IsNullOrEmpty(criteria.PayloadId))
+        {
+            query = query.Where(x => x.PayloadId == criteria.PayloadId);
+        }
+
+        if (!string.IsNullOrEmpty(criteria.PurchaseOrderNumber))
+        {
+            query = query.Where(x => x.PurchaseOrderNumber == criteria.PurchaseOrderNumber);
+        }
+
+        if (!string.IsNullOrEmpty(criteria.OrderType))
+        {
+            query = query.Where(x => x.OrderType == criteria.OrderType);
+        }
+
+        if (!string.IsNullOrEmpty(criteria.CustomerOrderId))
+        {
+            query = query.Where(x => x.CustomerOrderId == criteria.CustomerOrderId);
+        }
+
+        if (!criteria.Statuses.IsNullOrEmpty())
+        {
+            query = query.Where(x => criteria.Statuses.Contains(x.Status));
+        }
+
         return query;
     }
 

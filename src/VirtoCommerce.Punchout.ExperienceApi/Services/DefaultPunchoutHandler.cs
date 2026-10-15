@@ -11,7 +11,7 @@ using VirtoCommerce.XCart.Core.Queries;
 namespace VirtoCommerce.Punchout.ExperienceApi.Services;
 
 /// <summary>
-/// Default handler: the setup is not customized, the order message is built from the "default" cart.
+/// Default handler: the setup is not customized, the order message is built from the current user cart.
 /// </summary>
 public class DefaultPunchoutHandler(
     IMediator mediator,
@@ -60,7 +60,6 @@ public class DefaultPunchoutHandler(
 
         query.StoreId = request.StoreId;
         query.UserId = request.UserId;
-        query.CartName = "default";
         query.OrganizationId = request.OrganizationId;
         query.CurrencyCode = request.CurrencyCode;
         query.CultureName = request.CultureName;

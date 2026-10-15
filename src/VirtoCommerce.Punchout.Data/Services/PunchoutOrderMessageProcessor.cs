@@ -17,6 +17,7 @@ public class PunchoutOrderMessageProcessor(
     IPunchoutSessionService sessionService,
     IPunchoutSessionManagementService sessionManagementService,
     IPunchoutOrderMessageService orderMessageService,
+    IPunchoutOrderMessageSearchService orderMessageSearchService,
     IStoreService storeService,
     IPunchoutHandlerFactory handlerFactory,
     ILogger<PunchoutOrderMessageProcessor> logger)
@@ -38,6 +39,15 @@ public class PunchoutOrderMessageProcessor(
         }
 
         var session = validationResult.Session;
+
+        // Idempotent replay: the session has already returned an order message
+        if (validationResult.ReturnedOrderMessage is not null)
+        {
+            logger.LogInformation("Punchout order message for session '{SessionId}' is already returned, replaying the stored order message.",
+                session.Id);
+
+            return CreateReturnedResult(session, validationResult.ReturnedOrderMessage);
+        }
 
         var handler = handlerFactory.Create(validationResult.Configuration);
         if (handler == null)
@@ -116,6 +126,16 @@ public class PunchoutOrderMessageProcessor(
             return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.SessionNotFound);
         }
 
+        if (IsSessionReturned(session))
+        {
+            var orderMessage = await FindReturnedOrderMessageAsync(session);
+
+            if (orderMessage is not null)
+            {
+                return PunchoutOrderMessageValidationResult.Returned(session, orderMessage);
+            }
+        }
+
         if (!IsSessionActive(session))
         {
             logger.LogWarning("Punchout order message rejected: session '{SessionId}' is expired.",
@@ -147,6 +167,37 @@ public class PunchoutOrderMessageProcessor(
         return PunchoutOrderMessageValidationResult.Valid(session, configuration, store);
     }
 
+    protected virtual async Task<PunchoutOrderMessage> FindReturnedOrderMessageAsync(PunchoutSession session)
+    {
+        var criteria = AbstractTypeFactory<PunchoutOrderMessageSearchCriteria>.TryCreateInstance();
+
+        criteria.SessionId = session.Id;
+        criteria.Take = 1;
+
+        var searchResult = await orderMessageSearchService.SearchNoCloneAsync(criteria);
+
+        return searchResult.Results.FirstOrDefault(x => !x.Cxml.IsNullOrEmpty());
+    }
+
+    protected virtual PunchoutCheckoutResult CreateReturnedResult(PunchoutSession session, PunchoutOrderMessage orderMessage)
+    {
+        var result = CreateCheckoutResult(session);
+
+        result.Cxml = orderMessage.Cxml;
+
+        return result;
+    }
+
+    protected virtual PunchoutCheckoutResult CreateCheckoutResult(PunchoutSession session)
+    {
+        var result = AbstractTypeFactory<PunchoutCheckoutResult>.TryCreateInstance();
+
+        result.Url = session.ReturnUrl;
+        result.FormField = FormField;
+
+        return result;
+    }
+
     protected virtual PunchoutOrderMessage CreateOrderMessage(PunchoutOrderMessageHandlerContext context)
     {
         var orderMessage = AbstractTypeFactory<PunchoutOrderMessage>.TryCreateInstance();
@@ -174,6 +225,11 @@ public class PunchoutOrderMessageProcessor(
         return session is not null &&
                session.UserId.EqualsIgnoreCase(request.UserId) &&
                session.StoreId.EqualsIgnoreCase(request.StoreId);
+    }
+
+    protected virtual bool IsSessionReturned(PunchoutSession session)
+    {
+        return session.Status == ModuleConstants.SessionStatus.Returned;
     }
 
     protected virtual bool IsSessionActive(PunchoutSession session)
@@ -210,10 +266,7 @@ public class PunchoutOrderMessageProcessor(
         handlerRequest.CurrencyCode = request.CurrencyCode ?? store.DefaultCurrency;
         handlerRequest.CultureName = request.CultureName ?? store.DefaultLanguage;
 
-        var result = AbstractTypeFactory<PunchoutCheckoutResult>.TryCreateInstance();
-
-        result.Url = session.ReturnUrl;
-        result.FormField = FormField;
+        var result = CreateCheckoutResult(session);
 
         var context = AbstractTypeFactory<PunchoutOrderMessageHandlerContext>.TryCreateInstance();
 

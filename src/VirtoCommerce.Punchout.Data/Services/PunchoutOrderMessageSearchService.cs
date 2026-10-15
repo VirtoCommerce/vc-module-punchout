@@ -25,6 +25,12 @@ public class PunchoutOrderMessageSearchService(
     protected override IQueryable<PunchoutOrderMessageEntity> BuildQuery(IRepository repository, PunchoutOrderMessageSearchCriteria criteria)
     {
         var query = ((IPunchoutRepository)repository).PunchoutOrderMessages;
+
+        if (!string.IsNullOrEmpty(criteria.SessionId))
+        {
+            query = query.Where(x => x.SessionId == criteria.SessionId);
+        }
+
         return query;
     }
 

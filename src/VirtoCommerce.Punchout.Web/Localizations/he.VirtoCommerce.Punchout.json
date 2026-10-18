@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "punchout:access": "פתיחת תפריט Punchout",
+    "punchout:create": "יצירת נתונים הקשורים ל-Punchout",
+    "punchout:read": "צפייה בנתונים הקשורים ל-Punchout",
+    "punchout:update": "עדכון נתונים הקשורים ל-Punchout",
+    "punchout:delete": "מחיקת נתונים הקשורים ל-Punchout"
+  },
+  "settings": {
+    "Punchout": {
+      "Enabled": {
+        "title": "Punchout מופעל",
+        "description": "הגדרת הפעלה של Punchout"
+      }
+    }
+  }
+}

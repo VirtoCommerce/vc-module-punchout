@@ -1,0 +1,34 @@
+{
+  "PUNCHOUT": {
+    "WIDGET": {
+      "TITLE": "مستخدم Punchout"
+    },
+    "MAPPING": {
+      "TITLE": "مستخدم Punchout",
+      "CARD": "الهوية في نظام المشتريات",
+      "IS_ACTIVE": "نشط",
+      "EXTERNAL_ID": "الهوية الخارجية",
+      "EXTERNAL_ID_PLACEHOLDER": "أدخل هوية المستخدم في نظام المشتريات",
+      "EXTERNAL_ID_HINT": "القيمة التي يرسلها نظام المشتريات في cXML Header/Sender/Credential/Identity.",
+      "ACCOUNT": "الحساب",
+      "NO_ACCOUNTS": "ليس لجهة الاتصال هذه حساب أمان بعد. أنشئ حسابًا أولًا: تُفتح جلسة Punchout لحساب، وليس لجهة اتصال."
+    },
+    "TOOLBAR": {
+      "SAVE": "حفظ",
+      "REFRESH": "تحديث",
+      "RESET": "إعادة تعيين",
+      "DELETE": "حذف"
+    },
+    "ALERTS": {
+      "CLOSE_CONFIRMATION": "تم تعديل مستخدم Punchout. هل تريد الإغلاق دون حفظ؟",
+      "DELETE": "هل تريد بالتأكيد حذف ربط مستخدم Punchout «{externalId}»؟"
+    },
+    "ERRORS": {
+      "externalId-required": "ExternalId مطلوب",
+      "mapping-exists": "يوجد بالفعل ربط بالقيمة ExternalId «{externalId}».",
+      "userId-memberId-required": "UserId وMemberId مطلوبان.",
+      "memberId-mismatch": "المستخدم ليس حساب أمان لجهة الاتصال المحددة.",
+      "user-is-admin-or-customer": "يمكن ربط حسابات النوع Customer فقط، بشرط ألا تكون حسابات مسؤول."
+    }
+  }
+}

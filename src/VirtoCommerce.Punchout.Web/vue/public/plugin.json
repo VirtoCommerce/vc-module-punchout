@@ -1,0 +1,3 @@
+{
+  "remote": { "name": "punchout_admin", "exposed": "./Module" }
+}

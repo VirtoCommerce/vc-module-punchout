@@ -1,0 +1,34 @@
+{
+  "PUNCHOUT": {
+    "WIDGET": {
+      "TITLE": "Punchout-användare"
+    },
+    "MAPPING": {
+      "TITLE": "Punchout-användare",
+      "CARD": "Identitet i inköpssystemet",
+      "IS_ACTIVE": "Aktiv",
+      "EXTERNAL_ID": "Extern identitet",
+      "EXTERNAL_ID_PLACEHOLDER": "Ange inköpssystemets användaridentitet",
+      "EXTERNAL_ID_HINT": "Värdet som inköpssystemet skickar i cXML Header/Sender/Credential/Identity.",
+      "ACCOUNT": "Konto",
+      "NO_ACCOUNTS": "Den här kontakten har inget säkerhetskonto ännu. Skapa ett först: en Punchout-session öppnas för ett konto, inte för en kontakt."
+    },
+    "TOOLBAR": {
+      "SAVE": "Spara",
+      "REFRESH": "Uppdatera",
+      "RESET": "Återställ",
+      "DELETE": "Ta bort"
+    },
+    "ALERTS": {
+      "CLOSE_CONFIRMATION": "Punchout-användaren har ändrats. Stäng utan att spara?",
+      "DELETE": "Är du säker på att du vill ta bort Punchout-användarmappningen '{externalId}'?"
+    },
+    "ERRORS": {
+      "externalId-required": "ExternalId krävs",
+      "mapping-exists": "En mappning med ExternalId '{externalId}' finns redan.",
+      "userId-memberId-required": "UserId och MemberId krävs.",
+      "memberId-mismatch": "Användaren är inte ett säkerhetskonto för den angivna kontakten.",
+      "user-is-admin-or-customer": "Endast konton av typen Customer som inte är administratörer kan mappas."
+    }
+  }
+}

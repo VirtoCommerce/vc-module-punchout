@@ -1,0 +1,34 @@
+{
+  "PUNCHOUT": {
+    "WIDGET": {
+      "TITLE": "משתמש Punchout"
+    },
+    "MAPPING": {
+      "TITLE": "משתמש Punchout",
+      "CARD": "זהות במערכת הרכש",
+      "IS_ACTIVE": "פעיל",
+      "EXTERNAL_ID": "זהות חיצונית",
+      "EXTERNAL_ID_PLACEHOLDER": "יש להזין את זהות המשתמש במערכת הרכש",
+      "EXTERNAL_ID_HINT": "הערך שמערכת הרכש שולחת ב-cXML Header/Sender/Credential/Identity.",
+      "ACCOUNT": "חשבון",
+      "NO_ACCOUNTS": "לאיש קשר זה אין עדיין חשבון אבטחה. יש ליצור חשבון קודם: סשן Punchout נפתח עבור חשבון, לא עבור איש קשר."
+    },
+    "TOOLBAR": {
+      "SAVE": "שמירה",
+      "REFRESH": "רענון",
+      "RESET": "איפוס",
+      "DELETE": "מחיקה"
+    },
+    "ALERTS": {
+      "CLOSE_CONFIRMATION": "משתמש ה-Punchout שונה. לסגור בלי לשמור?",
+      "DELETE": "האם למחוק את מיפוי משתמש ה-Punchout '{externalId}'?"
+    },
+    "ERRORS": {
+      "externalId-required": "ExternalId הוא שדה חובה",
+      "mapping-exists": "כבר קיים מיפוי עם ExternalId '{externalId}'.",
+      "userId-memberId-required": "UserId ו-MemberId הם שדות חובה.",
+      "memberId-mismatch": "המשתמש אינו חשבון אבטחה של איש הקשר שצוין.",
+      "user-is-admin-or-customer": "ניתן למפות רק חשבונות מסוג Customer שאינם חשבונות מנהל."
+    }
+  }
+}

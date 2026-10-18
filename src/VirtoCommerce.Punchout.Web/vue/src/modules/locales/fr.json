@@ -1,0 +1,34 @@
+{
+  "PUNCHOUT": {
+    "WIDGET": {
+      "TITLE": "Utilisateur Punchout"
+    },
+    "MAPPING": {
+      "TITLE": "Utilisateur Punchout",
+      "CARD": "Identité dans le système d'approvisionnement",
+      "IS_ACTIVE": "Actif",
+      "EXTERNAL_ID": "Identité externe",
+      "EXTERNAL_ID_PLACEHOLDER": "Saisissez l'identité utilisateur du système d'approvisionnement",
+      "EXTERNAL_ID_HINT": "La valeur que le système d'approvisionnement envoie dans cXML Header/Sender/Credential/Identity.",
+      "ACCOUNT": "Compte",
+      "NO_ACCOUNTS": "Ce contact n'a pas encore de compte de sécurité. Créez-en un d'abord : une session Punchout est ouverte pour un compte, pas pour un contact."
+    },
+    "TOOLBAR": {
+      "SAVE": "Enregistrer",
+      "REFRESH": "Actualiser",
+      "RESET": "Réinitialiser",
+      "DELETE": "Supprimer"
+    },
+    "ALERTS": {
+      "CLOSE_CONFIRMATION": "L'utilisateur Punchout a été modifié. Fermer sans enregistrer ?",
+      "DELETE": "Voulez-vous vraiment supprimer l'association d'utilisateur Punchout '{externalId}' ?"
+    },
+    "ERRORS": {
+      "externalId-required": "ExternalId est obligatoire",
+      "mapping-exists": "Un mappage avec l'ExternalId '{externalId}' existe déjà.",
+      "userId-memberId-required": "UserId et MemberId sont obligatoires.",
+      "memberId-mismatch": "L'utilisateur n'est pas un compte de sécurité du contact spécifié.",
+      "user-is-admin-or-customer": "Seuls les comptes de type Customer non administrateurs peuvent être mappés."
+    }
+  }
+}

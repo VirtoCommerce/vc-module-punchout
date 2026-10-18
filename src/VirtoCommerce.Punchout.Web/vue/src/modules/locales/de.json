@@ -1,0 +1,34 @@
+{
+  "PUNCHOUT": {
+    "WIDGET": {
+      "TITLE": "Punchout-Benutzer"
+    },
+    "MAPPING": {
+      "TITLE": "Punchout-Benutzer",
+      "CARD": "Identität im Beschaffungssystem",
+      "IS_ACTIVE": "Aktiv",
+      "EXTERNAL_ID": "Externe Identität",
+      "EXTERNAL_ID_PLACEHOLDER": "Geben Sie die Benutzeridentität des Beschaffungssystems ein",
+      "EXTERNAL_ID_HINT": "Der Wert, den das Beschaffungssystem in cXML Header/Sender/Credential/Identity sendet.",
+      "ACCOUNT": "Konto",
+      "NO_ACCOUNTS": "Dieser Kontakt hat noch kein Sicherheitskonto. Erstellen Sie zuerst eines: Eine Punchout-Sitzung wird für ein Konto geöffnet, nicht für einen Kontakt."
+    },
+    "TOOLBAR": {
+      "SAVE": "Speichern",
+      "REFRESH": "Aktualisieren",
+      "RESET": "Zurücksetzen",
+      "DELETE": "Löschen"
+    },
+    "ALERTS": {
+      "CLOSE_CONFIRMATION": "Der Punchout-Benutzer wurde geändert. Ohne Speichern schließen?",
+      "DELETE": "Möchten Sie die Punchout-Benutzerzuordnung '{externalId}' wirklich löschen?"
+    },
+    "ERRORS": {
+      "externalId-required": "ExternalId ist erforderlich",
+      "mapping-exists": "Eine Zuordnung mit ExternalId '{externalId}' existiert bereits.",
+      "userId-memberId-required": "UserId und MemberId sind erforderlich.",
+      "memberId-mismatch": "Der Benutzer ist kein Sicherheitskonto des angegebenen Kontakts.",
+      "user-is-admin-or-customer": "Nur Konten vom Typ Customer ohne Administratorrechte können zugeordnet werden."
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "PUNCHOUT": {
+    "WIDGET": {
+      "TITLE": "Usuario de Punchout"
+    },
+    "MAPPING": {
+      "TITLE": "Usuario de Punchout",
+      "CARD": "Identidad en el sistema de compras",
+      "IS_ACTIVE": "Activo",
+      "EXTERNAL_ID": "Identidad externa",
+      "EXTERNAL_ID_PLACEHOLDER": "Introduzca la identidad de usuario del sistema de compras",
+      "EXTERNAL_ID_HINT": "El valor que el sistema de compras envía en cXML Header/Sender/Credential/Identity.",
+      "ACCOUNT": "Cuenta",
+      "NO_ACCOUNTS": "Este contacto aún no tiene una cuenta de seguridad. Cree una primero: una sesión de Punchout se abre para una cuenta, no para un contacto."
+    },
+    "TOOLBAR": {
+      "SAVE": "Guardar",
+      "REFRESH": "Actualizar",
+      "RESET": "Restablecer",
+      "DELETE": "Eliminar"
+    },
+    "ALERTS": {
+      "CLOSE_CONFIRMATION": "El usuario de Punchout ha sido modificado. ¿Cerrar sin guardar?",
+      "DELETE": "¿Está seguro de que desea eliminar la asignación de usuario de Punchout '{externalId}'?"
+    },
+    "ERRORS": {
+      "externalId-required": "ExternalId es obligatorio",
+      "mapping-exists": "Ya existe una asignación con ExternalId '{externalId}'.",
+      "userId-memberId-required": "UserId y MemberId son obligatorios.",
+      "memberId-mismatch": "El usuario no es una cuenta de seguridad del contacto especificado.",
+      "user-is-admin-or-customer": "Solo se pueden asignar cuentas de tipo Customer que no sean de administrador."
+    }
+  }
+}

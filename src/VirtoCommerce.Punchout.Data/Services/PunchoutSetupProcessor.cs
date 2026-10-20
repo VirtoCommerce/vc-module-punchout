@@ -64,7 +64,7 @@ public class PunchoutSetupProcessor(
 
         if (handlerContext.IsFailed)
         {
-            logger.LogWarning("Punchout '{HandlerName}' handler failed to process setup  for session '{SessionId}' with status '{Status}': {Message}",
+            logger.LogWarning("Punchout '{HandlerName}' handler failed to process setup for session '{SessionId}' with status '{Status}': {Message}",
                 handler.GetType().Name, session.Id, handlerContext.ErrorCode, handlerContext.ErrorMessage);
 
             return PunchoutSetupResult.Error(handlerContext.ErrorCode, handlerContext.ErrorMessage);

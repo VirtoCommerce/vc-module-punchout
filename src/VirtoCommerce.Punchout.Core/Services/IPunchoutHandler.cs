@@ -17,4 +17,9 @@ public interface IPunchoutHandler
     /// Builds the cXML PunchOutOrderMessage returned to the buyer
     /// </summary>
     Task HandleOrderMessageAsync(PunchoutOrderMessageHandlerContext context);
+
+    /// <summary>
+    /// Processes the order request
+    /// </summary>
+    Task HandleOrderRequestAsync(PunchoutOrderRequestHandlerContext context);
 }

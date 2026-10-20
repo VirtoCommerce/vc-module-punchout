@@ -61,6 +61,8 @@ public class PunchoutHandlerFactoryTests
         public Task HandleSetupAsync(PunchoutSetupHandlerContext context) => Task.CompletedTask;
 
         public Task HandleOrderMessageAsync(PunchoutOrderMessageHandlerContext context) => Task.CompletedTask;
+
+        public Task HandleOrderRequestAsync(PunchoutOrderRequestHandlerContext context) => Task.CompletedTask;
     }
 
     private sealed class SecondHandler : FirstHandler;

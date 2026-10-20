@@ -118,6 +118,16 @@ public class PunchoutOrderMessageProcessor(
             return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.SessionNotFound);
         }
 
+        var store = await storeService.GetPunchoutStoreAsync(session.StoreId);
+
+        if (store is null)
+        {
+            logger.LogWarning("Punchout order message rejected for session '{SessionId}': store '{StoreId}' does not exist or punchout is disabled for it.",
+                session.Id, session.StoreId);
+
+            return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.StoreNotConfigured);
+        }
+
         if (!IsSessionOwner(session, request))
         {
             logger.LogWarning("Punchout order message rejected: session '{SessionId}' is not for user '{UserId}' in store '{StoreId}'.",
@@ -152,16 +162,6 @@ public class PunchoutOrderMessageProcessor(
                 session.ConfigurationId, session.Id);
 
             return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.ConfigurationError);
-        }
-
-        var store = await storeService.GetPunchoutStoreAsync(session.StoreId);
-
-        if (store is null)
-        {
-            logger.LogWarning("Punchout order message rejected for session '{SessionId}': store '{StoreId}' does not exist or punchout is disabled for it.",
-                session.Id, session.StoreId);
-
-            return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.StoreNotConfigured);
         }
 
         return PunchoutOrderMessageValidationResult.Valid(session, configuration, store);

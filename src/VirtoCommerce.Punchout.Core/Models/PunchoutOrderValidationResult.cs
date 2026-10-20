@@ -19,4 +19,10 @@ public class PunchoutOrderValidationResult
 
     public static PunchoutOrderValidationResult Invalid(string status, string errorMessage = null) =>
         new() { Error = PunchoutOrderResult.Error(status, errorMessage) };
+
+    /// <summary>
+    /// The request is authenticated, but rejected. The configuration is known, so the request can be stored.
+    /// </summary>
+    public static PunchoutOrderValidationResult Invalid(string status, string errorMessage, PunchoutConfiguration configuration, PunchoutUserMapping userMapping = null, Store store = null) =>
+        new() { Error = PunchoutOrderResult.Error(status, errorMessage), Configuration = configuration, UserMapping = userMapping, Store = store };
 }

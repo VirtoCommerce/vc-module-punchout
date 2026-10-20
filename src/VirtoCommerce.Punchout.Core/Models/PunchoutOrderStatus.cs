@@ -43,4 +43,9 @@ public static class PunchoutOrderStatus
     public const string OrderInProgress = "OrderInProgress";
 
     public const string OrderError = "OrderError";
+
+    /// <summary>
+    /// Generic issues with configurations.
+    /// </summary>
+    public const string ConfigurationError = "ConfigurationError";
 }

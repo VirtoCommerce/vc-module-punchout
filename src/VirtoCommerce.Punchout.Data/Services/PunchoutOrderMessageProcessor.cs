@@ -17,7 +17,6 @@ public class PunchoutOrderMessageProcessor(
     IPunchoutSessionService sessionService,
     IPunchoutSessionManagementService sessionManagementService,
     IPunchoutOrderMessageService orderMessageService,
-    IPunchoutOrderMessageSearchService orderMessageSearchService,
     IStoreService storeService,
     IPunchoutHandlerFactory handlerFactory,
     ILogger<PunchoutOrderMessageProcessor> logger)
@@ -39,15 +38,6 @@ public class PunchoutOrderMessageProcessor(
         }
 
         var session = validationResult.Session;
-
-        // Idempotent replay: the session has already returned an order message
-        if (validationResult.ReturnedOrderMessage is not null)
-        {
-            logger.LogInformation("Punchout order message for session '{SessionId}' is already returned, replaying the stored order message.",
-                session.Id);
-
-            return CreateReturnedResult(session, validationResult.ReturnedOrderMessage);
-        }
 
         var handler = handlerFactory.Create(validationResult.Configuration);
         if (handler == null)
@@ -138,12 +128,10 @@ public class PunchoutOrderMessageProcessor(
 
         if (IsSessionReturned(session))
         {
-            var orderMessage = await FindReturnedOrderMessageAsync(session);
+            logger.LogWarning("Punchout order message rejected: session '{SessionId}' is already in returned state.",
+                request.SessionId);
 
-            if (orderMessage is not null)
-            {
-                return PunchoutOrderMessageValidationResult.Returned(session, orderMessage);
-            }
+            return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.SessionNotFound);
         }
 
         if (!IsSessionActive(session))
@@ -165,18 +153,6 @@ public class PunchoutOrderMessageProcessor(
         }
 
         return PunchoutOrderMessageValidationResult.Valid(session, configuration, store);
-    }
-
-    protected virtual async Task<PunchoutOrderMessage> FindReturnedOrderMessageAsync(PunchoutSession session)
-    {
-        var criteria = AbstractTypeFactory<PunchoutOrderMessageSearchCriteria>.TryCreateInstance();
-
-        criteria.SessionId = session.Id;
-        criteria.Take = 1;
-
-        var searchResult = await orderMessageSearchService.SearchNoCloneAsync(criteria);
-
-        return searchResult.Results.FirstOrDefault(x => !x.Cxml.IsNullOrEmpty());
     }
 
     protected virtual PunchoutCheckoutResult CreateReturnedResult(PunchoutSession session, PunchoutOrderMessage orderMessage)

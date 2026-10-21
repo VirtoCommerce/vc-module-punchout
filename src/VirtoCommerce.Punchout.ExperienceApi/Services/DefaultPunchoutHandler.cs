@@ -4,18 +4,19 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using MediatR;
-using Microsoft.Extensions.Logging;
 using VirtoCommerce.CartModule.Core.Model;
-using AddressType = VirtoCommerce.CoreModule.Core.Common.AddressType;
+using VirtoCommerce.PaymentModule.Core.Model;
 using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Punchout.Core.Cxml.Services;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Services;
+using VirtoCommerce.ShippingModule.Core.Model;
 using VirtoCommerce.XCart.Core;
 using VirtoCommerce.XCart.Core.Queries;
 using VirtoCommerce.XCart.Core.Services;
 using VirtoCommerce.XOrder.Core;
-using VirtoCommerce.XOrder.Core.Commands;
+using VirtoCommerce.XOrder.Core.Services;
+using AddressType = VirtoCommerce.CoreModule.Core.Common.AddressType;
 
 namespace VirtoCommerce.Punchout.ExperienceApi.Services;
 
@@ -24,22 +25,17 @@ namespace VirtoCommerce.Punchout.ExperienceApi.Services;
 /// </summary>
 public class DefaultPunchoutHandler(
     IMediator mediator,
-    IPunchoutOrderMessageBuilder orderMessageBuilder,
     ICxmlSerializer cxmlSerializer,
+    IPunchoutOrderMessageBuilder orderMessageBuilder,
     ICartAggregateRepository cartAggregateRepository,
-    ICartAvailMethodsService availableCartMethodsService,
-    ILogger<DefaultPunchoutHandler> logger)
+    ICustomerOrderAggregateRepository customerOrderAggregateRepository,
+    ICartAvailMethodsService availableCartMethodsService)
     : IPunchoutHandler
 {
     private const string CartNotFound = "CartNotFound";
     private const string CartIsEmpty = "CartIsEmpty";
 
     protected const string PriceFormat = "0.00";
-
-    /// <summary>
-    /// Returned to the buyer instead of the configuration details, which are logged.
-    /// </summary>
-    protected const string ConfigurationErrorMessage = "The supplier cannot process the order, please contact the supplier.";
 
     public virtual Task HandleSetupAsync(PunchoutSetupHandlerContext context)
     {
@@ -69,13 +65,6 @@ public class DefaultPunchoutHandler(
 
     public virtual async Task HandleOrderRequestAsync(PunchoutOrderRequestHandlerContext context)
     {
-        var configurationError = ValidateCheckoutConfiguration(context.Configuration);
-        if (configurationError != null)
-        {
-            FailConfiguration(context, configurationError);
-            return;
-        }
-
         var lineItemIdsError = ValidateLineItemIds(context.Request);
         if (lineItemIdsError != null)
         {
@@ -101,33 +90,15 @@ public class DefaultPunchoutHandler(
         await SelectOrderItemsAsync(context.Request, cartAggregate);
 
         await cartAggregate.ChangePurchaseOrderNumber(context.Request.OrderId);
-        await AddAddressesAsync(context.Request, cartAggregate);
+        await AddAddressesAsync(context, cartAggregate);
+        await AddShipmentAsync(context, cartAggregate);
+        await AddPaymentAsync(context, cartAggregate);
 
-        var checkoutError = await AddShipmentAsync(context, cartAggregate) ?? await AddPaymentAsync(context, cartAggregate);
-        if (checkoutError != null)
-        {
-            FailConfiguration(context, checkoutError);
-            return;
-        }
-
-        // The order is created from the stored cart
         await cartAggregateRepository.SaveAsync(cartAggregate);
-
         var order = await CreateOrderAsync(cartAggregate);
 
         context.Result.CustomerOrderId = order.Order.Id;
         context.Result.PurchaseOrderNumber = context.Request.OrderId;
-    }
-
-    /// <summary>
-    /// Logs the configuration problem and fails the order without exposing the details to the buyer.
-    /// </summary>
-    protected virtual void FailConfiguration(PunchoutOrderRequestHandlerContext context, string errorMessage)
-    {
-        logger.LogError("Punchout order '{PurchaseOrderNumber}' cannot be processed with configuration '{ConfigurationId}': {Message}",
-            context.Request.OrderId, context.Configuration.Id, errorMessage);
-
-        context.Fail(PunchoutOrderStatus.ConfigurationError, ConfigurationErrorMessage);
     }
 
     protected virtual Task<CartAggregate> GetCartAsync(PunchoutOrderMessageHandlerContext context)
@@ -161,6 +132,7 @@ public class DefaultPunchoutHandler(
         query.StoreId = context.Store.Id;
         query.UserId = context.UserMapping.UserId;
         query.LineItemIds = lineItemIds;
+        query.Take = 1;
 
         return query;
     }
@@ -290,26 +262,9 @@ public class DefaultPunchoutHandler(
         }
     }
 
-    /// <summary>
-    /// Returns the error message when the configuration has no default shipping or payment method, otherwise null.
-    /// </summary>
-    protected virtual string ValidateCheckoutConfiguration(PunchoutConfiguration configuration)
+    protected virtual async Task AddAddressesAsync(PunchoutOrderRequestHandlerContext context, CartAggregate cartAggregate)
     {
-        if (string.IsNullOrEmpty(configuration.DefaultShipmentMethodCode))
-        {
-            return $"The configuration has no {nameof(configuration.DefaultShipmentMethodCode)}.";
-        }
-
-        if (string.IsNullOrEmpty(configuration.DefaultPaymentMethodCode))
-        {
-            return $"The configuration has no {nameof(configuration.DefaultPaymentMethodCode)}.";
-        }
-
-        return null;
-    }
-
-    protected virtual async Task AddAddressesAsync(PunchoutOrderRequestData request, CartAggregate cartAggregate)
-    {
+        var request = context.Request;
         var shippingAddress = MapAddress(request.ShipTo, AddressType.Shipping);
         if (shippingAddress != null)
         {
@@ -326,60 +281,58 @@ public class DefaultPunchoutHandler(
     /// <summary>
     /// Adds the default shipping method with the ShipTo address. Returns the error message when the method is not available, otherwise null.
     /// </summary>
-    protected virtual async Task<string> AddShipmentAsync(PunchoutOrderRequestHandlerContext context, CartAggregate cartAggregate)
+    protected virtual async Task AddShipmentAsync(PunchoutOrderRequestHandlerContext context, CartAggregate cartAggregate)
     {
-        var methodCode = context.Configuration.DefaultShipmentMethodCode;
-
-        var availableRates = (await availableCartMethodsService.GetAvailableShippingRatesAsync(cartAggregate)).ToList();
-        var rate = availableRates.FirstOrDefault(x => x.ShippingMethod?.Code.EqualsIgnoreCase(methodCode) == true);
-
-        if (rate is null)
-        {
-            return $"The shipping method '{methodCode}' is not available for the cart.";
-        }
-
         var shipment = AbstractTypeFactory<Shipment>.TryCreateInstance();
+
+        var methodCode = context.Configuration.DefaultShipmentMethodCode;
+        var availableRates = new List<ShippingRate>();
+
+        if (!methodCode.IsNullOrEmpty())
+        {
+            availableRates = (await availableCartMethodsService.GetAvailableShippingRatesAsync(cartAggregate)).ToList();
+            var rate = availableRates.FirstOrDefault(x => x.ShippingMethod?.Code.EqualsIgnoreCase(methodCode) == true);
+
+            shipment.ShipmentMethodCode = rate.ShippingMethod.Code;
+            shipment.ShipmentMethodOption = rate.OptionName;
+        }
 
         // Replace the shipment the buyer may have selected in the storefront
         shipment.Id = cartAggregate.Cart.Shipments?.FirstOrDefault()?.Id;
-        shipment.ShipmentMethodCode = rate.ShippingMethod.Code;
-        shipment.ShipmentMethodOption = rate.OptionName;
+
         shipment.Currency = cartAggregate.Cart.Currency;
         shipment.DeliveryAddress = MapAddress(context.Request.ShipTo, AddressType.Shipping);
+        shipment.Price = context.Request.ShippingAmount ?? 0.0m;
 
         await cartAggregate.AddShipmentAsync(shipment, availableRates);
-
-        return null;
     }
 
     /// <summary>
     /// Adds the default payment method with the BillTo address. Returns the error message when the method is not available, otherwise null.
     /// </summary>
-    protected virtual async Task<string> AddPaymentAsync(PunchoutOrderRequestHandlerContext context, CartAggregate cartAggregate)
+    protected virtual async Task AddPaymentAsync(PunchoutOrderRequestHandlerContext context, CartAggregate cartAggregate)
     {
-        var methodCode = context.Configuration.DefaultPaymentMethodCode;
-
-        var availableMethods = (await availableCartMethodsService.GetAvailablePaymentMethodsAsync(cartAggregate)).ToList();
-        var method = availableMethods.FirstOrDefault(x => x.Code.EqualsIgnoreCase(methodCode));
-
-        if (method is null)
-        {
-            return $"The payment method '{methodCode}' is not available for the cart.";
-        }
-
         var payment = AbstractTypeFactory<Payment>.TryCreateInstance();
+
+        var methodCode = context.Configuration.DefaultPaymentMethodCode;
+        var availableMethods = new List<PaymentMethod>();
+
+        if (!methodCode.IsNullOrEmpty())
+        {
+            availableMethods = (await availableCartMethodsService.GetAvailablePaymentMethodsAsync(cartAggregate)).ToList();
+            var method = availableMethods.FirstOrDefault(x => x.Code.EqualsIgnoreCase(methodCode));
+
+            payment.PaymentGatewayCode = method.Code;
+        }
 
         // Replace the payment the buyer may have selected in the storefront
         payment.Id = cartAggregate.Cart.Payments?.FirstOrDefault()?.Id;
-        payment.PaymentGatewayCode = method.Code;
         payment.Currency = cartAggregate.Cart.Currency;
         // The cart is recalculated after the shipment is added, so the total includes the shipping
         payment.Amount = cartAggregate.Cart.Total;
         payment.BillingAddress = MapAddress(context.Request.BillTo, AddressType.Billing);
 
         await cartAggregate.AddPaymentAsync(payment, availableMethods);
-
-        return null;
     }
 
     protected virtual Address MapAddress(PunchoutAddress punchoutAddress, AddressType addressType)
@@ -453,15 +406,7 @@ public class DefaultPunchoutHandler(
 
     protected virtual async Task<CustomerOrderAggregate> CreateOrderAsync(CartAggregate cartAggregate)
     {
-        var command = CreateCreateOrderFromCartCommand(cartAggregate);
-        var order = await mediator.Send(command);
+        var order = await customerOrderAggregateRepository.CreateOrderFromCart(cartAggregate.Cart);
         return order;
-    }
-
-    protected virtual CreateOrderFromCartCommand CreateCreateOrderFromCartCommand(CartAggregate cartAggregate)
-    {
-        var command = AbstractTypeFactory<CreateOrderFromCartCommand>.TryCreateInstance();
-        command.CartId = cartAggregate.Cart.Id;
-        return command;
     }
 }

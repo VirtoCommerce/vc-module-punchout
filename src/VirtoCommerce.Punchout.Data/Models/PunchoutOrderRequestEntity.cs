@@ -56,11 +56,6 @@ public class PunchoutOrderRequestEntity : AuditableEntity, IDataEntity<PunchoutO
     [StringLength(2048)]
     public string ErrorMessage { get; set; }
 
-    [StringLength(128)]
-    public string CartId { get; set; }
-
-    public string Cxml { get; set; }
-
     public virtual PunchoutOrderRequest ToModel(PunchoutOrderRequest model)
     {
         model.Id = Id;
@@ -84,8 +79,6 @@ public class PunchoutOrderRequestEntity : AuditableEntity, IDataEntity<PunchoutO
         model.Status = Status;
         model.ErrorCode = ErrorCode;
         model.ErrorMessage = ErrorMessage;
-        model.CartId = CartId;
-        model.Cxml = Cxml;
 
         return model;
     }
@@ -115,8 +108,6 @@ public class PunchoutOrderRequestEntity : AuditableEntity, IDataEntity<PunchoutO
         Status = model.Status;
         ErrorCode = model.ErrorCode;
         ErrorMessage = model.ErrorMessage;
-        CartId = model.CartId;
-        Cxml = model.Cxml;
 
         return this;
     }
@@ -138,7 +129,5 @@ public class PunchoutOrderRequestEntity : AuditableEntity, IDataEntity<PunchoutO
         target.Status = Status;
         target.ErrorCode = ErrorCode;
         target.ErrorMessage = ErrorMessage;
-        target.CartId = CartId;
-        target.Cxml = Cxml;
     }
 }

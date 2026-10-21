@@ -15,7 +15,7 @@ using VirtoCommerce.XCart.Core;
 using VirtoCommerce.XCart.Core.Queries;
 using VirtoCommerce.XCart.Core.Services;
 using VirtoCommerce.XOrder.Core;
-using VirtoCommerce.XOrder.Core.Services;
+using VirtoCommerce.XOrder.Core.Commands;
 using AddressType = VirtoCommerce.CoreModule.Core.Common.AddressType;
 
 namespace VirtoCommerce.Punchout.ExperienceApi.Services;
@@ -28,7 +28,6 @@ public class DefaultPunchoutHandler(
     ICxmlSerializer cxmlSerializer,
     IPunchoutOrderMessageBuilder orderMessageBuilder,
     ICartAggregateRepository cartAggregateRepository,
-    ICustomerOrderAggregateRepository customerOrderAggregateRepository,
     ICartAvailMethodsService availableCartMethodsService)
     : IPunchoutHandler
 {
@@ -279,7 +278,7 @@ public class DefaultPunchoutHandler(
     }
 
     /// <summary>
-    /// Adds the default shipping method with the ShipTo address. Returns the error message when the method is not available, otherwise null.
+    /// Adds the default shipping method with the ShipTo address.
     /// </summary>
     protected virtual async Task AddShipmentAsync(PunchoutOrderRequestHandlerContext context, CartAggregate cartAggregate)
     {
@@ -293,8 +292,12 @@ public class DefaultPunchoutHandler(
             availableRates = (await availableCartMethodsService.GetAvailableShippingRatesAsync(cartAggregate)).ToList();
             var rate = availableRates.FirstOrDefault(x => x.ShippingMethod?.Code.EqualsIgnoreCase(methodCode) == true);
 
-            shipment.ShipmentMethodCode = rate.ShippingMethod.Code;
-            shipment.ShipmentMethodOption = rate.OptionName;
+            if (rate is not null)
+            {
+                shipment.ShipmentMethodCode = rate.ShippingMethod.Code;
+                shipment.ShipmentMethodOption = rate.OptionName;
+                shipment.Price = rate.Rate;
+            }
         }
 
         // Replace the shipment the buyer may have selected in the storefront
@@ -302,13 +305,12 @@ public class DefaultPunchoutHandler(
 
         shipment.Currency = cartAggregate.Cart.Currency;
         shipment.DeliveryAddress = MapAddress(context.Request.ShipTo, AddressType.Shipping);
-        shipment.Price = context.Request.ShippingAmount ?? 0.0m;
 
         await cartAggregate.AddShipmentAsync(shipment, availableRates);
     }
 
     /// <summary>
-    /// Adds the default payment method with the BillTo address. Returns the error message when the method is not available, otherwise null.
+    /// Adds the default payment method with the BillTo address.
     /// </summary>
     protected virtual async Task AddPaymentAsync(PunchoutOrderRequestHandlerContext context, CartAggregate cartAggregate)
     {
@@ -322,13 +324,15 @@ public class DefaultPunchoutHandler(
             availableMethods = (await availableCartMethodsService.GetAvailablePaymentMethodsAsync(cartAggregate)).ToList();
             var method = availableMethods.FirstOrDefault(x => x.Code.EqualsIgnoreCase(methodCode));
 
-            payment.PaymentGatewayCode = method.Code;
+            if (method is not null)
+            {
+                payment.PaymentGatewayCode = method.Code;
+            }
         }
 
         // Replace the payment the buyer may have selected in the storefront
         payment.Id = cartAggregate.Cart.Payments?.FirstOrDefault()?.Id;
         payment.Currency = cartAggregate.Cart.Currency;
-        // The cart is recalculated after the shipment is added, so the total includes the shipping
         payment.Amount = cartAggregate.Cart.Total;
         payment.BillingAddress = MapAddress(context.Request.BillTo, AddressType.Billing);
 
@@ -406,7 +410,13 @@ public class DefaultPunchoutHandler(
 
     protected virtual async Task<CustomerOrderAggregate> CreateOrderAsync(CartAggregate cartAggregate)
     {
-        var order = await customerOrderAggregateRepository.CreateOrderFromCart(cartAggregate.Cart);
+        var command = CreateCreateOrderFromCartCommand(cartAggregate);
+        var order = await mediator.Send(command);
         return order;
+    }
+
+    protected virtual CreateOrderFromCartCommand CreateCreateOrderFromCartCommand(CartAggregate cartAggregate)
+    {
+        return new CreateOrderFromCartCommand(cartAggregate.Cart.Id);
     }
 }

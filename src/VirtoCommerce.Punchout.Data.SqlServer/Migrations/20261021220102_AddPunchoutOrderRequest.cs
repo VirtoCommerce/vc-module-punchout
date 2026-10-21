@@ -31,8 +31,6 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
                     Status = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     ErrorCode = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
                     ErrorMessage = table.Column<string>(type: "nvarchar(2048)", maxLength: 2048, nullable: true),
-                    CartId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
-                    Cxml = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ModifiedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     CreatedBy = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),

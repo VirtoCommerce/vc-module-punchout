@@ -37,10 +37,6 @@ public class PunchoutOrderRequest : AuditableEntity, ICloneable
 
     public string ErrorMessage { get; set; }
 
-    public string CartId { get; set; }
-
-    public string Cxml { get; set; }
-
     public virtual object Clone()
     {
         return MemberwiseClone();

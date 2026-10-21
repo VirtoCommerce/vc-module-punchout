@@ -70,10 +70,6 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("nvarchar(512)");
 
-                    b.Property<string>("CartId")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
                     b.Property<string>("ConfigurationId")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -93,9 +89,6 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
                     b.Property<string>("CustomerOrderId")
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
-
-                    b.Property<string>("Cxml")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ErrorCode")
                         .HasMaxLength(64)

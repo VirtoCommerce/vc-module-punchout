@@ -14,4 +14,6 @@ public static class PunchoutOrderMessageStatus
     public const string StoreNotConfigured = "StoreNotConfigured";
 
     public const string ConfigurationError = "ConfigurationError";
+
+    public const string SessionReturned = "SessionReturned";
 }

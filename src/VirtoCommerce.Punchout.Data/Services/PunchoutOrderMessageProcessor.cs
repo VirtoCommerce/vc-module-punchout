@@ -131,7 +131,7 @@ public class PunchoutOrderMessageProcessor(
             logger.LogWarning("Punchout order message rejected: session '{SessionId}' is already in returned state.",
                 request.SessionId);
 
-            return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.SessionNotFound);
+            return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.SessionReturned);
         }
 
         if (!IsSessionActive(session))

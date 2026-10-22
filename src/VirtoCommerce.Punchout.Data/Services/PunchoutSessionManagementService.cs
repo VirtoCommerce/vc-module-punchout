@@ -63,6 +63,23 @@ public class PunchoutSessionManagementService : IPunchoutSessionManagementServic
         return result;
     }
 
+    public async Task<bool> ReturnSessionAsync(string sessionId)
+    {
+        bool returned;
+        using (var repository = _repositoryFactory())
+        {
+            returned = await repository.ReturnSessionAsync(sessionId, DateTime.UtcNow);
+        }
+
+        if (returned)
+        {
+            // The status was changed bypassing the CRUD service, so the cached session is stale
+            ClearCache(sessionId);
+        }
+
+        return returned;
+    }
+
     protected virtual void ClearCache(string sessionId)
     {
         GenericSearchCachingRegion<PunchoutSession>.ExpireRegion();

@@ -22,6 +22,43 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("VirtoCommerce.Punchout.Data.Models.PunchoutOrderMessageEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Cxml")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId")
+                        .HasDatabaseName("IX_PunchoutOrderMessage_SessionId");
+
+                    b.ToTable("PunchoutOrderMessage", (string)null);
+                });
+
             modelBuilder.Entity("VirtoCommerce.Punchout.Data.Models.PunchoutSessionEntity", b =>
                 {
                     b.Property<string>("Id")
@@ -40,6 +77,10 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
                     b.Property<string>("BuyerIdentity")
                         .HasMaxLength(512)
                         .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("ConfigurationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
 
                     b.Property<string>("CreatedBy")
                         .HasMaxLength(64)
@@ -90,6 +131,14 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
                     b.Property<string>("StoreId")
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("SupplierDomain")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("SupplierIdentity")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
 
                     b.Property<DateTime?>("TokenExpirationDate")
                         .HasColumnType("datetime2");
@@ -162,6 +211,15 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
                         .HasDatabaseName("IX_PunchoutUserMapping_UserId");
 
                     b.ToTable("PunchoutUserMapping", (string)null);
+                });
+
+            modelBuilder.Entity("VirtoCommerce.Punchout.Data.Models.PunchoutOrderMessageEntity", b =>
+                {
+                    b.HasOne("VirtoCommerce.Punchout.Data.Models.PunchoutSessionEntity", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

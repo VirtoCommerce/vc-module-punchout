@@ -9,11 +9,15 @@ public class PunchoutConfiguration
 
     public static readonly TimeSpan DefaultSessionLifeTime = TimeSpan.FromHours(4);
 
+    public string Id { get; set; }
+
     public string StoreId { get; set; }
 
     public string SenderDomain { get; set; }
 
     public string SharedSecret { get; set; }
+
+    public string HandlerTypeName { get; set; }
 
     /// <summary>
     /// Allowed BrowserFormPost URLs. Either exact URL or a prefixed, e.g. 'http://localhost/*'

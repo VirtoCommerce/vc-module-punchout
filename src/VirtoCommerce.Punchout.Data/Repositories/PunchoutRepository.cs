@@ -21,6 +21,8 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
 
     public IQueryable<PunchoutOrderMessageEntity> PunchoutOrderMessages => DbContext.Set<PunchoutOrderMessageEntity>();
 
+    public IQueryable<PunchoutOrderRequestEntity> PunchoutOrderRequests => DbContext.Set<PunchoutOrderRequestEntity>();
+
     public virtual async Task<IList<PunchoutSessionEntity>> GetPunchoutSessionsByIdsAsync(IList<string> ids, string responseGroup)
     {
         if (ids.IsNullOrEmpty())
@@ -43,6 +45,18 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
         return ids.Count == 1
             ? await PunchoutUserMappings.Where(x => x.Id == ids.First()).ToListAsync()
             : await PunchoutUserMappings.Where(x => ids.Contains(x.Id)).ToListAsync();
+    }
+
+    public virtual async Task<IList<PunchoutOrderRequestEntity>> GetPunchoutOrderRequestsByIdsAsync(IList<string> ids, string responseGroup)
+    {
+        if (ids.IsNullOrEmpty())
+        {
+            return [];
+        }
+
+        return ids.Count == 1
+            ? await PunchoutOrderRequests.Where(x => x.Id == ids.First()).ToListAsync()
+            : await PunchoutOrderRequests.Where(x => ids.Contains(x.Id)).ToListAsync();
     }
 
     public virtual async Task<IList<PunchoutOrderMessageEntity>> GetPunchoutOrderMessagesByIdsAsync(IList<string> ids, string responseGroup)

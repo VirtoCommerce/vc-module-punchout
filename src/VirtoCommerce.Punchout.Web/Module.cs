@@ -16,7 +16,6 @@ using VirtoCommerce.Platform.Security.OpenIddict;
 using VirtoCommerce.ProfileExperienceApiModule.Data.Models;
 using VirtoCommerce.Punchout.Core;
 using VirtoCommerce.Punchout.Core.Cxml.Services;
-using VirtoCommerce.Punchout.Core.Extensions;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Services;
 using VirtoCommerce.Punchout.Data.Cxml.Services;
@@ -82,6 +81,9 @@ public class Module : IModule, IHasConfiguration
         serviceCollection.AddTransient<IPunchoutOrderMessageService, PunchoutOrderMessageService>();
         serviceCollection.AddTransient<IPunchoutOrderMessageSearchService, PunchoutOrderMessageSearchService>();
 
+        serviceCollection.AddTransient<IPunchoutOrderRequestService, PunchoutOrderRequestService>();
+        serviceCollection.AddTransient<IPunchoutOrderRequestSearchService, PunchoutOrderRequestSearchService>();
+
         serviceCollection.AddTransient<ICxmlSerializer, CxmlSerializer>();
         serviceCollection.AddTransient<ICxmlResponseFactory, CxmlResponseFactory>();
         serviceCollection.AddTransient<ICxmlRequestDispatcher, CxmlRequestDispatcher>();
@@ -93,6 +95,10 @@ public class Module : IModule, IHasConfiguration
         serviceCollection.AddTransient<IPunchoutSetupProcessor, PunchoutSetupProcessor>();
         serviceCollection.AddTransient<IPunchoutOrderMessageBuilder, PunchoutOrderMessageBuilder>();
         serviceCollection.AddTransient<IPunchoutOrderMessageProcessor, PunchoutOrderMessageProcessor>();
+
+        serviceCollection.AddTransient<IPunchoutOrderMapper, PunchoutOrderMapper>();
+        serviceCollection.AddTransient<IPunchoutOrderRequestProcessor, PunchoutOrderRequestProcessor>();
+        serviceCollection.AddTransient<ICxmlRequestHandler, CxmlPunchoutOrderRequestHandler>();
 
         serviceCollection.AddTransient<IPunchoutSessionManagementService, PunchoutSessionManagementService>();
         serviceCollection.AddGrantTypeHandler<PunchoutGrantTypeHandler>(ModuleConstants.Security.PunchoutGrantType);

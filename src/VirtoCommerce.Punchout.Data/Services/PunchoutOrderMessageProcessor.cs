@@ -248,6 +248,7 @@ public class PunchoutOrderMessageProcessor(
 
         context.Request = handlerRequest;
         context.Session = session;
+        context.Store = store;
         context.Configuration = validationResult.Configuration;
         context.Result = result;
 

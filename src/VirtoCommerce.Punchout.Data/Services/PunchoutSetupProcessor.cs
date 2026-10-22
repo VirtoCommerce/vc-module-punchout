@@ -86,7 +86,9 @@ public class PunchoutSetupProcessor(
         context.Request = request;
         context.Configuration = validationResult.Configuration;
         context.UserMapping = validationResult.UserMapping;
+        context.Store = validationResult.Store;
         context.Session = session;
+
         // The token goes to the buyer in the start page URL, only the hash is stored
         context.StartPage = BuildStartPageUrl(session.StartPage, sessionToken);
 
@@ -169,7 +171,7 @@ public class PunchoutSetupProcessor(
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
         }
 
-        return PunchoutSetupValidationResult.Valid(settings, userMapping, storefrontUrl);
+        return PunchoutSetupValidationResult.Valid(settings, userMapping, store, storefrontUrl);
     }
 
     protected virtual bool IsReturnUrlAllowed(string returnUrl, PunchoutConfiguration settings)

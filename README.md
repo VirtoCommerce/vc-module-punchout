@@ -57,8 +57,8 @@ Integrations are defined in the `Punchout` section of the platform configuration
 | `AllowedReturnUrls` | String[] | *(any URL)* | Allowed `BrowserFormPost` URLs, either exact or a prefix ending with `*`. If the list is empty, any URL is accepted |
 | `TokenLifeTime` | TimeSpan | `00:15:00` | How long the start page URL can be redeemed |
 | `SessionLifeTime` | TimeSpan | `04:00:00` | How long the buyer can shop after the setup request, which is also the access token lifetime |
-| `DefaultShipmentMethodCode` | String | — | Code of the shipping method added to the cart when an `OrderRequest` is received. The method must be available for the cart, otherwise the order is rejected. Required to accept orders |
-| `DefaultPaymentMethodCode` | String | — | Code of the payment method added to the cart when an `OrderRequest` is received. The method must be available for the cart, otherwise the order is rejected. Required to accept orders |
+| `DefaultShipmentMethodCode` | String | — | Code of the shipping method added to the cart when an `OrderRequest` is received. If empty or not available for the cart, the shipment is added without a shipping method |
+| `DefaultPaymentMethodCode` | String | — | Code of the payment method added to the cart when an `OrderRequest` is received. If empty or not available for the cart, the payment is added without a payment method |
 | `HandlerTypeName` | String | *(default handler)* | Name of the `IPunchoutHandler` registered with `AddPunchoutHandler<THandler>(name)` (the class name if `name` is omitted) that customizes this integration. If empty, the last `IPunchoutHandler` registered with `AddTransient<IPunchoutHandler, THandler>()` is used, so such a registration replaces the default handler for all integrations |
 
 `Id`, `StoreId`, and `SharedSecret` are required, and `Id` and `SharedSecret` must be unique. The configurations are validated on the platform start, and the platform does not start if any of them is invalid.

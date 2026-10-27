@@ -8,6 +8,7 @@ using OpenIddict.Abstractions;
 using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Platform.Core.Events;
 using VirtoCommerce.Platform.Core.Security;
+using VirtoCommerce.Platform.Security;
 using VirtoCommerce.Platform.Security.OpenIddict;
 using VirtoCommerce.Punchout.Core;
 using VirtoCommerce.Punchout.Core.Models;
@@ -28,9 +29,10 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
         IEnumerable<ITokenClaimProvider> claimProviders,
         IEnumerable<ITokenRequestHandler> requestHandlers,
         IEventPublisher eventPublisher,
+        ITwoFactorSignInService twoFactorSignInService,
         IPunchoutSessionManagementService sessionManagementService,
         IPunchoutUserMappingSearchService userMappingSearchService)
-        : base(signInManager, identityOptions, requestValidators, claimProviders, requestHandlers, eventPublisher)
+        : base(signInManager, identityOptions, requestValidators, claimProviders, requestHandlers, eventPublisher, twoFactorSignInService)
     {
         _signInManager = signInManager;
         _sessionManagementService = sessionManagementService;

@@ -78,12 +78,15 @@ public class DefaultPunchoutHandler(
             return;
         }
 
-        var cartAggregate = await SearchCartAsync(context);
-        if (cartAggregate == null)
+        var cachedCartAggregate = await SearchCartAsync(context);
+        if (cachedCartAggregate == null)
         {
             context.Fail(PunchoutOrderStatus.InvalidRequest, "The order items do not match any cart.");
             return;
         }
+
+        // The cart aggregate is cached and shared, the changes of a rejected order must not stay in it
+        var cartAggregate = cachedCartAggregate.CloneTyped();
 
         // The cart wins: the order is created only when the purchase order matches the cart
         var errors = ReconcileCart(context.Request, cartAggregate);

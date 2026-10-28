@@ -74,7 +74,7 @@ public class PunchoutOrderMessageBuilder(ICxmlResponseFactory cxmlFactory) : IPu
                 OperationAllowed = CxmlConstants.OperationAllowed.Create,
                 Total = CreateAmount(GetTotal(cart, lineItems), cart.Currency),
             },
-            Items = [.. lineItems.Select(x => BuildItemIn(cartAggregate, x))],
+            Items = [.. lineItems.Select(x => BuildItemIn(session, cartAggregate, x))],
         };
     }
 
@@ -86,7 +86,7 @@ public class PunchoutOrderMessageBuilder(ICxmlResponseFactory cxmlFactory) : IPu
         return lineItems.Sum(x => x.ExtendedPrice);
     }
 
-    protected virtual CxmlItemIn BuildItemIn(CartAggregate cartAggregate, LineItem lineItem)
+    protected virtual CxmlItemIn BuildItemIn(PunchoutSession session, CartAggregate cartAggregate, LineItem lineItem)
     {
         return new CxmlItemIn
         {
@@ -94,7 +94,7 @@ public class PunchoutOrderMessageBuilder(ICxmlResponseFactory cxmlFactory) : IPu
             ItemId = new CxmlItemId
             {
                 SupplierPartId = lineItem.Sku,
-                SupplierPartAuxiliaryId = lineItem.Id,
+                SupplierPartAuxiliaryId = PunchoutItemReference.Format(lineItem.Id, session.Id),
             },
             ItemDetail = BuildItemDetail(cartAggregate, lineItem),
         };

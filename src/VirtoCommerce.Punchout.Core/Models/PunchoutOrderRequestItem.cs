@@ -15,6 +15,16 @@ public class PunchoutOrderRequestItem
     /// </summary>
     public string SupplierPartAuxiliaryId { get; set; }
 
+    /// <summary>
+    /// Cart line item id from the SupplierPartAuxiliaryID.
+    /// </summary>
+    public string LineItemId { get; set; }
+
+    /// <summary>
+    /// Punchout session id from the SupplierPartAuxiliaryID. Null when the buyer returned the line item id only.
+    /// </summary>
+    public string SessionId { get; set; }
+
     public decimal? UnitPrice { get; set; }
 
     public string Currency { get; set; }

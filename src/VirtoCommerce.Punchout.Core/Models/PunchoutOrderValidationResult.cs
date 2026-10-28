@@ -14,8 +14,10 @@ public class PunchoutOrderValidationResult
 
     public Store Store { get; set; }
 
-    public static PunchoutOrderValidationResult Valid(PunchoutConfiguration configuration, PunchoutUserMapping userMapping, Store store) =>
-        new() { Configuration = configuration, UserMapping = userMapping, Store = store };
+    public PunchoutSession Session { get; set; }
+
+    public static PunchoutOrderValidationResult Valid(PunchoutConfiguration configuration, PunchoutUserMapping userMapping, Store store, PunchoutSession session) =>
+        new() { Configuration = configuration, UserMapping = userMapping, Store = store, Session = session };
 
     public static PunchoutOrderValidationResult Invalid(string status, string errorMessage = null) =>
         new() { Error = PunchoutOrderResult.Error(status, errorMessage) };

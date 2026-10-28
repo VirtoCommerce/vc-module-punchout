@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using FluentValidation;
+using GraphQL;
 using MediatR;
+using Microsoft.Extensions.Logging;
 using VirtoCommerce.CartModule.Core.Model;
 using VirtoCommerce.PaymentModule.Core.Model;
 using VirtoCommerce.Platform.Core.Common;
@@ -11,6 +14,7 @@ using VirtoCommerce.Punchout.Core.Cxml.Services;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Services;
 using VirtoCommerce.ShippingModule.Core.Model;
+using VirtoCommerce.Xapi.Core.Helpers;
 using VirtoCommerce.XCart.Core;
 using VirtoCommerce.XCart.Core.Queries;
 using VirtoCommerce.XCart.Core.Services;
@@ -28,13 +32,16 @@ public class DefaultPunchoutHandler(
     ICxmlSerializer cxmlSerializer,
     IPunchoutOrderMessageBuilder orderMessageBuilder,
     ICartAggregateRepository cartAggregateRepository,
-    ICartAvailMethodsService availableCartMethodsService)
+    ICartAvailMethodsService availableCartMethodsService,
+    ILogger<DefaultPunchoutHandler> logger)
     : IPunchoutHandler
 {
     private const string CartNotFound = "CartNotFound";
     private const string CartIsEmpty = "CartIsEmpty";
 
     protected const string PriceFormat = "0.00";
+
+    protected const string CartValidationRuleSet = "*";
 
     public virtual Task HandleSetupAsync(PunchoutSetupHandlerContext context)
     {
@@ -86,18 +93,69 @@ public class DefaultPunchoutHandler(
             return;
         }
 
-        await SelectOrderItemsAsync(context.Request, cartAggregate);
+        try
+        {
+            await SelectOrderItemsAsync(context.Request, cartAggregate);
 
-        await cartAggregate.ChangePurchaseOrderNumber(context.Request.OrderId);
-        await AddAddressesAsync(context, cartAggregate);
-        await AddShipmentAsync(context, cartAggregate);
-        await AddPaymentAsync(context, cartAggregate);
+            await cartAggregate.ChangePurchaseOrderNumber(context.Request.OrderId);
+            await AddAddressesAsync(context, cartAggregate);
+            await AddShipmentAsync(context, cartAggregate);
+            await AddPaymentAsync(context, cartAggregate);
 
-        await cartAggregateRepository.SaveAsync(cartAggregate);
-        var order = await CreateOrderAsync(cartAggregate);
+            // The cart is validated before it is saved, so a rejected order does not change the buyer cart
+            var validationError = await ValidateCartAsync(cartAggregate);
+            if (validationError != null)
+            {
+                context.Fail(PunchoutOrderStatus.InvalidRequest, validationError);
+                return;
+            }
 
-        context.Result.CustomerOrderId = order.Order.Id;
-        context.Result.PurchaseOrderNumber = context.Request.OrderId;
+            await cartAggregateRepository.SaveAsync(cartAggregate);
+            var order = await CreateOrderAsync(cartAggregate);
+
+            context.Result.CustomerOrderId = order.Order.Id;
+            context.Result.PurchaseOrderNumber = context.Request.OrderId;
+        }
+        catch (ValidationException ex)
+        {
+            // A cart operation did not pass the platform validation
+            context.Fail(PunchoutOrderStatus.InvalidRequest, GetValidationErrorMessage(ex));
+            return;
+        }
+        catch (ExecutionError ex) when (ex.Code == Constants.ValidationErrorCode)
+        {
+            // The order creation did not pass the cart validation 
+            context.Fail(PunchoutOrderStatus.InvalidRequest, GetValidationErrorMessage(ex));
+            return;
+        }
+
+        await ClearCartAsync(cartAggregate.Cart.Id);
+    }
+
+    /// <summary>
+    /// Temporary, until punchout gets its own cart: clear the current cart completely (unselected items, addresses)  
+    /// </summary>
+    protected virtual async Task ClearCartAsync(string cartId)
+    {
+        try
+        {
+            var cartAggregate = await cartAggregateRepository.GetCartByIdAsync(cartId);
+            var cart = cartAggregate?.Cart;
+
+            if (cart is null || (cart.Items.IsNullOrEmpty() && cart.Addresses.IsNullOrEmpty()))
+            {
+                return;
+            }
+
+            cart.Items?.Clear();
+            cart.Addresses?.Clear();
+
+            await cartAggregateRepository.SaveAsync(cartAggregate);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Punchout cart '{CartId}' cannot be cleared after the order is created.", cartId);
+        }
     }
 
     protected virtual Task<CartAggregate> GetCartAsync(PunchoutOrderMessageHandlerContext context)
@@ -137,12 +195,12 @@ public class DefaultPunchoutHandler(
     }
 
     /// <summary>
-    /// The order message sends the cart line item id as SupplierPartAuxiliaryID, the buyer returns it unchanged.
+    /// The order message sends the cart line item id in SupplierPartAuxiliaryID, the buyer returns it unchanged.
     /// </summary>
     protected virtual IList<string> GetLineItemIds(PunchoutOrderRequestData request)
     {
         return request.Items
-            .Select(x => x.SupplierPartAuxiliaryId)
+            .Select(x => x.LineItemId)
             .Where(x => !string.IsNullOrEmpty(x))
             .Distinct()
             .ToList();
@@ -157,12 +215,12 @@ public class DefaultPunchoutHandler(
 
         foreach (var item in request.Items)
         {
-            if (string.IsNullOrEmpty(item.SupplierPartAuxiliaryId))
+            if (string.IsNullOrEmpty(item.LineItemId))
             {
                 return $"Line {item.LineNumber}: SupplierPartAuxiliaryID is missing.";
             }
 
-            if (!lineItemIds.Add(item.SupplierPartAuxiliaryId))
+            if (!lineItemIds.Add(item.LineItemId))
             {
                 return $"Line {item.LineNumber}: SupplierPartAuxiliaryID '{item.SupplierPartAuxiliaryId}' is used by another line.";
             }
@@ -186,7 +244,7 @@ public class DefaultPunchoutHandler(
 
         foreach (var item in request.Items)
         {
-            var lineItem = cart.Items?.FirstOrDefault(x => x.Id.EqualsIgnoreCase(item.SupplierPartAuxiliaryId));
+            var lineItem = cart.Items?.FirstOrDefault(x => x.Id.EqualsIgnoreCase(item.LineItemId));
 
             var error = lineItem is null
                 ? $"Line {item.LineNumber}: item '{item.SupplierPartAuxiliaryId}' is not in the cart."
@@ -333,10 +391,59 @@ public class DefaultPunchoutHandler(
         // Replace the payment the buyer may have selected in the storefront
         payment.Id = cartAggregate.Cart.Payments?.FirstOrDefault()?.Id;
         payment.Currency = cartAggregate.Cart.Currency;
+
+        // The total must include only the order items and the default shipment
+        await cartAggregate.RecalculateAsync();
         payment.Amount = cartAggregate.Cart.Total;
         payment.BillingAddress = MapAddress(context.Request.BillTo, AddressType.Billing);
 
         await cartAggregate.AddPaymentAsync(payment, availableMethods);
+    }
+
+    /// <summary>
+    /// Validates the cart with the same rules as the order creation
+    /// </summary>
+    protected virtual async Task<string> ValidateCartAsync(CartAggregate cartAggregate)
+    {
+        // The cart was changed after it was loaded, the cached validation results are stale
+        cartAggregate.ClearValidationCache();
+
+        var errors = (await cartAggregate.ValidateAsync(CartValidationRuleSet))
+            .Concat(cartAggregate.OperationValidationErrors)
+            .Select(x => x.ErrorMessage)
+            .Where(x => !string.IsNullOrEmpty(x))
+            .Distinct()
+            .ToList();
+
+        return errors.Count > 0
+            ? string.Join(" ", errors)
+            : null;
+    }
+
+    protected virtual string GetValidationErrorMessage(ValidationException exception)
+    {
+        var messages = exception.Errors?
+            .Select(x => x.ErrorMessage)
+            .Where(x => !string.IsNullOrEmpty(x))
+            .Distinct()
+            .ToList();
+
+        return messages.IsNullOrEmpty()
+            ? exception.Message
+            : string.Join(" ", messages);
+    }
+
+    protected virtual string GetValidationErrorMessage(ExecutionError error)
+    {
+        var messages = error.Data.Values
+            .OfType<string>()
+            .Where(x => !string.IsNullOrEmpty(x))
+            .Distinct()
+            .ToList();
+
+        return messages.Count > 0
+            ? string.Join(" ", messages)
+            : error.Message;
     }
 
     protected virtual Address MapAddress(PunchoutAddress punchoutAddress, AddressType addressType)

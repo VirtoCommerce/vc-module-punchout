@@ -36,6 +36,11 @@ public class PunchoutSessionSearchService(
             query = query.Where(x => x.UserId == criteria.UserId);
         }
 
+        if (!string.IsNullOrEmpty(criteria.ConfigurationId))
+        {
+            query = query.Where(x => x.ConfigurationId == criteria.ConfigurationId);
+        }
+
         if (!string.IsNullOrEmpty(criteria.SessionToken))
         {
             query = query.Where(x => x.SessionTokenHash == criteria.SessionToken);

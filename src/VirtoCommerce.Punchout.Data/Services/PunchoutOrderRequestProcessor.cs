@@ -1,12 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Punchout.Core;
 using VirtoCommerce.Punchout.Core.Cxml;
+using VirtoCommerce.Punchout.Core.Cxml.Models;
+using VirtoCommerce.Punchout.Core.Cxml.Services;
 using VirtoCommerce.Punchout.Core.Extensions;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Services;
@@ -22,6 +24,10 @@ public class PunchoutOrderRequestProcessor(
     IPunchoutOrderRequestService orderRequestService,
     IPunchoutOrderRequestSearchService orderRequestSearchService,
     IPunchoutHandlerFactory handlerFactory,
+    IPunchoutSessionService sessionService,
+    IPunchoutSessionSearchService sessionSearchService,
+    IPunchoutOrderMessageSearchService orderMessageSearchService,
+    ICxmlSerializer cxmlSerializer,
     ILogger<PunchoutOrderRequestProcessor> logger)
     : BasePunchoutProcessor(options, userMappingSearchService), IPunchoutOrderRequestProcessor
 {
@@ -93,16 +99,6 @@ public class PunchoutOrderRequestProcessor(
         try
         {
             await handler.HandleOrderRequestAsync(handlerContext);
-        }
-        catch (ValidationException ex)
-        {
-            // The cart or the order did not pass the platform validation, e.g. a product is out of stock
-            var errorMessage = GetValidationErrorMessage(ex);
-
-            logger.LogWarning("Punchout '{HandlerName}' handler rejected order '{PurchaseOrderNumber}': {Message}",
-                handler.GetType().Name, request.OrderId, errorMessage);
-
-            return PunchoutOrderResult.Error(PunchoutOrderStatus.InvalidRequest, errorMessage);
         }
         catch (Exception ex)
         {
@@ -242,19 +238,6 @@ public class PunchoutOrderRequestProcessor(
         var searchResult = await orderRequestSearchService.SearchNoCloneAsync(criteria);
 
         return searchResult.Results.FirstOrDefault();
-    }
-
-    protected virtual string GetValidationErrorMessage(ValidationException exception)
-    {
-        var messages = exception.Errors?
-            .Select(x => x.ErrorMessage)
-            .Where(x => !string.IsNullOrEmpty(x))
-            .Distinct()
-            .ToList();
-
-        return messages.IsNullOrEmpty()
-            ? exception.Message
-            : string.Join(" ", messages);
     }
 
     /// <summary>
@@ -399,7 +382,141 @@ public class PunchoutOrderRequestProcessor(
                 $"Currency '{request.Currency}' is not supported.", settings, userMapping, store);
         }
 
-        return PunchoutOrderValidationResult.Valid(settings, userMapping, store);
+        var sessionIds = GetSessionIds(request);
+
+        if (sessionIds.Count > 1)
+        {
+            logger.LogWarning("Punchout order request '{OrderId}' rejected for sender identity '{SenderIdentity}': the items reference sessions {SessionIds}.",
+                request.OrderId, request.Sender, string.Join(", ", sessionIds));
+
+            return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest,
+                "The order items are from different punchout requisitions.", settings, userMapping, store);
+        }
+
+        // The order is placed for the requisition of the session referenced by the items, or of the last returned session
+        var session = sessionIds.Count == 1
+            ? await GetReturnedSessionAsync(sessionIds[0], settings, userMapping)
+            : await FindReturnedSessionAsync(settings, userMapping);
+
+        if (session is null)
+        {
+            logger.LogWarning("Punchout order request '{OrderId}' rejected for sender identity '{SenderIdentity}': no punchout session '{SessionId}' returned a requisition for user '{UserId}'.",
+                request.OrderId, request.Sender, sessionIds.FirstOrDefault(), userMapping.UserId);
+
+            return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest,
+                "No punchout requisition was returned for the order.", settings, userMapping, store);
+        }
+
+        errorMessage = await ValidateRequisitionItemsAsync(request, session);
+
+        if (errorMessage is not null)
+        {
+            logger.LogWarning("Punchout order request '{OrderId}' rejected for sender identity '{SenderIdentity}', session '{SessionId}': {Message}",
+                request.OrderId, request.Sender, session.Id, errorMessage);
+
+            return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest, errorMessage, settings, userMapping, store);
+        }
+
+        return PunchoutOrderValidationResult.Valid(settings, userMapping, store, session);
+    }
+
+    /// <summary>
+    /// The session ids from the SupplierPartAuxiliaryID of the items, see <see cref="PunchoutItemReference"/>.
+    /// </summary>
+    protected virtual IList<string> GetSessionIds(PunchoutOrderRequestData request)
+    {
+        return request.Items
+            .Select(x => x.SessionId)
+            .Where(x => !string.IsNullOrEmpty(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Returns the session if it returned a requisition for the user and the configuration, otherwise null.
+    /// </summary>
+    protected virtual async Task<PunchoutSession> GetReturnedSessionAsync(string sessionId, PunchoutConfiguration configuration, PunchoutUserMapping userMapping)
+    {
+        var session = await sessionService.GetNoCloneAsync(sessionId);
+
+        var isReturnedSession = session != null &&
+            session.Status == ModuleConstants.SessionStatus.Returned &&
+            session.StoreId.EqualsIgnoreCase(configuration.StoreId) &&
+            session.ConfigurationId.EqualsIgnoreCase(configuration.Id) &&
+            session.UserId.EqualsIgnoreCase(userMapping.UserId);
+
+        return isReturnedSession ? session : null;
+    }
+
+    /// <summary>
+    /// Finds the last session of the user that returned a requisition. The session expiration is not checked,
+    /// because the purchase order comes after the requisition is approved in the procurement system.
+    /// </summary>
+    protected virtual async Task<PunchoutSession> FindReturnedSessionAsync(PunchoutConfiguration configuration, PunchoutUserMapping userMapping)
+    {
+        var criteria = AbstractTypeFactory<PunchoutSessionSearchCriteria>.TryCreateInstance();
+        criteria.StoreId = configuration.StoreId;
+        criteria.ConfigurationId = configuration.Id;
+        criteria.UserId = userMapping.UserId;
+        criteria.Statuses = [ModuleConstants.SessionStatus.Returned];
+        // A session is modified when it is returned
+        criteria.Sort = $"{nameof(PunchoutSession.ModifiedDate)}:desc;{nameof(PunchoutSession.CreatedDate)}:desc";
+        criteria.Take = 1;
+
+        var searchResult = await sessionSearchService.SearchNoCloneAsync(criteria);
+
+        return searchResult.Results.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Every order line must be an item of the requisition returned by the session.
+    /// Returns the error message returned to the buyer, or null when the order matches the requisition.
+    /// </summary>
+    protected virtual async Task<string> ValidateRequisitionItemsAsync(PunchoutOrderRequestData request, PunchoutSession session)
+    {
+        var requisitionItems = await GetRequisitionItemsAsync(session);
+
+        // The line item id is compared, because the buyer may return the line item id without the session id
+        var requisitionLineItems = requisitionItems
+            .Where(x => x.ItemId is not null)
+            .Select(x => (x.ItemId.SupplierPartId, PunchoutItemReference.Parse(x.ItemId.SupplierPartAuxiliaryId).LineItemId))
+            .ToList();
+
+        foreach (var item in request.Items)
+        {
+            var isRequisitionItem = requisitionLineItems.Any(x =>
+                x.SupplierPartId.EqualsIgnoreCase(item.SupplierPartId) &&
+                x.LineItemId.EqualsIgnoreCase(item.LineItemId));
+
+            if (!isRequisitionItem)
+            {
+                return $"Line {item.LineNumber}: item '{item.SupplierPartId}' is not in the punchout requisition.";
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Reads the items of the PunchOutOrderMessage stored when the session returned the requisition.
+    /// </summary>
+    protected virtual async Task<IList<CxmlItemIn>> GetRequisitionItemsAsync(PunchoutSession session)
+    {
+        var criteria = AbstractTypeFactory<PunchoutOrderMessageSearchCriteria>.TryCreateInstance();
+        criteria.SessionId = session.Id;
+        criteria.Take = 1;
+
+        var searchResult = await orderMessageSearchService.SearchNoCloneAsync(criteria);
+        var orderMessage = searchResult.Results.FirstOrDefault();
+
+        if (string.IsNullOrEmpty(orderMessage?.Cxml))
+        {
+            return [];
+        }
+
+        var document = cxmlSerializer.Deserialize<CxmlDocument>(orderMessage.Cxml);
+
+        return document?.Message?.PunchOutOrderMessage?.Items ?? [];
     }
 
     protected virtual bool IsOrderTypeSupported(string orderType)
@@ -492,6 +609,7 @@ public class PunchoutOrderRequestProcessor(
         context.Configuration = validationResult.Configuration;
         context.UserMapping = validationResult.UserMapping;
         context.Store = validationResult.Store;
+        context.Session = validationResult.Session;
 
         context.Result = AbstractTypeFactory<PunchoutOrderResult>.TryCreateInstance();
 

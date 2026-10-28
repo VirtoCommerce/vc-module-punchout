@@ -136,6 +136,8 @@ public class PunchoutOrderMapperTests
         Assert.Equal(10m, item.Quantity);
         Assert.Equal("5484027", item.SupplierPartId);
         Assert.Equal("5137391", item.SupplierPartAuxiliaryId);
+        Assert.Equal("5137391", item.LineItemId);
+        Assert.Null(item.SessionId);
         Assert.Equal(6.78m, item.UnitPrice);
         Assert.Equal("USD", item.Currency);
         Assert.Equal("LB", item.UnitOfMeasure);

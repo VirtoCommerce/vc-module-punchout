@@ -9,6 +9,8 @@ public class PunchoutSessionSearchCriteria : SearchCriteriaBase
 
     public string UserId { get; set; }
 
+    public string ConfigurationId { get; set; }
+
     // SHA-256 hash of the session token, see SessionTokenHasher
     public string SessionToken { get; set; }
 

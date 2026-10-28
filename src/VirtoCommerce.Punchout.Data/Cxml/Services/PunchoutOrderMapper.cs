@@ -131,6 +131,7 @@ public class PunchoutOrderMapper(ICxmlResponseFactory responseFactory) : IPuncho
 
         item.SupplierPartId = itemOut.ItemId?.SupplierPartId?.Trim();
         item.SupplierPartAuxiliaryId = itemOut.ItemId?.SupplierPartAuxiliaryId?.Trim();
+        (item.LineItemId, item.SessionId) = PunchoutItemReference.Parse(item.SupplierPartAuxiliaryId);
 
         item.UnitPrice = itemDetail?.UnitPrice?.Money.ToDecimal();
         item.Currency = itemDetail?.UnitPrice?.Money?.Currency;

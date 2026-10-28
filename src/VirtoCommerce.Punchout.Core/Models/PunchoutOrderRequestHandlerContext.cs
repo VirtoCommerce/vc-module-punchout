@@ -6,5 +6,7 @@ public class PunchoutOrderRequestHandlerContext : PunchoutHandlerContext
 
     public PunchoutUserMapping UserMapping { get; set; }
 
+    public PunchoutSession Session { get; set; }
+
     public PunchoutOrderResult Result { get; set; }
 }

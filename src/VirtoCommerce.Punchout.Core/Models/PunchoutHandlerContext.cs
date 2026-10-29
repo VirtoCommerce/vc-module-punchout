@@ -1,8 +1,12 @@
+using VirtoCommerce.StoreModule.Core.Model;
+
 namespace VirtoCommerce.Punchout.Core.Models;
 
 public abstract class PunchoutHandlerContext
 {
     public PunchoutConfiguration Configuration { get; set; }
+
+    public Store Store { get; set; }
 
     public string ErrorCode { get; private set; }
 

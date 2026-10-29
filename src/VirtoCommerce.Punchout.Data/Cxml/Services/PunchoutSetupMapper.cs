@@ -6,6 +6,7 @@ using VirtoCommerce.Punchout.Core.Cxml;
 using VirtoCommerce.Punchout.Core.Cxml.Models;
 using VirtoCommerce.Punchout.Core.Cxml.Services;
 using VirtoCommerce.Punchout.Core.Models;
+using VirtoCommerce.Punchout.Data.Cxml.Extensions;
 
 namespace VirtoCommerce.Punchout.Data.Cxml.Services;
 
@@ -19,6 +20,8 @@ public class PunchoutSetupMapper(ICxmlResponseFactory responseFactory) : IPuncho
 
         var header = document.Header;
         var setupRequest = document.Request?.PunchOutSetupRequest;
+
+        setupContext.PayloadId = document.PayloadId;
 
         setupContext.From = header?.From?.Credential?.Identity;
         setupContext.FromDomain = header?.From?.Credential?.Domain;
@@ -40,29 +43,7 @@ public class PunchoutSetupMapper(ICxmlResponseFactory responseFactory) : IPuncho
 
     protected virtual PunchoutUserContext MapUser(IList<CxmlContact> contacts)
     {
-        if (contacts.IsNullOrEmpty())
-        {
-            return null;
-        }
-
-        // The person who started the session is he endUser. Fall back to the first contact for buyers that send one without a role.
-        var contact = contacts.FirstOrDefault(x => x.Role.EqualsIgnoreCase(CxmlConstants.ContactRole.EndUser))
-            ?? contacts[0];
-
-        var name = contact.Name?.Value?.Trim();
-        var email = contact.Email?.Trim();
-
-        if (string.IsNullOrEmpty(name) && string.IsNullOrEmpty(email))
-        {
-            return null;
-        }
-
-        var user = AbstractTypeFactory<PunchoutUserContext>.TryCreateInstance();
-
-        user.Name = name;
-        user.Email = email;
-
-        return user;
+        return contacts.ToUserContext();
     }
 
     public virtual CxmlDocument MapResponse(PunchoutSetupResult result)

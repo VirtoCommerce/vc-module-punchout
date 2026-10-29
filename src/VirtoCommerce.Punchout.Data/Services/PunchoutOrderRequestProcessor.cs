@@ -393,10 +393,9 @@ public class PunchoutOrderRequestProcessor(
                 "The order items are from different punchout requisitions.", settings, userMapping, store);
         }
 
-        // The order is placed for the requisition of the session referenced by the items, or of the last returned session
-        var session = sessionIds.Count == 1
-            ? await GetReturnedSessionAsync(sessionIds[0], settings, userMapping)
-            : await FindReturnedSessionAsync(settings, userMapping);
+        // Find the session referenced by the items or the last returned session for this user
+        var sessionId = sessionIds.FirstOrDefault();
+        var session = await GetSessionAsync(sessionId, settings, userMapping);
 
         if (session is null)
         {
@@ -420,8 +419,15 @@ public class PunchoutOrderRequestProcessor(
         return PunchoutOrderValidationResult.Valid(settings, userMapping, store, session);
     }
 
+    protected virtual async Task<PunchoutSession> GetSessionAsync(string sessionId, PunchoutConfiguration settings, PunchoutUserMapping userMapping)
+    {
+        return sessionId != null
+            ? await GetReturnedSessionAsync(sessionId, settings, userMapping)
+            : await FindReturnedSessionAsync(settings, userMapping);
+    }
+
     /// <summary>
-    /// The session ids from the SupplierPartAuxiliaryID of the items, see <see cref="PunchoutItemReference"/>.
+    /// The session ids from the SupplierPartAuxiliaryID of the items/>.
     /// </summary>
     protected virtual IList<string> GetSessionIds(PunchoutOrderRequestData request)
     {
@@ -449,8 +455,7 @@ public class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// Finds the last session of the user that returned a requisition. The session expiration is not checked,
-    /// because the purchase order comes after the requisition is approved in the procurement system.
+    /// Finds the last session of the user that returned a requisition.
     /// </summary>
     protected virtual async Task<PunchoutSession> FindReturnedSessionAsync(PunchoutConfiguration configuration, PunchoutUserMapping userMapping)
     {
@@ -459,7 +464,6 @@ public class PunchoutOrderRequestProcessor(
         criteria.ConfigurationId = configuration.Id;
         criteria.UserId = userMapping.UserId;
         criteria.Statuses = [ModuleConstants.SessionStatus.Returned];
-        // A session is modified when it is returned
         criteria.Sort = $"{nameof(PunchoutSession.ModifiedDate)}:desc;{nameof(PunchoutSession.CreatedDate)}:desc";
         criteria.Take = 1;
 
@@ -469,8 +473,7 @@ public class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// Every order line must be an item of the requisition returned by the session.
-    /// Returns the error message returned to the buyer, or null when the order matches the requisition.
+    /// Returns the rrror message or null when the order matches the requisition.
     /// </summary>
     protected virtual async Task<string> ValidateRequisitionItemsAsync(PunchoutOrderRequestData request, PunchoutSession session)
     {
@@ -526,7 +529,7 @@ public class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// Validates the order content. Returns the error message returned to the buyer, or null when the order is valid.
+    /// Returns the error message or null when the order is valid.
     /// </summary>
     protected virtual string ValidateOrder(PunchoutOrderRequestData request)
     {
@@ -566,7 +569,7 @@ public class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// Validates a single order line. Returns the error message returned to the buyer, or null when the line is valid.
+    /// Returns the rrror message or null when the line is valid.
     /// </summary>
     protected virtual string ValidateItem(PunchoutOrderRequestData request, PunchoutOrderRequestItem item)
     {

@@ -14,7 +14,7 @@
   </dependencies>
 
   <title>Punchout</title>
-  <description>Сonnects Virto Commerce to e-procurement systems such as Coupa, SAP Arib</description>
+  <description>Connects Virto Commerce to e-procurement systems such as Coupa, SAP Ariba, and Oracle over the cXML PunchOut protocol</description>
 
   <authors>
     <author>VirtoCommerce</author>
@@ -23,7 +23,7 @@
     <owner>Virto Commerce</owner>
   </owners>
 
-  <projectUrl>https://github.com/Virto Commerce/vc-module-punchout</projectUrl>
+  <projectUrl>https://github.com/VirtoCommerce/vc-module-punchout</projectUrl>
   <iconUrl>Modules/$(VirtoCommerce.Punchout)/Content/logo.svg</iconUrl>
   <requireLicenseAcceptance>false</requireLicenseAcceptance>
 

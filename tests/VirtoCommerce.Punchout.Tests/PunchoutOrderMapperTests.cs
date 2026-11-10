@@ -132,7 +132,7 @@ public class PunchoutOrderMapperTests
         Assert.Equal("Milwaukee", request.BillTo.City);
 
         var item = Assert.Single(request.Items);
-        Assert.Equal(1, item.LineNumber);
+        Assert.Equal("1", item.LineNumber);
         Assert.Equal(10m, item.Quantity);
         Assert.Equal("5484027", item.SupplierPartId);
         Assert.Equal("5137391", item.SupplierPartAuxiliaryId);

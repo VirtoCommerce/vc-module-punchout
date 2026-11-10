@@ -4,7 +4,7 @@ namespace VirtoCommerce.Punchout.Core.Models;
 
 public class PunchoutOrderRequestItem
 {
-    public int LineNumber { get; set; }
+    public string LineNumber { get; set; }
 
     public decimal Quantity { get; set; }
 

@@ -101,6 +101,12 @@ public class DefaultPunchoutHandler(
             await SelectOrderItemsAsync(context.Request, cartAggregate);
 
             await cartAggregate.ChangePurchaseOrderNumber(context.Request.OrderId);
+
+            foreach (var requestItem in context.Request.Items)
+            {
+                await cartAggregate.ChangePurchaseOrderLineNumber(requestItem.LineItemId, requestItem.LineNumber);
+            }
+
             await AddAddressesAsync(context, cartAggregate);
             await AddShipmentAsync(context, cartAggregate);
             await AddPaymentAsync(context, cartAggregate);

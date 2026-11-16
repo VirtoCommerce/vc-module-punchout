@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VirtoCommerce.Platform.Core.Common;
@@ -28,17 +30,10 @@ public class PunchoutOrderRequestProcessor(
     IPunchoutSessionSearchService sessionSearchService,
     IPunchoutOrderMessageSearchService orderMessageSearchService,
     ICxmlSerializer cxmlSerializer,
+    AbstractValidator<PunchoutOrderRequestData> requestValidator,
     ILogger<PunchoutOrderRequestProcessor> logger)
     : BasePunchoutProcessor(options, userMappingSearchService), IPunchoutOrderRequestProcessor
 {
-    protected const int PayloadIdMaxLength = 512;
-    protected const int PurchaseOrderNumberMaxLength = 256;
-    protected const int IdentityMaxLength = 512;
-    protected const int OrderTypeMaxLength = 32;
-    protected const int CurrencyMaxLength = 64;
-    protected const int ErrorCodeMaxLength = 64;
-    protected const int ErrorMessageMaxLength = 2048;
-
     public virtual async Task<PunchoutOrderResult> ProcessAsync(PunchoutOrderRequestData request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -147,15 +142,18 @@ public class PunchoutOrderRequestProcessor(
 
         orderRequest.ConfigurationId = configuration.Id;
         orderRequest.StoreId = configuration.StoreId;
+        // A rejected request is stored with the values it was rejected for, cut to the column sizes.
         orderRequest.PayloadId = request.PayloadId;
-        orderRequest.SenderIdentity = Truncate(request.Sender, IdentityMaxLength);
-        orderRequest.BuyerIdentity = Truncate(request.From, IdentityMaxLength);
+        orderRequest.SenderIdentity = Truncate(request.Sender, ModuleConstants.FieldLength.Identity);
+        orderRequest.BuyerIdentity = Truncate(request.From, ModuleConstants.FieldLength.Identity);
         orderRequest.UserId = validationResult.UserMapping?.UserId;
-        // The type attribute defaults to 'new' in the cXML DTD
-        orderRequest.OrderType = Truncate(string.IsNullOrEmpty(request.OrderType) ? CxmlConstants.OrderRequestType.New : request.OrderType, OrderTypeMaxLength);
-        orderRequest.PurchaseOrderNumber = Truncate(request.OrderId, PurchaseOrderNumberMaxLength);
+        orderRequest.OrderType = Truncate(request.OrderType.IsNullOrEmpty() ? CxmlConstants.OrderRequestType.New : request.OrderType, ModuleConstants.FieldLength.OrderType); // 'type' defaults to 'new' in the cXML DTD
+        orderRequest.OrderVersion = Truncate(request.OrderVersion, ModuleConstants.FieldLength.OrderVersion);
+        orderRequest.PreviousPayloadId = Truncate(request.PreviousPayloadId, ModuleConstants.FieldLength.PayloadId);
+        orderRequest.Cxml = request.Cxml;
+        orderRequest.PurchaseOrderNumber = Truncate(request.OrderId, ModuleConstants.FieldLength.PurchaseOrderNumber);
         orderRequest.PurchaseOrderDate = request.OrderDate?.UtcDateTime;
-        orderRequest.Currency = Truncate(request.Currency, CurrencyMaxLength);
+        orderRequest.Currency = Truncate(request.Currency, ModuleConstants.FieldLength.Currency);
         orderRequest.Total = request.Total;
         orderRequest.CustomerOrderId = null;
 
@@ -201,16 +199,18 @@ public class PunchoutOrderRequestProcessor(
     /// </summary>
     protected virtual async Task SaveOrderRequestAsync(PunchoutOrderRequest orderRequest, string status, PunchoutOrderResult result)
     {
-        // The payload id is required and unique, a document without a valid one cannot be stored
-        if (string.IsNullOrEmpty(orderRequest.PayloadId) || orderRequest.PayloadId.Length > PayloadIdMaxLength)
+        // The payload id is required and unique, a document without a valid one cannot be stored.
+        // A cut payload id could match another document.
+        if (orderRequest.PayloadId.IsNullOrEmpty() || orderRequest.PayloadId.Length > ModuleConstants.FieldLength.PayloadId)
         {
             return;
         }
 
         orderRequest.Status = status;
         orderRequest.CustomerOrderId = result.CustomerOrderId;
-        orderRequest.ErrorCode = Truncate(result.Status == PunchoutOrderStatus.Success ? null : result.Status, ErrorCodeMaxLength);
-        orderRequest.ErrorMessage = Truncate(result.ErrorMessage, ErrorMessageMaxLength);
+        orderRequest.ErrorCode = Truncate(result.Status == PunchoutOrderStatus.Success ? null : result.Status, ModuleConstants.FieldLength.ErrorCode);
+        // The handler may join many line errors, the message must fit or the request stays in Processing
+        orderRequest.ErrorMessage = Truncate(result.ErrorMessage, ModuleConstants.FieldLength.ErrorMessage);
 
         try
         {
@@ -255,7 +255,7 @@ public class PunchoutOrderRequestProcessor(
 
         // The same purchase order resent with a new payloadID. Failed and rejected attempts do not block it.
         // Only a new order can duplicate a new order, and an empty order number would match every request.
-        if (string.IsNullOrEmpty(request.OrderId) || !IsOrderTypeSupported(request.OrderType))
+        if (string.IsNullOrEmpty(request.OrderId) || !IsNewOrder(request.OrderType))
         {
             return null;
         }
@@ -363,14 +363,17 @@ public class PunchoutOrderRequestProcessor(
                 $"Order type '{request.OrderType}' is not supported.", settings, userMapping, store);
         }
 
-        var errorMessage = ValidateOrder(request);
+        // The content is validated only for an authenticated sender, the rejected request is stored
+        var requestValidationResult = await requestValidator.ValidateAsync(request);
 
-        if (errorMessage is not null)
+        if (!requestValidationResult.IsValid)
         {
-            logger.LogWarning("Punchout order request '{OrderId}' rejected for sender identity '{SenderIdentity}': {Message}",
-                request.OrderId, request.Sender, errorMessage);
+            var validationError = requestValidationResult.Errors.First().ErrorMessage;
 
-            return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest, errorMessage, settings, userMapping, store);
+            logger.LogWarning("Punchout order request '{OrderId}' rejected for sender identity '{SenderIdentity}': {Message}",
+                request.OrderId, request.Sender, validationError);
+
+            return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest, validationError, settings, userMapping, store);
         }
 
         if (!IsCurrencySupported(request.Currency, store))
@@ -382,6 +385,21 @@ public class PunchoutOrderRequestProcessor(
                 $"Currency '{request.Currency}' is not supported.", settings, userMapping, store);
         }
 
+        // An update or delete changes the customer order created by an earlier request, the requisition cart is gone
+        if (IsUpdateOrder(request.OrderType) || IsDeleteOrder(request.OrderType))
+        {
+            return await ValidateUpdateAsync(request, settings, userMapping, store);
+        }
+
+        return await ValidateNewOrderAsync(request, settings, userMapping, store);
+    }
+
+    /// <summary>
+    /// Finds the punchout session that returned the requisition and checks that the order items are from it.
+    /// </summary>
+    protected virtual async Task<PunchoutOrderValidationResult> ValidateNewOrderAsync(PunchoutOrderRequestData request, PunchoutConfiguration settings,
+        PunchoutUserMapping userMapping, Store store)
+    {
         var sessionIds = GetSessionIds(request);
 
         if (sessionIds.Count > 1)
@@ -406,7 +424,7 @@ public class PunchoutOrderRequestProcessor(
                 "No punchout requisition was returned for the order.", settings, userMapping, store);
         }
 
-        errorMessage = await ValidateRequisitionItemsAsync(request, session);
+        var errorMessage = await ValidateRequisitionItemsAsync(request, session);
 
         if (errorMessage is not null)
         {
@@ -417,6 +435,171 @@ public class PunchoutOrderRequestProcessor(
         }
 
         return PunchoutOrderValidationResult.Valid(settings, userMapping, store, session);
+    }
+
+    /// <summary>
+    /// Finds the current version of the purchase order and checks that the update or delete is newer than it.
+    /// </summary>
+    protected virtual async Task<PunchoutOrderValidationResult> ValidateUpdateAsync(PunchoutOrderRequestData request, PunchoutConfiguration settings,
+        PunchoutUserMapping userMapping, Store store)
+    {
+        // Two versions applied at the same time would overwrite each other
+        if (await IsOrderInProgressAsync(request, settings))
+        {
+            logger.LogWarning("Punchout order request '{OrderId}' with payload '{PayloadId}' rejected: another version of the order is being processed.",
+                request.OrderId, request.PayloadId);
+
+            return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.OrderInProgress,
+                "Another version of the order is being processed, please retry later.", settings, userMapping, store);
+        }
+
+        var errorMessage = await ValidateDocumentReferenceAsync(request, settings);
+
+        if (errorMessage is not null)
+        {
+            logger.LogWarning("Punchout order request '{OrderId}' with payload '{PayloadId}' rejected: {Message}",
+                request.OrderId, request.PayloadId, errorMessage);
+
+            return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest, errorMessage, settings, userMapping, store);
+        }
+
+        var currentRequest = await FindCurrentOrderVersionAsync(request, settings);
+
+        // The 'new' version was rejected or failed, so no customer order exists and the buyer will not send 'new' again.
+        // The update is then created from the requisition, its items still reference the punchout session.
+        if (currentRequest is null && IsUpdateOrder(request.OrderType))
+        {
+            logger.LogInformation("Punchout order request '{OrderId}' with payload '{PayloadId}': no version of the order is processed, the update is created as a new order.",
+                request.OrderId, request.PayloadId);
+
+            return await ValidateNewOrderAsync(request, settings, userMapping, store);
+        }
+
+        // The buyer cancels a purchase order that never became a customer order, there is nothing to cancel.
+        // The handler accepts it without a previous request, so the buyer does not get an error for the cancellation.
+        if (string.IsNullOrEmpty(currentRequest?.CustomerOrderId) && IsDeleteOrder(request.OrderType))
+        {
+            logger.LogInformation("Punchout order request '{OrderId}' with payload '{PayloadId}': no customer order exists for the purchase order, the delete is accepted without changes.",
+                request.OrderId, request.PayloadId);
+
+            return PunchoutOrderValidationResult.ValidUpdate(settings, userMapping, store, null);
+        }
+
+        if (string.IsNullOrEmpty(currentRequest?.CustomerOrderId))
+        {
+            logger.LogWarning("Punchout order request '{OrderId}' with payload '{PayloadId}' rejected: the order to change is not found.",
+                request.OrderId, request.PayloadId);
+
+            return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest,
+                $"Order '{request.OrderId}' is not found.", settings, userMapping, store);
+        }
+
+        errorMessage = ValidateOrderVersion(request, currentRequest);
+
+        if (errorMessage is not null)
+        {
+            logger.LogWarning("Punchout order request '{OrderId}' with payload '{PayloadId}' rejected, current version is stored by request '{CurrentRequestId}': {Message}",
+                request.OrderId, request.PayloadId, currentRequest.Id, errorMessage);
+
+            return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest, errorMessage, settings, userMapping, store);
+        }
+
+        return PunchoutOrderValidationResult.ValidUpdate(settings, userMapping, store, currentRequest);
+    }
+
+    /// <summary>
+    /// The DocumentReference may point to any earlier version, even a rejected one: the buyer chains the versions it sent.
+    /// It must not point to another purchase order. Returns the error message or null.
+    /// </summary>
+    protected virtual async Task<string> ValidateDocumentReferenceAsync(PunchoutOrderRequestData request, PunchoutConfiguration configuration)
+    {
+        if (string.IsNullOrEmpty(request.PreviousPayloadId))
+        {
+            return null;
+        }
+
+        if (request.PreviousPayloadId == request.PayloadId)
+        {
+            return "The DocumentReference points to the document itself.";
+        }
+
+        var referencedRequest = await FindRequestByPayloadIdAsync(configuration.Id, request.PreviousPayloadId);
+
+        if (referencedRequest is null)
+        {
+            // The previous version may have been sent before the order requests were stored, the order number is enough
+            logger.LogInformation("Punchout order request '{OrderId}' with payload '{PayloadId}' references unknown payload '{PreviousPayloadId}'.",
+                request.OrderId, request.PayloadId, request.PreviousPayloadId);
+
+            return null;
+        }
+
+        return referencedRequest.PurchaseOrderNumber == request.OrderId
+            ? null
+            : $"The DocumentReference '{request.PreviousPayloadId}' belongs to order '{referencedRequest.PurchaseOrderNumber}'.";
+    }
+
+    /// <summary>
+    /// The last successfully processed version of the purchase order, it references the customer order.
+    /// </summary>
+    protected virtual async Task<PunchoutOrderRequest> FindCurrentOrderVersionAsync(PunchoutOrderRequestData request, PunchoutConfiguration configuration)
+    {
+        var criteria = AbstractTypeFactory<PunchoutOrderRequestSearchCriteria>.TryCreateInstance();
+        criteria.ConfigurationId = configuration.Id;
+        criteria.PurchaseOrderNumber = request.OrderId;
+        criteria.Statuses = [PunchoutOrderRequestStatus.Completed];
+        criteria.Sort = $"{nameof(PunchoutOrderRequest.CreatedDate)}:desc;{nameof(PunchoutOrderRequest.Id)}:desc";
+        criteria.Take = 1;
+
+        var searchResult = await orderRequestSearchService.SearchNoCloneAsync(criteria);
+
+        return searchResult.Results.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Another document of the same purchase order is being processed.
+    /// </summary>
+    protected virtual async Task<bool> IsOrderInProgressAsync(PunchoutOrderRequestData request, PunchoutConfiguration configuration)
+    {
+        var criteria = AbstractTypeFactory<PunchoutOrderRequestSearchCriteria>.TryCreateInstance();
+        criteria.ConfigurationId = configuration.Id;
+        criteria.PurchaseOrderNumber = request.OrderId;
+        criteria.Statuses = [PunchoutOrderRequestStatus.Processing];
+        criteria.Take = 2;
+
+        var searchResult = await orderRequestSearchService.SearchNoCloneAsync(criteria);
+
+        return searchResult.Results.Any(x => x.PayloadId != request.PayloadId);
+    }
+
+    /// <summary>
+    /// orderVersion is optional in cXML. When both versions are numbers, the update must be newer than the current version,
+    /// so a delayed or resent old version does not overwrite a newer one. Returns the error message or null.
+    /// </summary>
+    protected virtual string ValidateOrderVersion(PunchoutOrderRequestData request, PunchoutOrderRequest currentRequest)
+    {
+        if (string.IsNullOrEmpty(request.OrderVersion))
+        {
+            return null;
+        }
+
+        if (!int.TryParse(request.OrderVersion, NumberStyles.None, CultureInfo.InvariantCulture, out var version))
+        {
+            return $"The orderVersion '{request.OrderVersion}' is not a number.";
+        }
+
+        // A new order without orderVersion is version 1
+        var currentVersion = 1;
+
+        if (!string.IsNullOrEmpty(currentRequest.OrderVersion) &&
+            !int.TryParse(currentRequest.OrderVersion, NumberStyles.None, CultureInfo.InvariantCulture, out currentVersion))
+        {
+            return null;
+        }
+
+        return version > currentVersion
+            ? null
+            : $"The orderVersion {version} is not newer than the current version {currentVersion}.";
     }
 
     protected virtual async Task<PunchoutSession> GetSessionAsync(string sessionId, PunchoutConfiguration settings, PunchoutUserMapping userMapping)
@@ -473,7 +656,7 @@ public class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// Returns the rrror message or null when the order matches the requisition.
+    /// Returns the error message or null when the order matches the requisition.
     /// </summary>
     protected virtual async Task<string> ValidateRequisitionItemsAsync(PunchoutOrderRequestData request, PunchoutSession session)
     {
@@ -524,76 +707,23 @@ public class PunchoutOrderRequestProcessor(
 
     protected virtual bool IsOrderTypeSupported(string orderType)
     {
+        return IsNewOrder(orderType) || IsUpdateOrder(orderType) || IsDeleteOrder(orderType);
+    }
+
+    protected virtual bool IsNewOrder(string orderType)
+    {
         // The type attribute defaults to 'new' in the cXML DTD
         return string.IsNullOrEmpty(orderType) || orderType.EqualsIgnoreCase(CxmlConstants.OrderRequestType.New);
     }
 
-    /// <summary>
-    /// Returns the error message or null when the order is valid.
-    /// </summary>
-    protected virtual string ValidateOrder(PunchoutOrderRequestData request)
+    protected virtual bool IsUpdateOrder(string orderType)
     {
-        if (string.IsNullOrEmpty(request.PayloadId))
-        {
-            return "The cXML document has no payloadID.";
-        }
-
-        if (request.PayloadId.Length > PayloadIdMaxLength)
-        {
-            return $"The payloadID is longer than {PayloadIdMaxLength} characters.";
-        }
-
-        if (string.IsNullOrEmpty(request.OrderId))
-        {
-            return "The order has no orderID.";
-        }
-
-        if (request.OrderId.Length > PurchaseOrderNumberMaxLength)
-        {
-            return $"The orderID is longer than {PurchaseOrderNumberMaxLength} characters.";
-        }
-
-        if (string.IsNullOrEmpty(request.Currency))
-        {
-            return "The order has no Total currency.";
-        }
-
-        if (request.Items.IsNullOrEmpty())
-        {
-            return "The order has no items.";
-        }
-
-        return request.Items
-            .Select(x => ValidateItem(request, x))
-            .FirstOrDefault(x => x is not null);
+        return orderType.EqualsIgnoreCase(CxmlConstants.OrderRequestType.Update);
     }
 
-    /// <summary>
-    /// Returns the rrror message or null when the line is valid.
-    /// </summary>
-    protected virtual string ValidateItem(PunchoutOrderRequestData request, PunchoutOrderRequestItem item)
+    protected virtual bool IsDeleteOrder(string orderType)
     {
-        if (string.IsNullOrEmpty(item.SupplierPartId))
-        {
-            return $"Line {item.LineNumber}: SupplierPartID is missing.";
-        }
-
-        if (item.Quantity <= 0)
-        {
-            return $"Line {item.LineNumber}: quantity must be positive.";
-        }
-
-        if (item.UnitPrice is null or < 0)
-        {
-            return $"Line {item.LineNumber}: unit price is missing or invalid.";
-        }
-
-        if (!string.IsNullOrEmpty(item.Currency) && !item.Currency.EqualsIgnoreCase(request.Currency))
-        {
-            return $"Line {item.LineNumber}: currency '{item.Currency}' does not match the order currency '{request.Currency}'.";
-        }
-
-        return null;
+        return orderType.EqualsIgnoreCase(CxmlConstants.OrderRequestType.Delete);
     }
 
     protected virtual bool IsCurrencySupported(string currency, Store store)
@@ -613,13 +743,14 @@ public class PunchoutOrderRequestProcessor(
         context.UserMapping = validationResult.UserMapping;
         context.Store = validationResult.Store;
         context.Session = validationResult.Session;
+        context.PreviousRequest = validationResult.PreviousRequest;
 
         context.Result = AbstractTypeFactory<PunchoutOrderResult>.TryCreateInstance();
 
         return context;
     }
 
-    private static string Truncate(string value, int maxLength)
+    protected static string Truncate(string value, int maxLength)
     {
         return value?.Length > maxLength ? value[..maxLength] : value;
     }

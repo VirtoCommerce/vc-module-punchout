@@ -6,7 +6,16 @@ public class PunchoutOrderRequestHandlerContext : PunchoutHandlerContext
 
     public PunchoutUserMapping UserMapping { get; set; }
 
+    /// <summary>
+    /// The session that returned the requisition of a 'new' order, null for an 'update' or 'delete' of an existing order.
+    /// </summary>
     public PunchoutSession Session { get; set; }
+
+    /// <summary>
+    /// The current version of the purchase order changed by an 'update' or 'delete', null for a 'new' order.
+    /// An 'update' without a processed previous version has no previous request and is created as a new order from the session.
+    /// </summary>
+    public PunchoutOrderRequest PreviousRequest { get; set; }
 
     public PunchoutOrderResult Result { get; set; }
 }

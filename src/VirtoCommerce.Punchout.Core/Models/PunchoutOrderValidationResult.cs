@@ -16,8 +16,16 @@ public class PunchoutOrderValidationResult
 
     public PunchoutSession Session { get; set; }
 
+    /// <summary>
+    /// The current version of the purchase order changed by an 'update' request.
+    /// </summary>
+    public PunchoutOrderRequest PreviousRequest { get; set; }
+
     public static PunchoutOrderValidationResult Valid(PunchoutConfiguration configuration, PunchoutUserMapping userMapping, Store store, PunchoutSession session) =>
         new() { Configuration = configuration, UserMapping = userMapping, Store = store, Session = session };
+
+    public static PunchoutOrderValidationResult ValidUpdate(PunchoutConfiguration configuration, PunchoutUserMapping userMapping, Store store, PunchoutOrderRequest previousRequest) =>
+        new() { Configuration = configuration, UserMapping = userMapping, Store = store, PreviousRequest = previousRequest };
 
     public static PunchoutOrderValidationResult Invalid(string status, string errorMessage = null) =>
         new() { Error = PunchoutOrderResult.Error(status, errorMessage) };

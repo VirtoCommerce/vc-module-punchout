@@ -47,6 +47,7 @@ public class PunchoutController : Controller
         try
         {
             request = _serializer.Deserialize<CxmlDocument>(xml);
+            request.RawXml = xml;
         }
         catch (Exception ex) when (ex is XmlException or InvalidOperationException)
         {

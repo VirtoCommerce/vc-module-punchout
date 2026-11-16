@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Platform.Core.Domain;
+using VirtoCommerce.Punchout.Core;
 using VirtoCommerce.Punchout.Core.Models;
 
 namespace VirtoCommerce.Punchout.Data.Models;
@@ -10,50 +11,58 @@ namespace VirtoCommerce.Punchout.Data.Models;
 public class PunchoutOrderRequestEntity : AuditableEntity, IDataEntity<PunchoutOrderRequestEntity, PunchoutOrderRequest>
 {
     [Required]
-    [StringLength(128)]
+    [StringLength(ModuleConstants.FieldLength.Id)]
     public string ConfigurationId { get; set; }
 
-    [StringLength(128)]
+    [StringLength(ModuleConstants.FieldLength.Id)]
     public string StoreId { get; set; }
 
     [Required]
-    [StringLength(512)]
+    [StringLength(ModuleConstants.FieldLength.PayloadId)]
     public string PayloadId { get; set; }
 
-    [StringLength(512)]
+    [StringLength(ModuleConstants.FieldLength.Identity)]
     public string SenderIdentity { get; set; }
 
-    [StringLength(512)]
+    [StringLength(ModuleConstants.FieldLength.Identity)]
     public string BuyerIdentity { get; set; }
 
-    [StringLength(128)]
+    [StringLength(ModuleConstants.FieldLength.Id)]
     public string UserId { get; set; }
 
-    [StringLength(32)]
+    [StringLength(ModuleConstants.FieldLength.OrderType)]
     public string OrderType { get; set; }
 
-    [StringLength(256)]
+    [StringLength(ModuleConstants.FieldLength.OrderVersion)]
+    public string OrderVersion { get; set; }
+
+    [StringLength(ModuleConstants.FieldLength.PayloadId)]
+    public string PreviousPayloadId { get; set; }
+
+    public string Cxml { get; set; }
+
+    [StringLength(ModuleConstants.FieldLength.PurchaseOrderNumber)]
     public string PurchaseOrderNumber { get; set; }
 
     public DateTime? PurchaseOrderDate { get; set; }
 
-    [StringLength(64)]
+    [StringLength(ModuleConstants.FieldLength.Currency)]
     public string Currency { get; set; }
 
     [Precision(19, 4)]
     public decimal? Total { get; set; }
 
-    [StringLength(128)]
+    [StringLength(ModuleConstants.FieldLength.Id)]
     public string CustomerOrderId { get; set; }
 
     [Required]
-    [StringLength(64)]
+    [StringLength(ModuleConstants.FieldLength.Status)]
     public string Status { get; set; }
 
-    [StringLength(64)]
+    [StringLength(ModuleConstants.FieldLength.ErrorCode)]
     public string ErrorCode { get; set; }
 
-    [StringLength(2048)]
+    [StringLength(ModuleConstants.FieldLength.ErrorMessage)]
     public string ErrorMessage { get; set; }
 
     public virtual PunchoutOrderRequest ToModel(PunchoutOrderRequest model)
@@ -71,6 +80,9 @@ public class PunchoutOrderRequestEntity : AuditableEntity, IDataEntity<PunchoutO
         model.BuyerIdentity = BuyerIdentity;
         model.UserId = UserId;
         model.OrderType = OrderType;
+        model.OrderVersion = OrderVersion;
+        model.PreviousPayloadId = PreviousPayloadId;
+        model.Cxml = Cxml;
         model.PurchaseOrderNumber = PurchaseOrderNumber;
         model.PurchaseOrderDate = PurchaseOrderDate;
         model.Currency = Currency;
@@ -100,6 +112,9 @@ public class PunchoutOrderRequestEntity : AuditableEntity, IDataEntity<PunchoutO
         BuyerIdentity = model.BuyerIdentity;
         UserId = model.UserId;
         OrderType = model.OrderType;
+        OrderVersion = model.OrderVersion;
+        PreviousPayloadId = model.PreviousPayloadId;
+        Cxml = model.Cxml;
         PurchaseOrderNumber = model.PurchaseOrderNumber;
         PurchaseOrderDate = model.PurchaseOrderDate;
         Currency = model.Currency;
@@ -121,6 +136,9 @@ public class PunchoutOrderRequestEntity : AuditableEntity, IDataEntity<PunchoutO
         target.BuyerIdentity = BuyerIdentity;
         target.UserId = UserId;
         target.OrderType = OrderType;
+        target.OrderVersion = OrderVersion;
+        target.PreviousPayloadId = PreviousPayloadId;
+        target.Cxml = Cxml;
         target.PurchaseOrderNumber = PurchaseOrderNumber;
         target.PurchaseOrderDate = PurchaseOrderDate;
         target.Currency = Currency;

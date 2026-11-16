@@ -99,6 +99,7 @@ public class Module : IModule, IHasConfiguration
         serviceCollection.AddTransient<IPunchoutOrderMapper, PunchoutOrderMapper>();
         serviceCollection.AddTransient<IPunchoutOrderRequestProcessor, PunchoutOrderRequestProcessor>();
         serviceCollection.AddTransient<ICxmlRequestHandler, CxmlPunchoutOrderRequestHandler>();
+        serviceCollection.AddTransient<AbstractValidator<PunchoutOrderRequestData>, PunchoutOrderRequestValidator>();
 
         serviceCollection.AddTransient<IPunchoutSessionManagementService, PunchoutSessionManagementService>();
         serviceCollection.AddGrantTypeHandler<PunchoutGrantTypeHandler>(ModuleConstants.Security.PunchoutGrantType);

@@ -13,7 +13,7 @@ The Punchout module connects Virto Commerce to e-procurement systems such as Cou
 * **cXML PunchOut endpoint**: a single anonymous endpoint (`POST api/punchout/cxml`) accepts cXML documents and always answers with a cXML response. The outcome is carried in the `Status` element, as the protocol requires.
 * **PunchOutSetupRequest support**: parses `Header/From`, `Header/To`, `Header/Sender`, `BuyerCookie`, `BrowserFormPost`, `Contact`, and `Extrinsic` elements. Request types without a registered handler return cXML status `450 Not Implemented`.
 * **PunchOutOrderMessage support**: the `createPunchoutRequisition` mutation turns the items selected for checkout in the buyer's cart into a `PunchOutOrderMessage`. Each session can return a requisition only once, and every message sent to the buyer is stored.
-* **OrderRequest support**: accepts `new` orders, checks them against the returned requisition and the cart (SKU, quantity, unit price, currency), applies the `ShipTo` and `BillTo` addresses and the configured default shipping and payment methods, and creates a customer order with the buyer's `orderID` as the purchase order number. `update` and `delete` orders return `450 Not Implemented`.
+* **OrderRequest support**: accepts `new` orders, checks them against the returned requisition and the cart (SKU, quantity, unit price, currency), applies the `ShipTo` and `BillTo` addresses and the configured default shipping and payment methods, and creates a customer order with the buyer's `orderID` as the purchase order number. `update` orders change the quantities, remove lines, and replace the addresses of that customer order. `delete` orders cancel that customer order.
 * **Idempotent order processing**: every authenticated `OrderRequest` is stored with its outcome. A document resent with the same `payloadID`, or the same purchase order resent with a new `payloadID`, returns the stored result instead of creating a second order. Concurrent duplicates are rejected by a unique index.
 * **Shared-secret authentication**: the sender's `SharedSecret` is compared against every configured integration in constant time, with an optional check of the sender domain.
 * **Return URL allow list**: restricts the `BrowserFormPost` URL to exact URLs or `*`-suffixed prefixes for each integration.
@@ -46,7 +46,8 @@ Integrations are defined in the `Punchout` section of the platform configuration
         "TokenLifeTime": "00:15:00",
         "SessionLifeTime": "04:00:00",
         "DefaultShipmentMethodCode": "FixedRate",
-        "DefaultPaymentMethodCode": "DefaultManualPaymentMethod"
+        "DefaultPaymentMethodCode": "DefaultManualPaymentMethod",
+        "UpdatableOrderStatuses": [ "New", "Pending" ]
       }
     ]
   }
@@ -64,6 +65,7 @@ Integrations are defined in the `Punchout` section of the platform configuration
 | `SessionLifeTime` | TimeSpan | `04:00:00` | How long the buyer can shop and return the requisition after the setup request. This is also the access token lifetime |
 | `DefaultShipmentMethodCode` | String | — | Code of the shipping method added to the cart when an `OrderRequest` is received. If empty or not available for the cart, the shipment is added without a shipping method |
 | `DefaultPaymentMethodCode` | String | — | Code of the payment method added to the cart when an `OrderRequest` is received. If empty or not available for the cart, the payment is added without a payment method |
+| `UpdatableOrderStatuses` | String[] | `New`, `Pending` | Customer order statuses in which an `update` `OrderRequest` can still change the order |
 | `HandlerTypeName` | String | *(default handler)* | Name of the `IPunchoutHandler` registered with `AddPunchoutHandler<THandler>(name)` (the class name if `name` is omitted) that customizes this integration. If empty, the last `IPunchoutHandler` registered with `AddTransient<IPunchoutHandler, THandler>()` is used, so such a registration replaces the default handler for all integrations. If the named handler is not registered, the integration's transactions fail with a configuration error |
 
 `Id`, `StoreId`, and `SharedSecret` are required, and `Id` and `SharedSecret` must be unique. The configurations are validated on the platform start, and the platform does not start if any of them is invalid.
@@ -158,7 +160,7 @@ The module follows the layered architecture used across Virto Commerce platform 
 3. The processor looks for an earlier request with the same `payloadID`, or a completed or in-progress `new` order with the same `orderID`. A completed request returns its stored result, and a request still in progress returns `OrderInProgress`. Failed and rejected requests are processed again.
 4. The order is validated:
    * the store exists and has punchout enabled
-   * the order type is `new` (the default when the `type` attribute is missing)
+   * the order type is `new` (the default when the `type` attribute is missing), `update`, or `delete`
    * `payloadID` (up to 512 characters), `orderID` (up to 256 characters), the `Total` currency, and items are present
    * every item has a `SupplierPartID`, a positive quantity, and a non-negative unit price in the order currency
    * the order currency is available in the store
@@ -172,6 +174,34 @@ The module follows the layered architecture used across Virto Commerce platform 
    * adds a shipment with `DefaultShipmentMethodCode` and a payment with `DefaultPaymentMethodCode` for the cart total, replacing what the buyer selected in the storefront
    * validates the cart, saves it, creates the order with `CreateOrderFromCartCommand`, and clears the cart
 7. The request is stored as `Completed` with the customer order ID, `Rejected` if the order content is invalid, or `Failed` for other errors. The cXML response carries the outcome.
+
+#### Order Updates (`type="update"`)
+
+An update carries the full new content of the purchase order. Instead of the session and requisition checks of step 4, the processor:
+
+* returns `OrderInProgress` while another document of the same `orderID` is being processed
+* rejects a `DocumentReference` that belongs to another `orderID`. The reference may point to any earlier version, including a rejected one; an unknown reference is ignored
+* takes the last `Completed` request with the same `orderID` as the current version, which references the customer order
+* when `orderVersion` is present, requires a number greater than the current version (a `new` order without `orderVersion` is version 1)
+* when no version of the order is `Completed` (the `new` order was rejected or failed, so no customer order exists), processes the update as a `new` order: the session and requisition checks of step 4 apply, and the cart must still exist and match the purchase order. The buyer does not send `new` again for the same `orderID`, so otherwise every next update would be rejected
+
+`DefaultPunchoutHandler` then loads the customer order and:
+
+* rejects the update if the order is in another store, cancelled, in a status not listed in `UpdatableOrderStatuses`, or has an authorized, captured, or refunded payment
+* matches the lines by `ItemOut/@lineNumber` with the order line purchase order line number. An unknown line number is rejected, because an update cannot add lines. SKU and unit price (rounded to two decimals) must match the order line, and the quantity must be a whole number
+* sets the new quantities (also in the shipment items) and removes the lines missing from the update. Lines without a purchase order line number, such as gifts, are kept
+* replaces the `ShipTo` and `BillTo` addresses of the order, its shipments, and payments, keeps the shipment price, and sets the payment amount to the new order total
+* saves the order: the totals are recalculated and the order row version rejects a concurrent change
+
+#### Order Cancellation (`type="delete"`)
+
+The processor finds the current version of the purchase order and checks `DocumentReference` and `orderVersion` in the same way as for an update. `DefaultPunchoutHandler` does not delete anything, it cancels the customer order:
+
+* rejects the delete if the order is in another store or in a status not listed in `UpdatableOrderStatuses`. Processed payments do not block the cancellation
+* sets `CancelledState` to `Requested` on every payment that is not cancelled yet
+* sets `IsCancelled`, the `Cancelled` status, `CancelledDate`, and the delete request's `payloadID` as `CancelReason`, and saves the order
+* returns `200 OK` without changes if the order is already cancelled, e.g. the buyer resent the delete with a new `payloadID`
+* returns `200 OK` without changes if no customer order exists for the `orderID`, e.g. the `new` order was rejected and the buyer cancels the purchase order. The request is stored as `Completed` without a customer order
 
 ### cXML Status Codes
 

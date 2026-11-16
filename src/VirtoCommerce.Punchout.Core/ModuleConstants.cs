@@ -41,6 +41,23 @@ public static class ModuleConstants
         }
     }
 
+    /// <summary>
+    /// Maximum lengths of the stored order request fields, shared by the validation, the storage and the database columns.
+    /// </summary>
+    public static class FieldLength
+    {
+        public const int Id = 128;
+        public const int PayloadId = 512;
+        public const int Identity = 512;
+        public const int PurchaseOrderNumber = 256;
+        public const int OrderType = 32;
+        public const int OrderVersion = 128;
+        public const int Currency = 64;
+        public const int Status = 64;
+        public const int ErrorCode = 64;
+        public const int ErrorMessage = 2048;
+    }
+
     public static class ConfigurationSections
     {
         public const string ConfigurationKey = "Punchout";

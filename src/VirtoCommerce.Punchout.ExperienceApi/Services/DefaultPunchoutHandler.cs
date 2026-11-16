@@ -8,8 +8,11 @@ using GraphQL;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using VirtoCommerce.CartModule.Core.Model;
+using VirtoCommerce.OrdersModule.Core.Model;
+using VirtoCommerce.OrdersModule.Core.Services;
 using VirtoCommerce.PaymentModule.Core.Model;
 using VirtoCommerce.Platform.Core.Common;
+using VirtoCommerce.Punchout.Core.Cxml;
 using VirtoCommerce.Punchout.Core.Cxml.Services;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Services;
@@ -21,6 +24,14 @@ using VirtoCommerce.XCart.Core.Services;
 using VirtoCommerce.XOrder.Core;
 using VirtoCommerce.XOrder.Core.Commands;
 using AddressType = VirtoCommerce.CoreModule.Core.Common.AddressType;
+using CoreAddress = VirtoCommerce.CoreModule.Core.Common.Address;
+using Address = VirtoCommerce.CartModule.Core.Model.Address;
+using LineItem = VirtoCommerce.CartModule.Core.Model.LineItem;
+using OrderAddress = VirtoCommerce.OrdersModule.Core.Model.Address;
+using OrderLineItem = VirtoCommerce.OrdersModule.Core.Model.LineItem;
+using Payment = VirtoCommerce.CartModule.Core.Model.Payment;
+using Shipment = VirtoCommerce.CartModule.Core.Model.Shipment;
+using ShipmentItem = VirtoCommerce.OrdersModule.Core.Model.ShipmentItem;
 
 namespace VirtoCommerce.Punchout.ExperienceApi.Services;
 
@@ -33,11 +44,15 @@ public class DefaultPunchoutHandler(
     IPunchoutOrderMessageBuilder orderMessageBuilder,
     ICartAggregateRepository cartAggregateRepository,
     ICartAvailMethodsService availableCartMethodsService,
+    ICustomerOrderService customerOrderService,
+    ICustomerOrderTotalsCalculator customerOrderTotalsCalculator,
     ILogger<DefaultPunchoutHandler> logger)
     : IPunchoutHandler
 {
     private const string CartNotFound = "CartNotFound";
     private const string CartIsEmpty = "CartIsEmpty";
+
+    protected const string CancelledOrderStatus = "Cancelled";
 
     protected const string PriceFormat = "0.00";
 
@@ -69,7 +84,28 @@ public class DefaultPunchoutHandler(
         context.Result.Cxml = cxmlSerializer.Serialize(document);
     }
 
-    public virtual async Task HandleOrderRequestAsync(PunchoutOrderRequestHandlerContext context)
+    public virtual Task HandleOrderRequestAsync(PunchoutOrderRequestHandlerContext context)
+    {
+        var orderType = context.Request.OrderType;
+
+        // An update without a processed previous version is created from the requisition, see the processor validation
+        if (orderType.EqualsIgnoreCase(CxmlConstants.OrderRequestType.Update) && context.PreviousRequest is not null)
+        {
+            return UpdateOrderAsync(context);
+        }
+
+        if (orderType.EqualsIgnoreCase(CxmlConstants.OrderRequestType.Delete))
+        {
+            return CancelOrderAsync(context);
+        }
+
+        return CreateOrderFromRequestAsync(context);
+    }
+
+    /// <summary>
+    /// Creates the customer order from the requisition cart.
+    /// </summary>
+    protected virtual async Task CreateOrderFromRequestAsync(PunchoutOrderRequestHandlerContext context)
     {
         var lineItemIdsError = ValidateLineItemIds(context.Request);
         if (lineItemIdsError != null)
@@ -139,6 +175,383 @@ public class DefaultPunchoutHandler(
         }
 
         await ClearCartAsync(cartAggregate.Cart.Id);
+    }
+
+    /// <summary>
+    /// Applies a new version of the purchase order to the customer order created by the previous version.
+    /// The update replaces the order content: the lines are matched by lineNumber, the missing lines are removed.
+    /// </summary>
+    protected virtual async Task UpdateOrderAsync(PunchoutOrderRequestHandlerContext context)
+    {
+        var orderId = context.PreviousRequest?.CustomerOrderId;
+        var order = string.IsNullOrEmpty(orderId)
+            ? null
+            : await customerOrderService.GetByIdAsync(orderId, CustomerOrderResponseGroup.Full.ToString());
+
+        if (order is null)
+        {
+            context.Fail(PunchoutOrderStatus.InvalidRequest, $"Order '{context.Request.OrderId}' is not found.");
+            return;
+        }
+
+        var error = ValidateOrderUpdate(context, order) ?? ReconcileOrder(context.Request, order);
+        if (error != null)
+        {
+            context.Fail(PunchoutOrderStatus.InvalidRequest, error);
+            return;
+        }
+
+        UpdateOrderItems(context.Request, order);
+        UpdateOrderAddresses(context, order);
+        UpdateOrderPayments(order);
+
+        // The totals are recalculated on save, the row version rejects a concurrent change of the order
+        await customerOrderService.SaveChangesAsync([order]);
+
+        context.Result.CustomerOrderId = order.Id;
+        context.Result.PurchaseOrderNumber = context.Request.OrderId;
+    }
+
+    /// <summary>
+    /// Checks that the customer order may still be changed. Returns the error message, or null.
+    /// </summary>
+    protected virtual string ValidateOrderUpdate(PunchoutOrderRequestHandlerContext context, CustomerOrder order)
+    {
+        if (!order.StoreId.EqualsIgnoreCase(context.Store.Id))
+        {
+            return $"Order '{context.Request.OrderId}' is not found.";
+        }
+
+        if (order.IsCancelled)
+        {
+            return $"Order '{context.Request.OrderId}' is cancelled.";
+        }
+
+        var statuses = GetUpdatableOrderStatuses(context.Configuration);
+        if (!statuses.Contains(order.Status, StringComparer.OrdinalIgnoreCase))
+        {
+            return $"Order '{context.Request.OrderId}' cannot be changed in status '{order.Status}'.";
+        }
+
+        if (order.InPayments?.Any(IsPaymentProcessed) == true)
+        {
+            return $"Order '{context.Request.OrderId}' cannot be changed, its payment is already processed.";
+        }
+
+        return null;
+    }
+
+    protected virtual IList<string> GetUpdatableOrderStatuses(PunchoutConfiguration configuration)
+    {
+        return configuration.UpdatableOrderStatuses.IsNullOrEmpty()
+            ? PunchoutConfiguration.DefaultUpdatableOrderStatuses.ToList()
+            : configuration.UpdatableOrderStatuses;
+    }
+
+    /// <summary>
+    /// A payment that is authorized, captured or refunded no longer matches a changed total.
+    /// </summary>
+    protected virtual bool IsPaymentProcessed(PaymentIn payment)
+    {
+        if (payment.IsCancelled)
+        {
+            return false;
+        }
+
+        return payment.IsApproved ||
+               payment.CapturedDate.HasValue ||
+               payment.AuthorizedDate.HasValue ||
+               payment.PaymentStatus is PaymentStatus.Authorized or PaymentStatus.Paid or PaymentStatus.PartiallyRefunded or PaymentStatus.Refunded;
+    }
+
+    /// <summary>
+    /// Compares the purchase order with the customer order. Only the lines created from a purchase order line (with a line number)
+    /// are changed by an update, lines cannot be added. Returns the mismatches, or null when the update can be applied.
+    /// </summary>
+    protected virtual string ReconcileOrder(PunchoutOrderRequestData request, CustomerOrder order)
+    {
+        if (!request.Currency.EqualsIgnoreCase(order.Currency))
+        {
+            return $"The order currency '{request.Currency}' does not match the current order currency '{order.Currency}'.";
+        }
+
+        var lineNumbers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var errors = new List<string>();
+
+        foreach (var item in request.Items)
+        {
+            if (string.IsNullOrEmpty(item.LineNumber))
+            {
+                errors.Add($"Item '{item.SupplierPartId}': lineNumber is missing.");
+                continue;
+            }
+
+            if (!lineNumbers.Add(item.LineNumber))
+            {
+                errors.Add($"Line {item.LineNumber}: the line number is used by another line.");
+                continue;
+            }
+
+            var lineItem = FindOrderLineItem(order, item.LineNumber);
+
+            var error = lineItem is null
+                ? $"Line {item.LineNumber}: the line is not in the order, an update cannot add lines."
+                : ReconcileOrderItem(item, lineItem, order);
+
+            if (error != null)
+            {
+                errors.Add(error);
+            }
+        }
+
+        return errors.Count > 0 ? string.Join(" ", errors) : null;
+    }
+
+    /// <summary>
+    /// Compares a purchase order line with the customer order line. Returns the mismatch, or null when they match.
+    /// </summary>
+    protected virtual string ReconcileOrderItem(PunchoutOrderRequestItem item, OrderLineItem lineItem, CustomerOrder order)
+    {
+        if (!item.SupplierPartId.EqualsIgnoreCase(lineItem.Sku))
+        {
+            return $"Line {item.LineNumber}: SupplierPartID '{item.SupplierPartId}' does not match the order item '{lineItem.Sku}'.";
+        }
+
+        if (item.Quantity != decimal.Truncate(item.Quantity) || item.Quantity > int.MaxValue)
+        {
+            return $"Line {item.LineNumber}: quantity {item.Quantity.ToString(CultureInfo.InvariantCulture)} must be a whole number.";
+        }
+
+        if (item.UnitPrice is null || RoundPrice(item.UnitPrice.Value) != RoundPrice(lineItem.PlacedPrice))
+        {
+            return $"Line {item.LineNumber}: unit price {item.UnitPrice?.ToString(PriceFormat, CultureInfo.InvariantCulture)} does not match the order price {lineItem.PlacedPrice.ToString(PriceFormat, CultureInfo.InvariantCulture)}.";
+        }
+
+        // A line split between shipments or packages cannot be changed automatically
+        if ((int)item.Quantity != lineItem.Quantity && GetShipmentItems(order, lineItem.Id).Count > 1)
+        {
+            return $"Line {item.LineNumber}: the quantity cannot be changed, the line is split between shipments.";
+        }
+
+        return null;
+    }
+
+    protected virtual OrderLineItem FindOrderLineItem(CustomerOrder order, string lineNumber)
+    {
+        return order.Items?.FirstOrDefault(x => x.PurchaseOrderLineNumber.EqualsIgnoreCase(lineNumber));
+    }
+
+    /// <summary>
+    /// Changes the quantities of the lines in the purchase order and removes the lines missing from it.
+    /// Lines without a purchase order line number, e.g. gifts, are kept.
+    /// </summary>
+    protected virtual void UpdateOrderItems(PunchoutOrderRequestData request, CustomerOrder order)
+    {
+        var requestItems = request.Items.ToDictionary(x => x.LineNumber, StringComparer.OrdinalIgnoreCase);
+        var lineItems = order.Items?.Where(x => !string.IsNullOrEmpty(x.PurchaseOrderLineNumber)).ToList() ?? [];
+
+        foreach (var lineItem in lineItems)
+        {
+            if (requestItems.TryGetValue(lineItem.PurchaseOrderLineNumber, out var requestItem))
+            {
+                ChangeOrderItemQuantity(order, lineItem, (int)requestItem.Quantity);
+            }
+            else
+            {
+                RemoveOrderItem(order, lineItem);
+            }
+        }
+    }
+
+    protected virtual void ChangeOrderItemQuantity(CustomerOrder order, OrderLineItem lineItem, int quantity)
+    {
+        if (lineItem.Quantity == quantity)
+        {
+            return;
+        }
+
+        lineItem.Quantity = quantity;
+
+        foreach (var shipmentItem in GetShipmentItems(order, lineItem.Id))
+        {
+            shipmentItem.Quantity = quantity;
+        }
+    }
+
+    protected virtual void RemoveOrderItem(CustomerOrder order, OrderLineItem lineItem)
+    {
+        order.Items.Remove(lineItem);
+
+        foreach (var shipment in order.Shipments ?? [])
+        {
+            RemoveShipmentItems(shipment.Items, lineItem.Id);
+
+            foreach (var package in shipment.Packages ?? [])
+            {
+                RemoveShipmentItems(package.Items, lineItem.Id);
+            }
+        }
+    }
+
+    private static void RemoveShipmentItems(ICollection<ShipmentItem> shipmentItems, string lineItemId)
+    {
+        if (shipmentItems is null)
+        {
+            return;
+        }
+
+        // ICollection.Remove compares entities by id, the remaining items are kept by reference
+        var remainingItems = shipmentItems.Where(x => x.LineItemId != lineItemId).ToList();
+
+        shipmentItems.Clear();
+
+        foreach (var shipmentItem in remainingItems)
+        {
+            shipmentItems.Add(shipmentItem);
+        }
+    }
+
+    protected virtual IList<ShipmentItem> GetShipmentItems(CustomerOrder order, string lineItemId)
+    {
+        return (order.Shipments ?? [])
+            .SelectMany(x => (x.Items ?? []).Concat((x.Packages ?? []).SelectMany(p => p.Items ?? [])))
+            .Where(x => x.LineItemId == lineItemId)
+            .ToList();
+    }
+
+    /// <summary>
+    /// The purchase order addresses replace the order, shipment and payment addresses.
+    /// </summary>
+    protected virtual void UpdateOrderAddresses(PunchoutOrderRequestHandlerContext context, CustomerOrder order)
+    {
+        var shippingAddress = MapAddress<OrderAddress>(context.Request.ShipTo, AddressType.Shipping);
+        var billingAddress = MapAddress<OrderAddress>(context.Request.BillTo, AddressType.Billing);
+
+        order.Addresses ??= new List<OrderAddress>();
+
+        if (shippingAddress != null)
+        {
+            ReplaceOrderAddress(order.Addresses, shippingAddress);
+
+            foreach (var shipment in order.Shipments ?? [])
+            {
+                shipment.DeliveryAddress = MapAddress<OrderAddress>(context.Request.ShipTo, AddressType.Shipping);
+            }
+        }
+
+        if (billingAddress != null)
+        {
+            ReplaceOrderAddress(order.Addresses, billingAddress);
+
+            foreach (var payment in order.InPayments ?? [])
+            {
+                payment.BillingAddress = MapAddress<OrderAddress>(context.Request.BillTo, AddressType.Billing);
+            }
+        }
+    }
+
+    protected virtual void ReplaceOrderAddress(ICollection<OrderAddress> addresses, OrderAddress address)
+    {
+        foreach (var existingAddress in addresses.Where(x => x.AddressType == address.AddressType).ToList())
+        {
+            addresses.Remove(existingAddress);
+        }
+
+        addresses.Add(address);
+    }
+
+    /// <summary>
+    /// The shipment price is kept. The payment covers the new order total, as for a new order.
+    /// </summary>
+    protected virtual void UpdateOrderPayments(CustomerOrder order)
+    {
+        var payment = order.InPayments?.FirstOrDefault(x => !x.IsCancelled);
+        if (payment is null)
+        {
+            return;
+        }
+
+        customerOrderTotalsCalculator.CalculateTotals(order);
+        payment.Sum = order.Total;
+    }
+
+    /// <summary>
+    /// A 'delete' OrderRequest cancels the customer order created by the previous version, nothing is deleted.
+    /// </summary>
+    protected virtual async Task CancelOrderAsync(PunchoutOrderRequestHandlerContext context)
+    {
+        // No version of the purchase order created a customer order, the cancellation has nothing to change
+        if (string.IsNullOrEmpty(context.PreviousRequest?.CustomerOrderId))
+        {
+            logger.LogInformation("Punchout order '{PurchaseOrderNumber}' has no customer order, the cancellation is accepted without changes.",
+                context.Request.OrderId);
+
+            context.Result.PurchaseOrderNumber = context.Request.OrderId;
+            return;
+        }
+
+        var orderId = context.PreviousRequest.CustomerOrderId;
+        var order = string.IsNullOrEmpty(orderId)
+            ? null
+            : await customerOrderService.GetByIdAsync(orderId, CustomerOrderResponseGroup.Full.ToString());
+
+        if (order is null || !order.StoreId.EqualsIgnoreCase(context.Store.Id))
+        {
+            context.Fail(PunchoutOrderStatus.InvalidRequest, $"Order '{context.Request.OrderId}' is not found.");
+            return;
+        }
+
+        context.Result.CustomerOrderId = order.Id;
+        context.Result.PurchaseOrderNumber = context.Request.OrderId;
+
+        // The buyer may send the delete again with a new payloadID, the order stays cancelled by the first one
+        if (order.IsCancelled)
+        {
+            logger.LogInformation("Punchout order '{PurchaseOrderNumber}' is already cancelled, customer order '{CustomerOrderId}'.",
+                context.Request.OrderId, order.Id);
+            return;
+        }
+
+        var error = ValidateOrderCancellation(context, order);
+        if (error != null)
+        {
+            context.Fail(PunchoutOrderStatus.InvalidRequest, error);
+            return;
+        }
+
+        CancelOrder(context.Request, order);
+
+        await customerOrderService.SaveChangesAsync([order]);
+    }
+
+    /// <summary>
+    /// Checks that the customer order may still be cancelled. Returns the error message, or null.
+    /// The processed payments do not block the cancellation, they get a cancellation request.
+    /// </summary>
+    protected virtual string ValidateOrderCancellation(PunchoutOrderRequestHandlerContext context, CustomerOrder order)
+    {
+        var statuses = GetUpdatableOrderStatuses(context.Configuration);
+
+        return statuses.Contains(order.Status, StringComparer.OrdinalIgnoreCase)
+            ? null
+            : $"Order '{context.Request.OrderId}' cannot be cancelled in status '{order.Status}'.";
+    }
+
+    /// <summary>
+    /// Requests the cancellation of the payments and cancels the order. The payload id of the delete request is the cancel reason.
+    /// </summary>
+    protected virtual void CancelOrder(PunchoutOrderRequestData request, CustomerOrder order)
+    {
+        // A payment that is already cancelled keeps its state
+        foreach (var payment in order.InPayments?.Where(x => !x.IsCancelled && x.CancelledState != CancelledState.Completed) ?? [])
+        {
+            payment.CancelledState = CancelledState.Requested;
+        }
+
+        order.IsCancelled = true;
+        order.Status = CancelledOrderStatus;
+        order.CancelledDate = DateTime.UtcNow;
+        order.CancelReason = request.PayloadId;
     }
 
     /// <summary>
@@ -457,12 +870,18 @@ public class DefaultPunchoutHandler(
 
     protected virtual Address MapAddress(PunchoutAddress punchoutAddress, AddressType addressType)
     {
+        return MapAddress<Address>(punchoutAddress, addressType);
+    }
+
+    protected virtual TAddress MapAddress<TAddress>(PunchoutAddress punchoutAddress, AddressType addressType)
+        where TAddress : CoreAddress
+    {
         if (punchoutAddress is null)
         {
             return null;
         }
 
-        var address = AbstractTypeFactory<Address>.TryCreateInstance();
+        var address = AbstractTypeFactory<TAddress>.TryCreateInstance();
 
         address.AddressType = addressType;
         address.OuterId = punchoutAddress.AddressId;

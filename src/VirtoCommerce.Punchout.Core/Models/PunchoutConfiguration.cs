@@ -9,6 +9,8 @@ public class PunchoutConfiguration
 
     public static readonly TimeSpan DefaultSessionLifeTime = TimeSpan.FromHours(4);
 
+    public static readonly IReadOnlyList<string> DefaultUpdatableOrderStatuses = ["New", "Pending"];
+
     public string Id { get; set; }
 
     public string StoreId { get; set; }
@@ -44,4 +46,10 @@ public class PunchoutConfiguration
     /// Code of the payment method added to the cart when an order request is received, e.g. 'DefaultManualPaymentMethod'.
     /// </summary>
     public string DefaultPaymentMethodCode { get; set; }
+
+    /// <summary>
+    /// Customer order statuses in which an 'update' OrderRequest may still change the order, e.g. ['New', 'Pending'].
+    /// If empty <see cref="DefaultUpdatableOrderStatuses"/> are used.
+    /// </summary>
+    public IList<string> UpdatableOrderStatuses { get; set; } = [];
 }

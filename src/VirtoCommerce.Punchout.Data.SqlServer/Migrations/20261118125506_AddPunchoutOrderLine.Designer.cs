@@ -12,7 +12,7 @@ using VirtoCommerce.Punchout.Data.Repositories;
 namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
 {
     [DbContext(typeof(PunchoutDbContext))]
-    [Migration("20261116165352_AddPunchoutOrderLine")]
+    [Migration("20261118125506_AddPunchoutOrderLine")]
     partial class AddPunchoutOrderLine
     {
         /// <inheritdoc />

@@ -12,7 +12,7 @@ public class CxmlItemOut
     public decimal Quantity { get; set; }
 
     [XmlAttribute("lineNumber")]
-    public int LineNumber { get; set; }
+    public string LineNumber { get; set; }
 
     [XmlElement("ItemID")]
     public CxmlItemId ItemId { get; set; }

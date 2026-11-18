@@ -104,7 +104,7 @@ public class DefaultPunchoutHandler(
 
             foreach (var requestItem in context.Request.Items)
             {
-                await cartAggregate.ChangePurchaseOrderLineNumber(requestItem.LineItemId, requestItem.LineNumber);
+                await cartAggregate.ChangePurchaseOrderLineNumberAsync(requestItem.LineItemId, requestItem.LineNumber);
             }
 
             await AddAddressesAsync(context, cartAggregate);

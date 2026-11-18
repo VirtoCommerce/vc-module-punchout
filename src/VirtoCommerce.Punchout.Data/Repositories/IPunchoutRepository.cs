@@ -13,13 +13,27 @@ public interface IPunchoutRepository : IRepository
 
     IQueryable<PunchoutUserMappingEntity> PunchoutUserMappings { get; }
 
+    IQueryable<PunchoutOrderMessageEntity> PunchoutOrderMessages { get; }
+
+    IQueryable<PunchoutOrderRequestEntity> PunchoutOrderRequests { get; }
+
     Task<IList<PunchoutSessionEntity>> GetPunchoutSessionsByIdsAsync(IList<string> ids, string responseGroup);
 
     Task<IList<PunchoutUserMappingEntity>> GetPunchoutUserMappingsByIdsAsync(IList<string> ids, string responseGroup);
+
+    Task<IList<PunchoutOrderMessageEntity>> GetPunchoutOrderMessagesByIdsAsync(IList<string> ids, string responseGroup);
+
+    Task<IList<PunchoutOrderRequestEntity>> GetPunchoutOrderRequestsByIdsAsync(IList<string> ids, string responseGroup);
 
     /// <summary>
     /// Atomically marks the session token as redeemed.
     /// </summary>
     /// <returns>The session id, or null if the token is invalid, already redeemed or expired</returns>
     Task<string> RedeemSessionTokenAsync(string sessionTokenHash, DateTime now);
+
+    /// <summary>
+    /// Atomically moves an active, not expired session to the Returned status.
+    /// </summary>
+    /// <returns>True if the session was returned by this call</returns>
+    Task<bool> ReturnSessionAsync(string sessionId, DateTime now);
 }

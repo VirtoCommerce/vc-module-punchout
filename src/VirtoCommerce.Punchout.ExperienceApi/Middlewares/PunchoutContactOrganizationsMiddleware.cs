@@ -12,7 +12,7 @@ public class PunchoutContactOrganizationsMiddleware : IAsyncMiddleware<ContactOr
 {
     public async Task Run(ContactOrganizationsContext parameter, Func<ContactOrganizationsContext, Task> next)
     {
-        if (parameter.Principal?.FindFirstValue("channelId") == ModuleConstants.Security.PunchoutGrantType)
+        if (parameter.Principal?.FindFirstValue(ModuleConstants.Security.Claims.ChannelId) == ModuleConstants.Security.PunchoutGrantType)
         {
             parameter.DestinationOrganizationIds = parameter.SourceOrganizationIds
                 .Where(id => id == parameter.CurrentOrganizationId)

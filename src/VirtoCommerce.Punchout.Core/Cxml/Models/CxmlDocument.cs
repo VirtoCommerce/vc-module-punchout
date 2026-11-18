@@ -19,5 +19,8 @@ public class CxmlDocument
 
     [XmlElement("Response")]
     public CxmlResponse Response { get; set; }
+
+    [XmlElement("Message")]
+    public CxmlMessage Message { get; set; }
 }
 

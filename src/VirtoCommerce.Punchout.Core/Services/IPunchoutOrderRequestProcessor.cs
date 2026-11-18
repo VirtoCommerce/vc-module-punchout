@@ -3,7 +3,7 @@ using VirtoCommerce.Punchout.Core.Models;
 
 namespace VirtoCommerce.Punchout.Core.Services;
 
-public interface IPunchoutSetupService
+public interface IPunchoutOrderRequestProcessor
 {
-    Task<PunchoutSetupResult> ProcessAsync(PunchoutSetupRequest request);
+    Task<PunchoutOrderResult> ProcessAsync(PunchoutOrderRequestData request);
 }

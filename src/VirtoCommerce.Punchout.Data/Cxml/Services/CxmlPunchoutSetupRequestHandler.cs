@@ -8,7 +8,7 @@ namespace VirtoCommerce.Punchout.Data.Cxml.Services;
 
 public class CxmlPunchoutSetupRequestHandler(
     IPunchoutSetupMapper mapper,
-    IPunchoutSetupService setupService)
+    IPunchoutSetupProcessor setupService)
     : ICxmlRequestHandler
 {
     public virtual bool CanHandle(CxmlDocument document)

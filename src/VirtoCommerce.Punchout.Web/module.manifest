@@ -4,15 +4,17 @@
   <version>3.1000.0</version>
   <version-tag></version-tag>
 
-  <platformVersion>3.1075.0</platformVersion>
+  <platformVersion>3.1097.0</platformVersion>
   <dependencies>
     <dependency id="VirtoCommerce.Customer" version="3.1024.0" />
-    <dependency id="VirtoCommerce.Store" version="3.1007.0" />
-    <dependency id="VirtoCommerce.ProfileExperienceApiModule" version="3.1021.0" />
+    <dependency id="VirtoCommerce.Store" version="3.1013.0" />
+    <dependency id="VirtoCommerce.ProfileExperienceApiModule" version="3.1025.0" />
+    <dependency id="VirtoCommerce.XCart" version="3.1048.0" />
+    <dependency id="VirtoCommerce.XOrder" version="3.1019.0" />
   </dependencies>
 
   <title>Punchout</title>
-  <description>Сonnects Virto Commerce to e-procurement systems such as Coupa, SAP Arib</description>
+  <description>Connects Virto Commerce to e-procurement systems such as Coupa, SAP Ariba, and Oracle over the cXML PunchOut protocol</description>
 
   <authors>
     <author>VirtoCommerce</author>
@@ -21,7 +23,7 @@
     <owner>Virto Commerce</owner>
   </owners>
 
-  <projectUrl>https://github.com/Virto Commerce/vc-module-punchout</projectUrl>
+  <projectUrl>https://github.com/VirtoCommerce/vc-module-punchout</projectUrl>
   <iconUrl>Modules/$(VirtoCommerce.Punchout)/Content/logo.svg</iconUrl>
   <requireLicenseAcceptance>false</requireLicenseAcceptance>
 

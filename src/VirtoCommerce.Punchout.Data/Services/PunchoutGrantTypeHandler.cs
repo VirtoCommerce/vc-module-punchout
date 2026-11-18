@@ -8,6 +8,7 @@ using OpenIddict.Abstractions;
 using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Platform.Core.Events;
 using VirtoCommerce.Platform.Core.Security;
+using VirtoCommerce.Platform.Security;
 using VirtoCommerce.Platform.Security.OpenIddict;
 using VirtoCommerce.Punchout.Core;
 using VirtoCommerce.Punchout.Core.Models;
@@ -28,9 +29,10 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
         IEnumerable<ITokenClaimProvider> claimProviders,
         IEnumerable<ITokenRequestHandler> requestHandlers,
         IEventPublisher eventPublisher,
+        ITwoFactorSignInService twoFactorSignInService,
         IPunchoutSessionManagementService sessionManagementService,
         IPunchoutUserMappingSearchService userMappingSearchService)
-        : base(signInManager, identityOptions, requestValidators, claimProviders, requestHandlers, eventPublisher)
+        : base(signInManager, identityOptions, requestValidators, claimProviders, requestHandlers, eventPublisher, twoFactorSignInService)
     {
         _signInManager = signInManager;
         _sessionManagementService = sessionManagementService;
@@ -39,6 +41,11 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
 
     public override string GrantType => ModuleConstants.Security.PunchoutGrantType;
     protected override string SignInType => ModuleConstants.Security.PunchoutGrantType;
+
+    protected override Task<bool> IsTwoFactorRequiredAsync(TokenRequestContext context)
+    {
+        return Task.FromResult(false);
+    }
 
     protected override async Task<GrantValidationResult> ValidateGrantAsync(TokenRequestContext context)
     {
@@ -72,7 +79,7 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
         }
 
         // set additional params to set to claims later
-        context.AdditionalParameters.Add("channelSessionId", session.Id);
+        context.AdditionalParameters.Add(ModuleConstants.Security.Claims.ChannelSessionId, session.Id);
         context.AdditionalParameters.Add("sessionExpirationDate", session.ExpirationDate.Value);
 
         return GrantValidationResult.Succeed(user);
@@ -118,10 +125,10 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
         principal.SetScopes([]);
 
         // Set claims here (most convenient place)
-        principal.SetClaim("channelId", "punchout");
-        if (context.AdditionalParameters.TryGetValue("channelSessionId", out var channelSessionId))
+        principal.SetClaim(ModuleConstants.Security.Claims.ChannelId, ModuleConstants.Security.PunchoutGrantType);
+        if (context.AdditionalParameters.TryGetValue(ModuleConstants.Security.Claims.ChannelSessionId, out var channelSessionId))
         {
-            principal.SetClaim("channelSessionId", (string)channelSessionId);
+            principal.SetClaim(ModuleConstants.Security.Claims.ChannelSessionId, (string)channelSessionId);
         }
         if (context.AdditionalParameters.TryGetValue("sessionExpirationDate", out var sessionExpirationDate))
         {

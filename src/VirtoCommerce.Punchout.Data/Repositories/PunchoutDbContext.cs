@@ -40,6 +40,29 @@ public class PunchoutDbContext : DbContextBase
             .HasIndex(x => x.UserId)
             .HasDatabaseName("IX_PunchoutUserMapping_UserId");
 
+        modelBuilder.Entity<PunchoutOrderMessageEntity>().ToAuditableEntityTable("PunchoutOrderMessage");
+        modelBuilder.Entity<PunchoutOrderMessageEntity>()
+            .HasOne<PunchoutSessionEntity>()
+            .WithMany()
+            .HasForeignKey(x => x.SessionId)
+            .IsRequired()
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PunchoutOrderMessageEntity>()
+            .HasIndex(x => x.SessionId)
+            .HasDatabaseName("IX_PunchoutOrderMessage_SessionId");
+
+        modelBuilder.Entity<PunchoutOrderRequestEntity>().ToAuditableEntityTable("PunchoutOrderRequest");
+        modelBuilder.Entity<PunchoutOrderRequestEntity>()
+            .HasIndex(x => new { x.ConfigurationId, x.PayloadId })
+            .IsUnique()
+            .HasDatabaseName("IX_PunchoutOrderRequest_ConfigurationId_PayloadId");
+        modelBuilder.Entity<PunchoutOrderRequestEntity>()
+            .HasIndex(x => new { x.ConfigurationId, x.PurchaseOrderNumber })
+            .HasDatabaseName("IX_PunchoutOrderRequest_ConfigurationId_PurchaseOrderNumber");
+        modelBuilder.Entity<PunchoutOrderRequestEntity>()
+            .HasIndex(x => x.CustomerOrderId)
+            .HasDatabaseName("IX_PunchoutOrderRequest_CustomerOrderId");
+
         switch (Database.ProviderName)
         {
             case "Pomelo.EntityFrameworkCore.MySql":

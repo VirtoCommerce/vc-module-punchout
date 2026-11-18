@@ -9,11 +9,15 @@ public class PunchoutConfiguration
 
     public static readonly TimeSpan DefaultSessionLifeTime = TimeSpan.FromHours(4);
 
+    public string Id { get; set; }
+
     public string StoreId { get; set; }
 
     public string SenderDomain { get; set; }
 
     public string SharedSecret { get; set; }
+
+    public string HandlerTypeName { get; set; }
 
     /// <summary>
     /// Allowed BrowserFormPost URLs. Either exact URL or a prefixed, e.g. 'http://localhost/*'
@@ -30,4 +34,14 @@ public class PunchoutConfiguration
     /// How long the buyer may shop after the punchout setup request, e.g. '1.00:00:00'.
     /// </summary>
     public TimeSpan? SessionLifeTime { get; set; }
+
+    /// <summary>
+    /// Code of the shipping method added to the cart when an order request is received, e.g. 'FixedRate'.
+    /// </summary>
+    public string DefaultShipmentMethodCode { get; set; }
+
+    /// <summary>
+    /// Code of the payment method added to the cart when an order request is received, e.g. 'DefaultManualPaymentMethod'.
+    /// </summary>
+    public string DefaultPaymentMethodCode { get; set; }
 }

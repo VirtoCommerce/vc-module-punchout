@@ -9,12 +9,19 @@ namespace VirtoCommerce.Punchout.Data.Cxml.Services;
 
 public class CxmlResponseFactory : ICxmlResponseFactory
 {
-    public virtual CxmlDocument CreateResponse(string code, string text, string message = null)
+    public virtual CxmlDocument CreateDocument()
     {
         var document = AbstractTypeFactory<CxmlDocument>.TryCreateInstance();
 
         document.PayloadId = CreatePayloadId();
         document.Timestamp = DateTimeOffset.UtcNow.ToString(CxmlConstants.TimestampFormat, CultureInfo.InvariantCulture);
+
+        return document;
+    }
+
+    public virtual CxmlDocument CreateResponse(string code, string text, string message = null)
+    {
+        var document = CreateDocument();
 
         document.Response = new CxmlResponse
         {

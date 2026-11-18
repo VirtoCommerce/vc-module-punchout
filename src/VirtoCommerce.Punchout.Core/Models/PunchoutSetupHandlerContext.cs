@@ -10,4 +10,9 @@ public class PunchoutSetupHandlerContext : PunchoutHandlerContext
     /// The session is not saved yet, changes made by the handler are persisted.
     /// </summary>
     public PunchoutSession Session { get; set; }
+
+    /// <summary>
+    /// The start page URL with the session token returned to the buyer. The handler may replace it.
+    /// </summary>
+    public string StartPage { get; set; }
 }

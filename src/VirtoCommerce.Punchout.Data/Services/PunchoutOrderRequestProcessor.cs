@@ -261,23 +261,34 @@ public class PunchoutOrderRequestProcessor(
         // The same document sent again, e.g. the buyer did not receive the response
         var existingRequest = await FindRequestByPayloadIdAsync(configuration.Id, request.PayloadId);
 
-        if (existingRequest is not null)
+        if (existingRequest?.Status is PunchoutOrderRequestStatus.Completed or PunchoutOrderRequestStatus.Processing)
         {
             return existingRequest;
         }
 
-        // The same purchase order resent with a new payloadID. Failed and rejected attempts do not block it.
-        // Only a new order can duplicate a new order, and an empty order number would match every request.
+        // A 'new' document, resent or delayed, after any version of the purchase order is processed or being processed.
+        // The order was created by an earlier 'new' or by an 'update' that came first, it must not be created again.
+        // Failed and rejected attempts do not block it, and an empty order number would match every request.
         if (string.IsNullOrEmpty(request.OrderId) || !IsNewOrder(request.OrderType))
         {
-            return null;
+            return existingRequest;
         }
 
+        var processedRequest = await FindProcessedOrderVersionAsync(configuration.Id, request.OrderId);
+
+        return processedRequest ?? existingRequest;
+    }
+
+    /// <summary>
+    /// The latest request of the purchase order of any type that is processed or being processed.
+    /// </summary>
+    protected virtual async Task<PunchoutOrderRequest> FindProcessedOrderVersionAsync(string configurationId, string purchaseOrderNumber)
+    {
         var criteria = AbstractTypeFactory<PunchoutOrderRequestSearchCriteria>.TryCreateInstance();
-        criteria.ConfigurationId = configuration.Id;
-        criteria.PurchaseOrderNumber = request.OrderId;
-        criteria.OrderType = CxmlConstants.OrderRequestType.New;
+        criteria.ConfigurationId = configurationId;
+        criteria.PurchaseOrderNumber = purchaseOrderNumber;
         criteria.Statuses = [PunchoutOrderRequestStatus.Completed, PunchoutOrderRequestStatus.Processing];
+        criteria.Sort = $"{nameof(PunchoutOrderRequest.CreatedDate)}:desc;{nameof(PunchoutOrderRequest.Id)}:desc";
         criteria.Take = 1;
 
         var searchResult = await orderRequestSearchService.SearchNoCloneAsync(criteria);
@@ -454,6 +465,16 @@ public class PunchoutOrderRequestProcessor(
 
         var currentRequest = await FindCurrentOrderVersionAsync(request, settings);
 
+        errorMessage = await ValidateRetriedVersionAsync(request, settings, currentRequest);
+
+        if (errorMessage is not null)
+        {
+            logger.LogWarning("Punchout order request '{OrderId}' with payload '{PayloadId}' rejected, current version is stored by request '{CurrentRequestId}': {Message}",
+                request.OrderId, request.PayloadId, currentRequest?.Id, errorMessage);
+
+            return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest, errorMessage, settings, userMapping, store);
+        }
+
         // The 'new' version was rejected or failed, so no customer order exists and the buyer will not send 'new' again.
         // The update is then created from the requisition, its items still reference the punchout session.
         if (currentRequest is null && IsUpdateOrder(request.OrderType))
@@ -557,6 +578,27 @@ public class PunchoutOrderRequestProcessor(
         var searchResult = await orderRequestSearchService.SearchNoCloneAsync(criteria);
 
         return searchResult.Results.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// A failed or rejected document is processed again when the buyer resends it. Without orderVersion its age is not known,
+    /// so it must not overwrite a version received after it and already processed. Returns the error message or null.
+    /// </summary>
+    protected virtual async Task<string> ValidateRetriedVersionAsync(PunchoutOrderRequestData request, PunchoutConfiguration configuration, PunchoutOrderRequest currentRequest)
+    {
+        if (currentRequest is null)
+        {
+            return null;
+        }
+
+        var retriedRequest = await FindRequestByPayloadIdAsync(configuration.Id, request.PayloadId);
+
+        if (retriedRequest is null || retriedRequest.Id == currentRequest.Id || retriedRequest.CreatedDate >= currentRequest.CreatedDate)
+        {
+            return null;
+        }
+
+        return $"A newer version of the order is already processed in document '{currentRequest.PayloadId}'.";
     }
 
     /// <summary>

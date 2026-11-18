@@ -158,7 +158,7 @@ The module follows the layered architecture used across Virto Commerce platform 
 
 1. After the requisition is approved, the procurement system sends a cXML `OrderRequest` to `POST api/punchout/cxml`. `CxmlPunchoutOrderRequestHandler` and `PunchoutOrderMapper` convert it into a `PunchoutOrderRequestData`, including addresses, contacts, items, classifications, and accounting distributions.
 2. `PunchoutOrderRequestProcessor` authenticates the request in the same way as the setup request: shared secret, sender domain, and an active user mapping for `Header/Sender/Credential/Identity`. Requests that do not match any configuration are not stored.
-3. The processor looks for an earlier request with the same `payloadID`, or a completed or in-progress `new` order with the same `orderID`. A completed request returns its stored result, and a request still in progress returns `OrderInProgress`. Failed and rejected requests are processed again.
+3. The processor looks for an earlier request with the same `payloadID`. For a `new` order it also looks for the latest completed or in-progress request of any type with the same `orderID`: a `new` order that comes after an `update` of the same purchase order (resent or delayed) must not create a second customer order. A completed request returns its stored result, and a request still in progress returns `OrderInProgress`. Failed and rejected requests are processed again.
 4. The order is validated:
    * the store exists and has punchout enabled
    * the order type is `new` (the default when the `type` attribute is missing), `update`, or `delete`
@@ -185,6 +185,7 @@ An update carries the full new content of the purchase order. Instead of the ses
 * rejects a `DocumentReference` that belongs to another `orderID`. The reference may point to any earlier version, including a rejected one; an unknown reference is ignored
 * takes the last `Completed` request with the same `orderID` as the current version, which references the customer order
 * when `orderVersion` is present, requires a number greater than the current version (a `new` order without `orderVersion` is version 1)
+* rejects a resent failed or rejected document when the current version was received after it. Without `orderVersion` the order of the versions is known only from the time they were received, so an old version cannot overwrite a newer one
 * when no version of the order is `Completed` (the `new` order was rejected or failed, so no customer order exists), processes the update as a `new` order with the requisition checks of step 4. The buyer does not send `new` again for the same `orderID`, so otherwise every next update would be rejected
 * matches the lines with the items ordered by the purchase order by `lineNumber`, as the handler matches the customer order lines. A known line number must order the same requisition item as before, the handler compares it with the customer order. A new line number is checked against its requisition snapshot, as for a `new` order but without the quantity, and its item must not be ordered by another line. The items of the line numbers missing from the update are released
 

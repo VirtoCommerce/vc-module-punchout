@@ -230,6 +230,84 @@ public class PunchoutOrderUpdateTests
     }
 
     [Theory]
+    [InlineData(null, "Completed", "processed")]
+    [InlineData("Failed", "Completed", "processed")]
+    [InlineData("Rejected", "Processing", "processed")]
+    [InlineData("Failed", null, "payload")]
+    [InlineData(null, null, "none")]
+    [InlineData("Completed", "Completed", "payload")]
+    public async Task FindExistingRequest_LateNewOrder_ReturnsProcessedVersionOfAnyType(string payloadStatus, string processedStatus, string expected)
+    {
+        var payloadRequest = payloadStatus is null ? null : new PunchoutOrderRequest { Id = "payload", PayloadId = "msg-1", Status = payloadStatus };
+        // The order was created by an 'update' that came before the 'new'
+        var processedRequest = processedStatus is null
+            ? null
+            : new PunchoutOrderRequest { Id = "processed", PayloadId = "msg-2", OrderType = "update", Status = processedStatus, CustomerOrderId = "order" };
+        var processor = new TestExistingRequestProcessor(payloadRequest, processedRequest);
+        var request = new PunchoutOrderRequestData { OrderId = "PO-1", PayloadId = "msg-1", OrderType = "new" };
+
+        var existingRequest = await processor.FindExistingRequestPublicAsync(request);
+
+        switch (expected)
+        {
+            case "processed":
+                Assert.Same(processedRequest, existingRequest);
+                Assert.NotNull(processor.GetExistingRequestResultPublic(request, existingRequest));
+                break;
+            case "payload":
+                Assert.Same(payloadRequest, existingRequest);
+                break;
+            default:
+                Assert.Null(existingRequest);
+                break;
+        }
+    }
+
+    [Fact]
+    public async Task FindExistingRequest_LateNewOrderAfterUpdate_ReturnsStoredCustomerOrder()
+    {
+        var processedRequest = new PunchoutOrderRequest { Id = "v2", PayloadId = "msg-2", OrderType = "update", Status = "Completed", CustomerOrderId = "order", PurchaseOrderNumber = "PO-1" };
+        var processor = new TestExistingRequestProcessor(null, processedRequest);
+        var request = new PunchoutOrderRequestData { OrderId = "PO-1", PayloadId = "msg-1" };
+
+        var result = processor.GetExistingRequestResultPublic(request, await processor.FindExistingRequestPublicAsync(request));
+
+        Assert.Equal(PunchoutOrderStatus.Success, result.Status);
+        Assert.Equal("order", result.CustomerOrderId);
+    }
+
+    [Fact]
+    public async Task FindExistingRequest_UpdateOrder_DoesNotLookForProcessedVersion()
+    {
+        var processedRequest = new PunchoutOrderRequest { Id = "v1", Status = "Completed" };
+        var processor = new TestExistingRequestProcessor(null, processedRequest);
+        var request = new PunchoutOrderRequestData { OrderId = "PO-1", PayloadId = "msg-2", OrderType = "update" };
+
+        Assert.Null(await processor.FindExistingRequestPublicAsync(request));
+    }
+
+    [Theory]
+    [InlineData(1, true)]
+    [InlineData(3, false)]
+    public async Task ValidateUpdate_RetriedVersionWithoutOrderVersion_RejectedAfterNewerVersion(int retriedDay, bool isRejected)
+    {
+        // v2 failed on day 2, v3 was processed on day 2 later; v2 is resent
+        var currentRequest = new PunchoutOrderRequest { Id = "v3", PayloadId = "msg-3", CustomerOrderId = "order", CreatedDate = new System.DateTime(2026, 11, 2) };
+        var retriedRequest = new PunchoutOrderRequest { Id = "v2", PayloadId = "msg-2", Status = "Failed", CreatedDate = new System.DateTime(2026, 11, retriedDay) };
+        var processor = new TestUpdateValidationProcessor(currentRequest, retriedRequest);
+        var request = new PunchoutOrderRequestData { OrderId = "PO-1", PayloadId = "msg-2", OrderType = "update" };
+
+        var result = await processor.ValidateUpdatePublicAsync(request);
+
+        Assert.Equal(!isRejected, result.IsValid);
+
+        if (isRejected)
+        {
+            Assert.Contains("newer version of the order is already processed", result.Error.ErrorMessage);
+        }
+    }
+
+    [Theory]
     [InlineData("update", true, "update")]
     [InlineData("update", false, "create")]
     [InlineData("delete", true, "cancel")]
@@ -335,10 +413,29 @@ public class PunchoutOrderUpdateTests
             ValidateOrderVersion(request, currentRequest);
     }
 
-    private sealed class TestUpdateValidationProcessor(PunchoutOrderRequest currentRequest)
+    private sealed class TestExistingRequestProcessor(PunchoutOrderRequest payloadRequest, PunchoutOrderRequest processedRequest)
+        : PunchoutOrderRequestProcessor(null, null, null, null, null, null, null, null, null, null, NullLogger<PunchoutOrderRequestProcessor>.Instance)
+    {
+        public Task<PunchoutOrderRequest> FindExistingRequestPublicAsync(PunchoutOrderRequestData request) =>
+            FindExistingRequestAsync(request, new PunchoutConfiguration { Id = "configuration" });
+
+        public PunchoutOrderResult GetExistingRequestResultPublic(PunchoutOrderRequestData request, PunchoutOrderRequest existingRequest) =>
+            GetExistingRequestResult(request, existingRequest);
+
+        protected override Task<PunchoutOrderRequest> FindRequestByPayloadIdAsync(string configurationId, string payloadId) =>
+            Task.FromResult(payloadRequest);
+
+        protected override Task<PunchoutOrderRequest> FindProcessedOrderVersionAsync(string configurationId, string purchaseOrderNumber) =>
+            Task.FromResult(processedRequest);
+    }
+
+    private sealed class TestUpdateValidationProcessor(PunchoutOrderRequest currentRequest, PunchoutOrderRequest retriedRequest = null)
         : PunchoutOrderRequestProcessor(null, null, null, null, null, null, null, null, null, null, NullLogger<PunchoutOrderRequestProcessor>.Instance)
     {
         public bool NewOrderValidated { get; private set; }
+
+        protected override Task<PunchoutOrderRequest> FindRequestByPayloadIdAsync(string configurationId, string payloadId) =>
+            Task.FromResult(retriedRequest);
 
         public Task<PunchoutOrderValidationResult> ValidateUpdatePublicAsync(PunchoutOrderRequestData request) =>
             ValidateUpdateAsync(request, new PunchoutConfiguration { Id = "configuration" }, new PunchoutUserMapping(), null);

@@ -57,6 +57,14 @@ public static class ModuleConstants
         public const int Status = 64;
         public const int ErrorCode = 64;
         public const int ErrorMessage = 2048;
+
+        // The requisition item columns have the sizes of the cart line item columns
+        public const int Sku = 128;
+        public const int ProductName = 1024;
+        public const int ImageUrl = 1028;
+        public const int ProductType = 64;
+        public const int TaxType = 64;
+        public const int Unit = 32;
     }
 
     public static class ConfigurationSections

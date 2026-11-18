@@ -24,10 +24,9 @@ public class PunchoutOrderRequestProcessor(
     IPunchoutOrderRequestService orderRequestService,
     IPunchoutOrderRequestSearchService orderRequestSearchService,
     IPunchoutHandlerFactory handlerFactory,
-    IPunchoutSessionService sessionService,
-    IPunchoutSessionSearchService sessionSearchService,
-    IPunchoutOrderMessageSearchService orderMessageSearchService,
+    IPunchoutRequisitionItemService requisitionItemService,
     IPunchoutOrderLineService orderLineService,
+    IPunchoutOrderLineSearchService orderLineSearchService,
     AbstractValidator<PunchoutOrderRequestData> requestValidator,
     ILogger<PunchoutOrderRequestProcessor> logger)
     : BasePunchoutProcessor(options, userMappingSearchService), IPunchoutOrderRequestProcessor
@@ -607,55 +606,11 @@ public class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// The session of an item from its SupplierPartAuxiliaryID, or the last returned session of the user
-    /// when the buyer returned the line item id without the session id.
-    /// </summary>
-    protected virtual async Task<PunchoutSession> GetSessionAsync(string sessionId, PunchoutConfiguration settings, PunchoutUserMapping userMapping)
-    {
-        return !string.IsNullOrEmpty(sessionId)
-            ? await GetReturnedSessionAsync(sessionId, settings, userMapping)
-            : await FindReturnedSessionAsync(settings, userMapping);
-    }
-
-    /// <summary>
-    /// Returns the session if it returned a requisition for the user and the configuration, otherwise null.
-    /// </summary>
-    protected virtual async Task<PunchoutSession> GetReturnedSessionAsync(string sessionId, PunchoutConfiguration configuration, PunchoutUserMapping userMapping)
-    {
-        var session = await sessionService.GetNoCloneAsync(sessionId);
-
-        var isReturnedSession = session != null &&
-            session.Status == ModuleConstants.SessionStatus.Returned &&
-            session.StoreId.EqualsIgnoreCase(configuration.StoreId) &&
-            session.ConfigurationId.EqualsIgnoreCase(configuration.Id) &&
-            session.UserId.EqualsIgnoreCase(userMapping.UserId);
-
-        return isReturnedSession ? session : null;
-    }
-
-    /// <summary>
-    /// Finds the last session of the user that returned a requisition.
-    /// </summary>
-    protected virtual async Task<PunchoutSession> FindReturnedSessionAsync(PunchoutConfiguration configuration, PunchoutUserMapping userMapping)
-    {
-        var criteria = AbstractTypeFactory<PunchoutSessionSearchCriteria>.TryCreateInstance();
-        criteria.StoreId = configuration.StoreId;
-        criteria.ConfigurationId = configuration.Id;
-        criteria.UserId = userMapping.UserId;
-        criteria.Statuses = [ModuleConstants.SessionStatus.Returned];
-        criteria.Sort = $"{nameof(PunchoutSession.ModifiedDate)}:desc;{nameof(PunchoutSession.CreatedDate)}:desc";
-        criteria.Take = 1;
-
-        var searchResult = await sessionSearchService.SearchNoCloneAsync(criteria);
-
-        return searchResult.Results.FirstOrDefault();
-    }
-
-    /// <summary>
     /// Matches every order line with the requisition item it orders and sets <see cref="PunchoutOrderRequestItem.RequisitionItem"/>.
     /// The items of one purchase order may come from several sessions, each line references its session in the SupplierPartAuxiliaryID.
-    /// A requisition item ordered by another purchase order is rejected. A line of an 'update' that is already ordered by the purchase order
-    /// is not matched, the handler compares it with the customer order.
+    /// A line without the session id is matched by the line item id among all the requisitions returned to the user, it must be in one of them.
+    /// A requisition item ordered by another purchase order is rejected. A line of an 'update' whose line number is already ordered by the purchase order
+    /// is not matched, the handler compares it with the customer order. It must order the same requisition item as before.
     /// Returns the error message or null when the order matches the requisitions.
     /// </summary>
     protected virtual async Task<string> ValidateRequisitionItemsAsync(PunchoutOrderRequestData request, PunchoutConfiguration configuration,
@@ -682,8 +637,9 @@ public class PunchoutOrderRequestProcessor(
         }
 
         var lineItemIds = request.Items.Select(x => x.LineItemId).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        var orderedLines = await orderLineService.GetByLineItemIdsAsync(configuration.Id, lineItemIds);
-        var requisitions = new Dictionary<string, (PunchoutSession Session, IList<PunchoutRequisitionItem> Items)>(StringComparer.OrdinalIgnoreCase);
+        var orderedLines = await GetOrderedLinesAsync(configuration.Id, lineItemIds);
+        var requisitionItems = await requisitionItemService.GetReturnedItemsAsync(configuration.Id, userMapping.UserId, lineItemIds);
+        var purchaseOrderLines = isNewOrder ? [] : await GetPurchaseOrderLinesAsync(configuration.Id, request.OrderId);
 
         foreach (var item in request.Items)
         {
@@ -697,30 +653,40 @@ public class PunchoutOrderRequestProcessor(
                 continue;
             }
 
-            if (orderedLine is not null && !isNewOrder)
+            if (!isNewOrder)
             {
+                // The handler matches the customer order lines by the line number, an existing line is found the same way
+                var purchaseOrderLine = purchaseOrderLines.FirstOrDefault(x => x.LineNumber.EqualsIgnoreCase(GetStoredLineNumber(item)));
+
+                if (purchaseOrderLine is not null)
+                {
+                    if (!IsSameLine(purchaseOrderLine, item))
+                    {
+                        errors.Add($"Line {item.LineNumber}: the line orders another requisition item, an update cannot replace the item of a line.");
+                    }
+
+                    continue;
+                }
+
+                if (orderedLine is not null)
+                {
+                    errors.Add($"Line {item.LineNumber}: item '{item.SupplierPartId}' is already ordered by line {orderedLine.LineNumber} of the purchase order.");
+                    continue;
+                }
+            }
+
+            var candidates = requisitionItems.Where(x => IsSameItem(x, item)).ToList();
+
+            if (candidates.Count > 1)
+            {
+                errors.Add($"Line {item.LineNumber}: item '{item.SupplierPartId}' is in several punchout requisitions, SupplierPartAuxiliaryID '{item.SupplierPartAuxiliaryId}' has no session id.");
                 continue;
             }
 
-            var sessionKey = item.SessionId ?? string.Empty;
-
-            if (!requisitions.TryGetValue(sessionKey, out var requisition))
-            {
-                var session = await GetSessionAsync(item.SessionId, configuration, userMapping);
-                requisition = (session, session is null ? [] : await GetRequisitionItemsAsync(session));
-                requisitions[sessionKey] = requisition;
-            }
-
-            if (requisition.Session is null)
-            {
-                errors.Add($"Line {item.LineNumber}: no punchout session '{item.SessionId}' returned a requisition for the user.");
-                continue;
-            }
-
-            var requisitionItem = requisition.Items.FirstOrDefault(x => x.LineItemId.EqualsIgnoreCase(item.LineItemId));
+            var requisitionItem = candidates.FirstOrDefault();
 
             var error = requisitionItem is null
-                ? $"Line {item.LineNumber}: item '{item.SupplierPartId}' is not in the punchout requisition."
+                ? $"Line {item.LineNumber}: item '{item.SupplierPartId}' is not in a punchout requisition returned to the user."
                 : ReconcileRequisitionItem(request, item, requisitionItem, isNewOrder);
 
             if (error is not null)
@@ -782,24 +748,20 @@ public class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// The snapshot of the items stored with the PunchOutOrderMessage when the session returned the requisition.
+    /// The line number as it is stored in the ordered line.
     /// </summary>
-    protected virtual async Task<IList<PunchoutRequisitionItem>> GetRequisitionItemsAsync(PunchoutSession session)
+    protected virtual string GetStoredLineNumber(PunchoutOrderRequestItem item)
     {
-        var criteria = AbstractTypeFactory<PunchoutOrderMessageSearchCriteria>.TryCreateInstance();
-        criteria.SessionId = session.Id;
-        criteria.Take = 1;
+        return Truncate(item.LineNumber, ModuleConstants.FieldLength.LineNumber) ?? string.Empty;
+    }
 
-        var searchResult = await orderMessageSearchService.SearchNoCloneAsync(criteria);
-        var orderMessage = searchResult.Results.FirstOrDefault();
-
-        if (orderMessage is not null && orderMessage.Items.IsNullOrEmpty())
-        {
-            logger.LogWarning("Punchout order message '{OrderMessageId}' of session '{SessionId}' has no item snapshot, its items cannot be ordered.",
-                orderMessage.Id, session.Id);
-        }
-
-        return orderMessage?.Items ?? [];
+    /// <summary>
+    /// The buyer may return the line item id without the session id, then the line item id is compared only.
+    /// </summary>
+    protected virtual bool IsSameItem(PunchoutRequisitionItem requisitionItem, PunchoutOrderRequestItem item)
+    {
+        return requisitionItem.LineItemId.EqualsIgnoreCase(item.LineItemId) &&
+               (string.IsNullOrEmpty(item.SessionId) || requisitionItem.SessionId.EqualsIgnoreCase(item.SessionId));
     }
 
     /// <summary>
@@ -808,15 +770,86 @@ public class PunchoutOrderRequestProcessor(
     /// </summary>
     protected virtual async Task<IList<PunchoutOrderLine>> AddOrderLinesAsync(PunchoutOrderRequestData request, PunchoutOrderRequest orderRequest)
     {
-        var existingLines = await orderLineService.GetByPurchaseOrderAsync(orderRequest.ConfigurationId, request.OrderId);
+        var existingLines = await GetPurchaseOrderLinesAsync(orderRequest.ConfigurationId, request.OrderId);
 
         var lines = request.Items
             .Where(x => x.RequisitionItem is not null)
-            .Where(x => !existingLines.Any(line => line.SessionId.EqualsIgnoreCase(x.RequisitionItem.SessionId) && line.LineItemId.EqualsIgnoreCase(x.RequisitionItem.LineItemId)))
+            .Where(x => !existingLines.Any(line => IsSameRequisitionItem(line, x.RequisitionItem)))
             .Select(x => CreateOrderLine(request, orderRequest, x))
             .ToList();
 
-        return await orderLineService.TryAddAsync(lines) ? lines : null;
+        if (lines.Count == 0)
+        {
+            return lines;
+        }
+
+        try
+        {
+            await orderLineService.SaveChangesAsync(lines);
+
+            return lines;
+        }
+        catch (Exception ex)
+        {
+            // The unique index rejects an item ordered by a concurrent purchase order, nothing is stored
+            var orderedLines = await GetOrderedLinesAsync(orderRequest.ConfigurationId, lines.Select(x => x.LineItemId).ToList());
+
+            if (!orderedLines.Any(orderedLine => lines.Any(line => IsSameRequisitionItem(orderedLine, line))))
+            {
+                throw;
+            }
+
+            logger.LogWarning(ex, "Punchout order request '{OrderId}' with payload '{PayloadId}': a requisition item is ordered by a concurrent purchase order.",
+                request.OrderId, request.PayloadId);
+
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The items ordered by the purchase order.
+    /// </summary>
+    protected virtual Task<IList<PunchoutOrderLine>> GetPurchaseOrderLinesAsync(string configurationId, string purchaseOrderNumber)
+    {
+        var criteria = AbstractTypeFactory<PunchoutOrderLineSearchCriteria>.TryCreateInstance();
+        criteria.ConfigurationId = configurationId;
+        criteria.PurchaseOrderNumber = purchaseOrderNumber;
+
+        return orderLineSearchService.SearchAllNoCloneAsync(criteria);
+    }
+
+    /// <summary>
+    /// The ordered items with the given cart line item ids, by any purchase order.
+    /// </summary>
+    protected virtual Task<IList<PunchoutOrderLine>> GetOrderedLinesAsync(string configurationId, IList<string> lineItemIds)
+    {
+        var criteria = AbstractTypeFactory<PunchoutOrderLineSearchCriteria>.TryCreateInstance();
+        criteria.ConfigurationId = configurationId;
+        criteria.LineItemIds = lineItemIds;
+
+        return orderLineSearchService.SearchAllNoCloneAsync(criteria);
+    }
+
+    protected virtual async Task DeleteOrderLinesAsync(IList<PunchoutOrderLine> lines)
+    {
+        var ids = lines.Select(x => x.Id).Where(x => !string.IsNullOrEmpty(x)).ToList();
+
+        if (ids.Count > 0)
+        {
+            await orderLineService.DeleteAsync(ids);
+        }
+    }
+
+    protected virtual bool IsSameRequisitionItem(PunchoutOrderLine line, PunchoutRequisitionItem requisitionItem)
+    {
+        return line.SessionId.EqualsIgnoreCase(requisitionItem.SessionId) &&
+               line.LineItemId.EqualsIgnoreCase(requisitionItem.LineItemId);
+    }
+
+    protected virtual bool IsSameRequisitionItem(PunchoutOrderLine line, PunchoutOrderLine otherLine)
+    {
+        return line.SessionId.EqualsIgnoreCase(otherLine.SessionId) &&
+               line.LineItemId.EqualsIgnoreCase(otherLine.LineItemId);
     }
 
     protected virtual PunchoutOrderLine CreateOrderLine(PunchoutOrderRequestData request, PunchoutOrderRequest orderRequest, PunchoutOrderRequestItem item)
@@ -843,7 +876,7 @@ public class PunchoutOrderRequestProcessor(
         {
             if (result.Status != PunchoutOrderStatus.Success)
             {
-                await orderLineService.DeleteAsync(addedLines.Select(x => x.Id).ToList());
+                await DeleteOrderLinesAsync(addedLines);
                 return;
             }
 
@@ -852,13 +885,16 @@ public class PunchoutOrderRequestProcessor(
                 return;
             }
 
-            var lines = await orderLineService.GetByPurchaseOrderAsync(orderRequest.ConfigurationId, request.OrderId);
+            var lines = await GetPurchaseOrderLinesAsync(orderRequest.ConfigurationId, request.OrderId);
+
+            // The handler removes the customer order lines whose line numbers are missing from the update
+            var lineNumbers = request.Items.Select(GetStoredLineNumber).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             var removedLines = IsDeleteOrder(request.OrderType)
                 ? lines
-                : lines.Where(line => !request.Items.Any(item => IsSameLine(line, item))).ToList();
+                : lines.Where(line => !lineNumbers.Contains(line.LineNumber ?? string.Empty)).ToList();
 
-            await orderLineService.DeleteAsync(removedLines.Select(x => x.Id).ToList());
+            await DeleteOrderLinesAsync(removedLines);
         }
         catch (Exception ex)
         {

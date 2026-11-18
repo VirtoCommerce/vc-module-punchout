@@ -77,6 +77,35 @@ public class PunchoutOrderRequestValidatorTests
         Assert.Contains(expectedError, GetError(request));
     }
 
+    [Theory]
+    [InlineData(null, "lineNumber is missing")]
+    [InlineData("", "lineNumber is missing")]
+    public void Validate_ItemWithoutLineNumber_IsInvalid(string lineNumber, string expectedError)
+    {
+        var request = CreateRequest("delete");
+        request.Items[0].LineNumber = lineNumber;
+
+        Assert.Contains(expectedError, GetError(request));
+    }
+
+    [Fact]
+    public void Validate_LongLineNumber_IsInvalid()
+    {
+        var request = CreateRequest();
+        request.Items[0].LineNumber = new string('1', 129);
+
+        Assert.Contains("lineNumber is longer than 128 characters", GetError(request));
+    }
+
+    [Fact]
+    public void Validate_DuplicateLineNumbers_IsInvalid()
+    {
+        var request = CreateRequest();
+        request.Items.Add(new PunchoutOrderRequestItem { LineNumber = "1", SupplierPartId = "SKU-2", Quantity = 1, UnitPrice = 5m, Currency = "USD" });
+
+        Assert.Equal("The order has several lines with the same lineNumber.", GetError(request));
+    }
+
     [Fact]
     public void Validate_ItemWithoutPrice_IsInvalid()
     {

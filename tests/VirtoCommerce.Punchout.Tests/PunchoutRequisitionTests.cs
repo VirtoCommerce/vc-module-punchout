@@ -37,15 +37,35 @@ public class PunchoutRequisitionTests
     }
 
     [Fact]
-    public async Task ValidateRequisitionItems_ItemWithoutSession_UsesLastReturnedSession()
+    public async Task ValidateRequisitionItems_ItemWithoutSession_IsFoundByLineItemId()
     {
         var processor = CreateProcessor();
-        var request = CreateRequest(("1", "SKU-3", 1, 30m, "line-3", null));
+        var request = CreateRequest(("1", "SKU-2", 1, 20m, "line-2", null));
 
         var error = await processor.ValidateRequisitionItemsPublicAsync(request, isNewOrder: true);
 
         Assert.Null(error);
-        Assert.Equal("session-last", request.Items[0].RequisitionItem.SessionId);
+        Assert.Equal("session-2", request.Items[0].RequisitionItem.SessionId);
+    }
+
+    [Fact]
+    public async Task ValidateRequisitionItems_ItemWithoutSessionInSeveralRequisitions_IsRejected()
+    {
+        // The cart line was sent by two sessions
+        var processor = CreateProcessor(extraItems: [PunchoutOrderUpdateTests.CreateRequisitionItem("line-1", "SKU-1", 2, 10m, sessionId: "session-3")]);
+        var request = CreateRequest(("1", "SKU-1", 2, 10m, "line-1", null));
+
+        Assert.Contains("is in several punchout requisitions", await processor.ValidateRequisitionItemsPublicAsync(request, isNewOrder: true));
+    }
+
+    [Fact]
+    public async Task ValidateRequisitionItems_ItemInSeveralRequisitions_IsMatchedBySession()
+    {
+        var processor = CreateProcessor(extraItems: [PunchoutOrderUpdateTests.CreateRequisitionItem("line-1", "SKU-1", 3, 10m, sessionId: "session-3")]);
+        var request = CreateRequest(("1", "SKU-1", 3, 10m, "line-1", "session-3"));
+
+        Assert.Null(await processor.ValidateRequisitionItemsPublicAsync(request, isNewOrder: true));
+        Assert.Equal("session-3", request.Items[0].RequisitionItem.SessionId);
     }
 
     [Theory]
@@ -53,8 +73,9 @@ public class PunchoutRequisitionTests
     [InlineData("OTHER", 2, 10, "line-1", "session-1", "does not match the requisition item")]
     [InlineData("SKU-1", 3, 10, "line-1", "session-1", "does not match the requisition quantity")]
     [InlineData("SKU-1", 2, 11, "line-1", "session-1", "does not match the requisition price")]
-    [InlineData("SKU-1", 2, 10, "line-2", "session-1", "is not in the punchout requisition")]
-    [InlineData("SKU-1", 2, 10, "line-1", "unknown", "no punchout session 'unknown' returned a requisition")]
+    [InlineData("SKU-1", 2, 10, "line-2", "session-1", "is not in a punchout requisition returned to the user")]
+    [InlineData("SKU-1", 2, 10, "line-1", "unknown", "is not in a punchout requisition returned to the user")]
+    [InlineData("SKU-1", 2, 10, "line-9", null, "is not in a punchout requisition returned to the user")]
     [InlineData("SKU-1", 2, 10, "", "session-1", "SupplierPartAuxiliaryID is missing")]
     public async Task ValidateRequisitionItems_ComparesTheLineWithTheSnapshot(string sku, int quantity, decimal price, string lineItemId, string sessionId, string expectedError)
     {
@@ -97,7 +118,7 @@ public class PunchoutRequisitionTests
     public async Task ValidateRequisitionItems_ItemOrderedByAnotherPurchaseOrder_IsRejected()
     {
         var lineService = new InMemoryOrderLineService();
-        await lineService.TryAddAsync([CreateLine("session-1", "line-1", "PO-OTHER")]);
+        await lineService.SaveChangesAsync([CreateLine("session-1", "line-1", "PO-OTHER")]);
         var processor = CreateProcessor(lineService);
         var request = CreateRequest(("1", "SKU-1", 2, 10m, "line-1", "session-1"));
 
@@ -110,7 +131,7 @@ public class PunchoutRequisitionTests
     public async Task ValidateRequisitionItems_UpdateLineOrderedByThePurchaseOrder_IsNotMatched()
     {
         var lineService = new InMemoryOrderLineService();
-        await lineService.TryAddAsync([CreateLine("session-1", "line-1", "PO-1")]);
+        await lineService.SaveChangesAsync([CreateLine("session-1", "line-1", "PO-1", "1")]);
         var processor = CreateProcessor(lineService);
 
         // The ordered line is compared with the customer order by the handler, the new line with its snapshot
@@ -123,6 +144,33 @@ public class PunchoutRequisitionTests
         Assert.Null(error);
         Assert.Null(request.Items[0].RequisitionItem);
         Assert.NotNull(request.Items[1].RequisitionItem);
+    }
+
+    [Fact]
+    public async Task ValidateRequisitionItems_UpdateLineWithAnotherItem_IsRejected()
+    {
+        // Line 1 ordered line-1, the update sends another requisition item with the same SKU under line 1
+        var lineService = new InMemoryOrderLineService();
+        await lineService.SaveChangesAsync([CreateLine("session-1", "line-1", "PO-1", "1")]);
+        var processor = CreateProcessor(lineService, extraItems: [PunchoutOrderUpdateTests.CreateRequisitionItem("line-4", "SKU-1", 2, 10m, sessionId: "session-3")]);
+        var request = CreateRequest(("1", "SKU-1", 2, 10m, "line-4", "session-3"));
+
+        var error = await processor.ValidateRequisitionItemsPublicAsync(request, isNewOrder: false);
+
+        Assert.Contains("the line orders another requisition item", error);
+    }
+
+    [Fact]
+    public async Task ValidateRequisitionItems_UpdateItemMovedToAnotherLine_IsRejected()
+    {
+        var lineService = new InMemoryOrderLineService();
+        await lineService.SaveChangesAsync([CreateLine("session-1", "line-1", "PO-1", "1")]);
+        var processor = CreateProcessor(lineService);
+        var request = CreateRequest(("3", "SKU-1", 2, 10m, "line-1", "session-1"));
+
+        var error = await processor.ValidateRequisitionItemsPublicAsync(request, isNewOrder: false);
+
+        Assert.Contains("is already ordered by line 1 of the purchase order", error);
     }
 
     [Fact]
@@ -155,7 +203,7 @@ public class PunchoutRequisitionTests
         await processor.ValidateRequisitionItemsPublicAsync(request, isNewOrder: true);
 
         // Another purchase order reserved the item after the validation
-        await lineService.TryAddAsync([CreateLine("session-1", "line-1", "PO-OTHER")]);
+        await lineService.SaveChangesAsync([CreateLine("session-1", "line-1", "PO-OTHER")]);
 
         Assert.Null(await processor.AddOrderLinesPublicAsync(request, new PunchoutOrderRequest { Id = "request", ConfigurationId = Configuration.Id }));
     }
@@ -166,7 +214,7 @@ public class PunchoutRequisitionTests
     public async Task OrderLines_ProcessedChange_ReleasesTheRemovedItems(string orderType, string[] expectedLineItemIds)
     {
         var lineService = new InMemoryOrderLineService();
-        await lineService.TryAddAsync([CreateLine("session-1", "line-1", "PO-1"), CreateLine("session-2", "line-2", "PO-1")]);
+        await lineService.SaveChangesAsync([CreateLine("session-1", "line-1", "PO-1", "1"), CreateLine("session-2", "line-2", "PO-1", "2")]);
         var processor = CreateProcessor(lineService);
         var request = CreateRequest(("1", "SKU-1", 2, 10m, "line-1", "session-1"));
         request.OrderType = orderType;
@@ -244,7 +292,13 @@ public class PunchoutRequisitionTests
             Items = [PunchoutOrderUpdateTests.CreateRequisitionItem("line-1", "SKU-1", 2, 8m, listPrice: 10m)],
         };
 
+        message.Items[0].SessionId = null;
+
         var entity = new PunchoutOrderMessageEntity().FromModel(message, new PrimaryKeyResolvingMap());
+
+        // The items take the session of the message
+        Assert.Equal("session-1", Assert.Single(entity.Items).SessionId);
+
         var model = entity.ToModel(new PunchoutOrderMessage());
 
         var item = Assert.Single(model.Items);
@@ -254,16 +308,19 @@ public class PunchoutRequisitionTests
         Assert.Equal(8m, item.PlacedPrice);
     }
 
-    private static TestRequisitionProcessor CreateProcessor(InMemoryOrderLineService lineService = null)
+    /// <summary>
+    /// The requisition items returned to the user: line-1 by session-1 and line-2 by session-2.
+    /// </summary>
+    private static TestRequisitionProcessor CreateProcessor(InMemoryOrderLineService lineService = null, IList<PunchoutRequisitionItem> extraItems = null)
     {
-        var snapshots = new Dictionary<string, IList<PunchoutRequisitionItem>>
-        {
-            ["session-1"] = [PunchoutOrderUpdateTests.CreateRequisitionItem("line-1", "SKU-1", 2, 10m, sessionId: "session-1")],
-            ["session-2"] = [PunchoutOrderUpdateTests.CreateRequisitionItem("line-2", "SKU-2", 1, 20m, sessionId: "session-2")],
-            ["session-last"] = [PunchoutOrderUpdateTests.CreateRequisitionItem("line-3", "SKU-3", 1, 30m, sessionId: "session-last")],
-        };
+        List<PunchoutRequisitionItem> items =
+        [
+            PunchoutOrderUpdateTests.CreateRequisitionItem("line-1", "SKU-1", 2, 10m, sessionId: "session-1"),
+            PunchoutOrderUpdateTests.CreateRequisitionItem("line-2", "SKU-2", 1, 20m, sessionId: "session-2"),
+            .. extraItems ?? [],
+        ];
 
-        return new TestRequisitionProcessor(lineService ?? new InMemoryOrderLineService(), snapshots);
+        return new TestRequisitionProcessor(new InMemoryRequisitionItemService(items), lineService ?? new InMemoryOrderLineService());
     }
 
     private static PunchoutOrderRequestData CreateRequest(params (string LineNumber, string Sku, decimal Quantity, decimal Price, string LineItemId, string SessionId)[] items)
@@ -289,7 +346,7 @@ public class PunchoutRequisitionTests
         };
     }
 
-    private static PunchoutOrderLine CreateLine(string sessionId, string lineItemId, string purchaseOrderNumber)
+    private static PunchoutOrderLine CreateLine(string sessionId, string lineItemId, string purchaseOrderNumber, string lineNumber = null)
     {
         return new PunchoutOrderLine
         {
@@ -297,11 +354,12 @@ public class PunchoutRequisitionTests
             SessionId = sessionId,
             LineItemId = lineItemId,
             PurchaseOrderNumber = purchaseOrderNumber,
+            LineNumber = lineNumber,
         };
     }
 
-    private sealed class TestRequisitionProcessor(IPunchoutOrderLineService lineService, IDictionary<string, IList<PunchoutRequisitionItem>> snapshots)
-        : PunchoutOrderRequestProcessor(null, null, null, null, null, null, null, null, null, lineService, null, NullLogger<PunchoutOrderRequestProcessor>.Instance)
+    private sealed class TestRequisitionProcessor(IPunchoutRequisitionItemService requisitionItemService, InMemoryOrderLineService lineService)
+        : PunchoutOrderRequestProcessor(null, null, null, null, null, null, requisitionItemService, lineService, lineService, null, NullLogger<PunchoutOrderRequestProcessor>.Instance)
     {
         public Task<string> ValidateRequisitionItemsPublicAsync(PunchoutOrderRequestData request, bool isNewOrder) =>
             ValidateRequisitionItemsAsync(request, Configuration, new PunchoutUserMapping { UserId = "user" }, isNewOrder);
@@ -311,16 +369,12 @@ public class PunchoutRequisitionTests
 
         public Task UpdateOrderLinesPublicAsync(PunchoutOrderRequestData request, PunchoutOrderRequest orderRequest, PunchoutOrderResult result, IList<PunchoutOrderLine> addedLines) =>
             UpdateOrderLinesAsync(request, orderRequest, result, addedLines);
+    }
 
-        protected override Task<PunchoutSession> GetSessionAsync(string sessionId, PunchoutConfiguration settings, PunchoutUserMapping userMapping)
-        {
-            var id = string.IsNullOrEmpty(sessionId) ? "session-last" : sessionId;
-
-            return Task.FromResult(snapshots.ContainsKey(id) ? new PunchoutSession { Id = id } : null);
-        }
-
-        protected override Task<IList<PunchoutRequisitionItem>> GetRequisitionItemsAsync(PunchoutSession session) =>
-            Task.FromResult(snapshots[session.Id]);
+    private sealed class InMemoryRequisitionItemService(IList<PunchoutRequisitionItem> items) : IPunchoutRequisitionItemService
+    {
+        public Task<IList<PunchoutRequisitionItem>> GetReturnedItemsAsync(string configurationId, string userId, IList<string> lineItemIds) =>
+            Task.FromResult<IList<PunchoutRequisitionItem>>(items.Where(x => lineItemIds.Contains(x.LineItemId)).ToList());
     }
 
     private sealed class TestCartHandler()
@@ -341,40 +395,55 @@ public class PunchoutRequisitionTests
         }
     }
 
-    private sealed class InMemoryOrderLineService : IPunchoutOrderLineService
+    private sealed class InMemoryOrderLineService : IPunchoutOrderLineService, IPunchoutOrderLineSearchService
     {
         public List<PunchoutOrderLine> Lines { get; } = [];
 
-        public Task<IList<PunchoutOrderLine>> GetByLineItemIdsAsync(string configurationId, IList<string> lineItemIds) =>
-            Task.FromResult<IList<PunchoutOrderLine>>(Lines.Where(x => x.ConfigurationId == configurationId && lineItemIds.Contains(x.LineItemId)).ToList());
+        public Task<IList<PunchoutOrderLine>> GetAsync(IList<string> ids, string responseGroup = null, bool clone = true) =>
+            Task.FromResult<IList<PunchoutOrderLine>>(Lines.Where(x => ids.Contains(x.Id)).ToList());
 
-        public Task<IList<PunchoutOrderLine>> GetByPurchaseOrderAsync(string configurationId, string purchaseOrderNumber) =>
-            Task.FromResult<IList<PunchoutOrderLine>>(Lines.Where(x => x.ConfigurationId == configurationId && x.PurchaseOrderNumber == purchaseOrderNumber).ToList());
-
-        public Task<bool> TryAddAsync(IList<PunchoutOrderLine> lines)
+        /// <summary>
+        /// Rejects all the lines if an item is already ordered, as the unique index does.
+        /// </summary>
+        public Task SaveChangesAsync(IList<PunchoutOrderLine> models)
         {
-            var isOrdered = lines.Any(line => Lines.Any(x =>
+            var isOrdered = models.Any(line => Lines.Any(x =>
                 x.ConfigurationId == line.ConfigurationId && x.SessionId == line.SessionId && x.LineItemId == line.LineItemId));
 
             if (isOrdered)
             {
-                return Task.FromResult(false);
+                throw new InvalidOperationException("Unique index violation.");
             }
 
-            foreach (var line in lines)
+            foreach (var line in models)
             {
                 line.Id ??= Guid.NewGuid().ToString();
                 Lines.Add(line);
             }
 
-            return Task.FromResult(true);
+            return Task.CompletedTask;
         }
 
-        public Task DeleteAsync(IList<string> ids)
+        public Task DeleteAsync(IList<string> ids, bool softDelete = false)
         {
             Lines.RemoveAll(x => ids.Contains(x.Id));
 
             return Task.CompletedTask;
+        }
+
+        public Task<PunchoutOrderLineSearchResult> SearchAsync(PunchoutOrderLineSearchCriteria criteria, bool clone = true)
+        {
+            var lines = Lines
+                .Where(x => criteria.ConfigurationId is null || x.ConfigurationId == criteria.ConfigurationId)
+                .Where(x => criteria.PurchaseOrderNumber is null || x.PurchaseOrderNumber == criteria.PurchaseOrderNumber)
+                .Where(x => criteria.LineItemIds is null || criteria.LineItemIds.Contains(x.LineItemId))
+                .ToList();
+
+            return Task.FromResult(new PunchoutOrderLineSearchResult
+            {
+                TotalCount = lines.Count,
+                Results = lines.Skip(criteria.Skip).Take(criteria.Take).ToList(),
+            });
         }
     }
 }

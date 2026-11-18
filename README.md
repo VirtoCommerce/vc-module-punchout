@@ -150,7 +150,7 @@ The module follows the layered architecture used across Virto Commerce platform 
    * `BuyerCookie` is the one received in the setup request, and `operationAllowed` is `create`
    * `Total` is the sum of the line extended prices. Cart-level discounts, shipping, and taxes are not included
    * each `ItemIn` has the SKU as `SupplierPartID`, `{lineItemId};{sessionId}` as `SupplierPartAuxiliaryID`, the placed price as `UnitPrice`, the product measure unit (`EA` by default), and a placeholder classification (`Custom` / `00000000`)
-5. The session is atomically switched from `Active` to `Returned`, so it cannot return a second requisition. The cXML is stored in `PunchoutOrderMessage` together with a snapshot of the sent cart line items (product, catalog, SKU, name, quantity, list price, discount, placed price, tax rate, dimensions). The customer order is created from this snapshot later, not from the cart.
+5. The session is atomically switched from `Active` to `Returned`, so it cannot return a second requisition. The cXML is stored in `PunchoutOrderMessage`, and every sent cart line item is stored in `PunchoutRequisitionItem` as a snapshot (product, catalog, SKU, name, quantity, list price, discount, placed price, tax rate, dimensions). The customer order is created from this snapshot later, not from the cart.
 6. `IPunchoutHandler.HandleOrderMessageReturnedAsync` is called. `DefaultPunchoutHandler` removes the sent items from the cart: the buyer keeps them in the requisition, and the next punchout session must not send them again. Items that were not selected for checkout stay in the cart.
 7. The mutation returns the procurement system's return URL, the form field name (`cxml-urlencoded`), and the cXML. The storefront posts the form to the procurement system. If the requisition cannot be returned, only an error code is returned and the details are logged.
 
@@ -163,9 +163,9 @@ The module follows the layered architecture used across Virto Commerce platform 
    * the store exists and has punchout enabled
    * the order type is `new` (the default when the `type` attribute is missing), `update`, or `delete`
    * `payloadID` (up to 512 characters), `orderID` (up to 256 characters), the `Total` currency, and items are present
-   * every item has a `SupplierPartID`, a positive quantity, and a non-negative unit price in the order currency
+   * every item has a `lineNumber` (up to 128 characters, unique within the order), a `SupplierPartID`, a positive quantity, and a non-negative unit price in the order currency
    * the order currency is available in the store
-   * every line orders a requisition item. The procurement system groups the requisition lines into purchase orders by supplier, so one purchase order may contain items returned by several punchout sessions, and the items of one session may be split between purchase orders. Each line references its own session in `SupplierPartAuxiliaryID` (`{lineItemId};{sessionId}`). Without a session reference, the user's last returned session is used
+   * every line orders a requisition item. The procurement system groups the requisition lines into purchase orders by supplier, so one purchase order may contain items returned by several punchout sessions, and the items of one session may be split between purchase orders. Each line references its own session in `SupplierPartAuxiliaryID` (`{lineItemId};{sessionId}`). Without a session reference, the item is found by its line item id among all the requisitions returned to the user, and it is rejected if more than one requisition contains it
    * every line has a unique `SupplierPartAuxiliaryID`, its session has returned a requisition for the same user and integration, and the item is in the snapshot of that requisition with the same SKU, currency, quantity, and unit price rounded to two decimals
    * no item is already ordered by another purchase order
 5. The request is stored with the `Processing` status. The unique index on the configuration and `payloadID` stops a concurrent duplicate.
@@ -186,7 +186,7 @@ An update carries the full new content of the purchase order. Instead of the ses
 * takes the last `Completed` request with the same `orderID` as the current version, which references the customer order
 * when `orderVersion` is present, requires a number greater than the current version (a `new` order without `orderVersion` is version 1)
 * when no version of the order is `Completed` (the `new` order was rejected or failed, so no customer order exists), processes the update as a `new` order with the requisition checks of step 4. The buyer does not send `new` again for the same `orderID`, so otherwise every next update would be rejected
-* checks the lines whose requisition items are not ordered by the purchase order yet against their requisition snapshots, as for a `new` order but without the quantity. The lines already ordered by the purchase order are compared with the customer order
+* matches the lines with the items ordered by the purchase order by `lineNumber`, as the handler matches the customer order lines. A known line number must order the same requisition item as before, the handler compares it with the customer order. A new line number is checked against its requisition snapshot, as for a `new` order but without the quantity, and its item must not be ordered by another line. The items of the line numbers missing from the update are released
 
 `DefaultPunchoutHandler` then loads the customer order and:
 
@@ -299,7 +299,8 @@ Register an `ICxmlRequestHandler` to support another cXML request type or to rep
 | `PunchoutSessionManagementService` | `IPunchoutSessionManagementService` | Atomic, one-time redemption of session tokens and switching sessions to `Returned` |
 | `PunchoutOrderMessageService` / `PunchoutOrderMessageSearchService` | `IPunchoutOrderMessageService` / `IPunchoutOrderMessageSearchService` | CRUD and search for the stored order messages |
 | `PunchoutOrderRequestService` / `PunchoutOrderRequestSearchService` | `IPunchoutOrderRequestService` / `IPunchoutOrderRequestSearchService` | CRUD and search for the stored order requests |
-| `PunchoutOrderLineService` | `IPunchoutOrderLineService` | Reserves and releases the requisition items ordered by purchase orders, without the cache |
+| `PunchoutRequisitionItemService` | `IPunchoutRequisitionItemService` | Finds the requisition items returned to a user by their line item ids, in one query |
+| `PunchoutOrderLineService` / `PunchoutOrderLineSearchService` | `IPunchoutOrderLineService` / `IPunchoutOrderLineSearchService` | CRUD and search for the requisition items ordered by purchase orders. They are always read from the database (`CacheDisabler`), the unique index rejects an item reserved by a concurrent purchase order |
 | `PunchoutUserMappingService` / `PunchoutUserMappingSearchService` | `IPunchoutUserMappingService` / `IPunchoutUserMappingSearchService` | CRUD and search for external-identity-to-user mappings |
 | `PunchoutGrantTypeHandler` | `GrantTypeHandlerBase` | `punchout` OAuth grant: redeems the session token and issues a session-bound access token |
 
@@ -311,6 +312,7 @@ Register an `ICxmlRequestHandler` to support another cXML request type or to rep
 | `PunchoutUserMappingChangingEvent` / `PunchoutUserMappingChangedEvent` | A user mapping is created, updated, or deleted |
 | `PunchoutOrderMessageChangingEvent` / `PunchoutOrderMessageChangedEvent` | An order message is created, updated, or deleted |
 | `PunchoutOrderRequestChangingEvent` / `PunchoutOrderRequestChangedEvent` | An order request is created, updated, or deleted |
+| `PunchoutOrderLineChangingEvent` / `PunchoutOrderLineChangedEvent` | A requisition item is reserved for a purchase order or released |
 
 Token redemption and the switch to `Returned` update the session directly in the database and do not raise events.
 
@@ -320,7 +322,8 @@ Token redemption and the switch to `Returned` update the session directly in the
 |-------|---------|
 | `PunchoutSession` | Punchout sessions: store, configuration, user, buyer cookie, buyer, supplier, and sender identities and domains, return URL, status (`Active` or `Returned`), start page, session and token expiration dates, token hash (unique), and redemption flag |
 | `PunchoutUserMapping` | Links an external identity (unique) to a platform user (`UserId`, `UserName`) and the contact (`MemberId`) that owns the account, with an active flag |
-| `PunchoutOrderMessage` | cXML of the `PunchOutOrderMessage` returned for a session and the JSON snapshot of its items. Deleted together with the session |
+| `PunchoutOrderMessage` | cXML of the `PunchOutOrderMessage` returned for a session. Deleted together with the session |
+| `PunchoutRequisitionItem` | Snapshot of the cart line items sent in an order message: message, session, line item (unique within the message), product, catalog, SKU, name, quantity, prices, discount, tax, and dimensions. Deleted together with the message |
 | `PunchoutOrderLine` | Requisition items ordered by purchase orders: configuration, session, cart line item (unique together), purchase order number, line number, and the order request that added the item |
 | `PunchoutOrderRequest` | Received `OrderRequest` documents: configuration, store, `payloadID` (unique within the configuration), sender and buyer identities, user, order type, purchase order number and date, currency, total, created customer order, status (`Processing`, `Completed`, `Failed`, or `Rejected`), and error code and message |
 

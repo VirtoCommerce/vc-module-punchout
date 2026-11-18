@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using VirtoCommerce.Platform.Core.Common;
 
 namespace VirtoCommerce.Punchout.Core.Models;
@@ -17,6 +18,10 @@ public class PunchoutOrderMessage : AuditableEntity, ICloneable
 
     public virtual object Clone()
     {
-        return MemberwiseClone();
+        var result = (PunchoutOrderMessage)MemberwiseClone();
+
+        result.Items = Items?.Select(x => (PunchoutRequisitionItem)x.Clone()).ToList();
+
+        return result;
     }
 }

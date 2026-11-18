@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using FluentValidation;
 using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Punchout.Core;
@@ -54,7 +57,18 @@ public class PunchoutOrderRequestValidator : AbstractValidator<PunchoutOrderRequ
             .When(x => ItemsRequired(x.OrderType))
             .WithMessage("The order has no items.");
 
+        // The lines of the versions of a purchase order are matched by the line number
+        RuleFor(x => x.Items)
+            .Must(HaveUniqueLineNumbers)
+            .WithMessage("The order has several lines with the same lineNumber.");
+
         RuleForEach(x => x.Items)
+            .Must(item => !item.LineNumber.IsNullOrEmpty())
+            .WithMessage((_, item) => $"Item '{item.SupplierPartId}': lineNumber is missing.")
+
+            .Must(item => item.LineNumber is null || item.LineNumber.Length <= ModuleConstants.FieldLength.LineNumber)
+            .WithMessage((_, item) => $"Item '{item.SupplierPartId}': lineNumber is longer than {ModuleConstants.FieldLength.LineNumber} characters.")
+
             .Must(item => !item.SupplierPartId.IsNullOrEmpty())
             .WithMessage((_, item) => $"Line {item.LineNumber}: SupplierPartID is missing.")
 
@@ -67,6 +81,16 @@ public class PunchoutOrderRequestValidator : AbstractValidator<PunchoutOrderRequ
             // The item currency is optional, the order currency applies then
             .Must((request, item) => item.Currency.IsNullOrEmpty() || item.Currency.EqualsIgnoreCase(request.Currency))
             .WithMessage((request, item) => $"Line {item.LineNumber}: currency '{item.Currency}' does not match the order currency '{request.Currency}'.");
+    }
+
+    protected virtual bool HaveUniqueLineNumbers(IList<PunchoutOrderRequestItem> items)
+    {
+        var lineNumbers = items?
+            .Select(x => x.LineNumber)
+            .Where(x => !x.IsNullOrEmpty())
+            .ToList() ?? [];
+
+        return lineNumbers.Distinct(StringComparer.OrdinalIgnoreCase).Count() == lineNumbers.Count;
     }
 
     protected virtual bool ItemsRequired(string orderType)

@@ -1,13 +1,18 @@
+using System;
+using VirtoCommerce.Platform.Core.Common;
+
 namespace VirtoCommerce.Punchout.Core.Models;
 
 /// <summary>
 /// A cart line item as it was sent to the buyer in a PunchOutOrderMessage.
 /// The snapshot is stored with the order message, the customer order is created from it, not from the cart.
 /// </summary>
-public class PunchoutRequisitionItem
+public class PunchoutRequisitionItem : Entity, ICloneable
 {
+    public string OrderMessageId { get; set; }
+
     /// <summary>
-    /// The session that returned the item. Not stored in the snapshot, set when the order message is loaded.
+    /// The session that returned the item, the session of the order message.
     /// </summary>
     public string SessionId { get; set; }
 
@@ -76,4 +81,9 @@ public class PunchoutRequisitionItem
     public string TaxType { get; set; }
 
     public decimal TaxPercentRate { get; set; }
+
+    public virtual object Clone()
+    {
+        return MemberwiseClone();
+    }
 }

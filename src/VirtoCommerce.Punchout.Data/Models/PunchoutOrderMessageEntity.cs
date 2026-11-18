@@ -1,6 +1,6 @@
-using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json;
+using System.Linq;
 using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Platform.Core.Domain;
 using VirtoCommerce.Punchout.Core.Models;
@@ -15,9 +15,9 @@ public class PunchoutOrderMessageEntity : AuditableEntity, IDataEntity<PunchoutO
     public string Cxml { get; set; }
 
     /// <summary>
-    /// The snapshot of the sent cart line items in JSON.
+    /// The snapshot of the sent cart line items.
     /// </summary>
-    public string Items { get; set; }
+    public virtual ObservableCollection<PunchoutRequisitionItemEntity> Items { get; set; } = new NullCollection<PunchoutRequisitionItemEntity>();
 
     public virtual PunchoutOrderMessage ToModel(PunchoutOrderMessage model)
     {
@@ -29,7 +29,9 @@ public class PunchoutOrderMessageEntity : AuditableEntity, IDataEntity<PunchoutO
 
         model.Cxml = Cxml;
         model.SessionId = SessionId;
-        model.Items = DeserializeItems(Items);
+        model.Items = Items
+            .Select(x => x.ToModel(AbstractTypeFactory<PunchoutRequisitionItem>.TryCreateInstance()))
+            .ToList();
 
         return model;
     }
@@ -46,7 +48,20 @@ public class PunchoutOrderMessageEntity : AuditableEntity, IDataEntity<PunchoutO
 
         SessionId = model.SessionId;
         Cxml = model.Cxml;
-        Items = model.Items.IsNullOrEmpty() ? null : JsonSerializer.Serialize(model.Items);
+
+        if (model.Items != null)
+        {
+            Items = new ObservableCollection<PunchoutRequisitionItemEntity>(model.Items.Select(x =>
+            {
+                var item = AbstractTypeFactory<PunchoutRequisitionItemEntity>.TryCreateInstance().FromModel(x, pkMap);
+
+                // Every item is from the message session
+                item.OrderMessageId = Id;
+                item.SessionId = SessionId;
+
+                return item;
+            }));
+        }
 
         return this;
     }
@@ -55,24 +70,10 @@ public class PunchoutOrderMessageEntity : AuditableEntity, IDataEntity<PunchoutO
     {
         target.SessionId = SessionId;
         target.Cxml = Cxml;
-        target.Items = Items;
-    }
 
-    protected virtual IList<PunchoutRequisitionItem> DeserializeItems(string json)
-    {
-        if (string.IsNullOrEmpty(json))
+        if (!Items.IsNullCollection())
         {
-            return [];
+            Items.Patch(target.Items, (sourceItem, targetItem) => sourceItem.Patch(targetItem));
         }
-
-        var items = JsonSerializer.Deserialize<List<PunchoutRequisitionItem>>(json) ?? [];
-
-        // The session id is not repeated in the snapshot, every item is from the message session
-        foreach (var item in items)
-        {
-            item.SessionId = SessionId;
-        }
-
-        return items;
     }
 }

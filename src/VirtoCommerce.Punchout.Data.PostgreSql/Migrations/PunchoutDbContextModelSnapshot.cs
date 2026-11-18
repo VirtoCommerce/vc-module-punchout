@@ -103,9 +103,6 @@ namespace VirtoCommerce.Punchout.Data.PostgreSql.Migrations
                     b.Property<string>("Cxml")
                         .HasColumnType("text");
 
-                    b.Property<string>("Items")
-                        .HasColumnType("text");
-
                     b.Property<string>("ModifiedBy")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
@@ -233,6 +230,142 @@ namespace VirtoCommerce.Punchout.Data.PostgreSql.Migrations
                         .HasDatabaseName("IX_PunchoutOrderRequest_ConfigurationId_PurchaseOrderNumber");
 
                     b.ToTable("PunchoutOrderRequest", (string)null);
+                });
+
+            modelBuilder.Entity("VirtoCommerce.Punchout.Data.Models.PunchoutRequisitionItemEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("CatalogId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("CategoryId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Currency")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("FulfillmentCenterId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("FulfillmentCenterName")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<decimal?>("Height")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(1028)
+                        .HasColumnType("character varying(1028)");
+
+                    b.Property<bool>("IsGift")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal?>("Length")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("LineItemId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<decimal>("ListPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("MeasureUnit")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<string>("OrderMessageId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<decimal>("PlacedPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("PriceId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ProductId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ProductOuterId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ProductType")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("SalePrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Sku")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<decimal>("TaxPercentRate")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("TaxType")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<decimal?>("Weight")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("WeightUnit")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<decimal?>("Width")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LineItemId")
+                        .HasDatabaseName("IX_PunchoutRequisitionItem_LineItemId");
+
+                    b.HasIndex("OrderMessageId", "LineItemId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_PunchoutRequisitionItem_OrderMessageId_LineItemId");
+
+                    b.ToTable("PunchoutRequisitionItem", (string)null);
                 });
 
             modelBuilder.Entity("VirtoCommerce.Punchout.Data.Models.PunchoutSessionEntity", b =>
@@ -396,6 +529,22 @@ namespace VirtoCommerce.Punchout.Data.PostgreSql.Migrations
                         .HasForeignKey("SessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("VirtoCommerce.Punchout.Data.Models.PunchoutRequisitionItemEntity", b =>
+                {
+                    b.HasOne("VirtoCommerce.Punchout.Data.Models.PunchoutOrderMessageEntity", "OrderMessage")
+                        .WithMany("Items")
+                        .HasForeignKey("OrderMessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("OrderMessage");
+                });
+
+            modelBuilder.Entity("VirtoCommerce.Punchout.Data.Models.PunchoutOrderMessageEntity", b =>
+                {
+                    b.Navigation("Items");
                 });
 #pragma warning restore 612, 618
         }

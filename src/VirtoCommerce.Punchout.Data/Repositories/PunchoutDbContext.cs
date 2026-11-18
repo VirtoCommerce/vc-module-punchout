@@ -51,6 +51,21 @@ public class PunchoutDbContext : DbContextBase
             .HasIndex(x => x.SessionId)
             .HasDatabaseName("IX_PunchoutOrderMessage_SessionId");
 
+        modelBuilder.Entity<PunchoutRequisitionItemEntity>().ToEntityTable("PunchoutRequisitionItem");
+        modelBuilder.Entity<PunchoutRequisitionItemEntity>()
+            .HasOne(x => x.OrderMessage)
+            .WithMany(x => x.Items)
+            .HasForeignKey(x => x.OrderMessageId)
+            .IsRequired()
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PunchoutRequisitionItemEntity>()
+            .HasIndex(x => new { x.OrderMessageId, x.LineItemId })
+            .IsUnique()
+            .HasDatabaseName("IX_PunchoutRequisitionItem_OrderMessageId_LineItemId");
+        modelBuilder.Entity<PunchoutRequisitionItemEntity>()
+            .HasIndex(x => x.LineItemId)
+            .HasDatabaseName("IX_PunchoutRequisitionItem_LineItemId");
+
         modelBuilder.Entity<PunchoutOrderRequestEntity>().ToAuditableEntityTable("PunchoutOrderRequest");
         modelBuilder.Entity<PunchoutOrderRequestEntity>()
             .HasIndex(x => new { x.ConfigurationId, x.PayloadId })

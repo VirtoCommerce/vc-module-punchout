@@ -1,0 +1,34 @@
+{
+  "PUNCHOUT": {
+    "WIDGET": {
+      "TITLE": "Punchout 用户"
+    },
+    "MAPPING": {
+      "TITLE": "Punchout 用户",
+      "CARD": "采购系统身份",
+      "IS_ACTIVE": "启用",
+      "EXTERNAL_ID": "外部身份",
+      "EXTERNAL_ID_PLACEHOLDER": "输入采购系统的用户身份",
+      "EXTERNAL_ID_HINT": "采购系统在 cXML Header/Sender/Credential/Identity 中发送的值。",
+      "ACCOUNT": "账户",
+      "NO_ACCOUNTS": "此联系人还没有安全账户。请先创建一个：Punchout 会话是为账户而不是为联系人打开的。"
+    },
+    "TOOLBAR": {
+      "SAVE": "保存",
+      "REFRESH": "刷新",
+      "RESET": "重置",
+      "DELETE": "删除"
+    },
+    "ALERTS": {
+      "CLOSE_CONFIRMATION": "Punchout 用户已被修改。不保存就关闭吗？",
+      "DELETE": "确定要删除 Punchout 用户映射 '{externalId}' 吗？"
+    },
+    "ERRORS": {
+      "externalId-required": "ExternalId 为必填项",
+      "mapping-exists": "ExternalId 为 '{externalId}' 的映射已存在。",
+      "userId-memberId-required": "UserId 和 MemberId 为必填项。",
+      "memberId-mismatch": "该用户不是指定联系人的安全账户。",
+      "user-is-admin-or-customer": "只能映射非管理员的 Customer 类型账户。"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "PUNCHOUT": {
+    "WIDGET": {
+      "TITLE": "Punchout user"
+    },
+    "MAPPING": {
+      "TITLE": "Punchout user",
+      "CARD": "Procurement system identity",
+      "IS_ACTIVE": "Active",
+      "EXTERNAL_ID": "External identity",
+      "EXTERNAL_ID_PLACEHOLDER": "Enter the user identity of the procurement system",
+      "EXTERNAL_ID_HINT": "The value the procurement system sends in cXML Header/Sender/Credential/Identity.",
+      "ACCOUNT": "Account",
+      "NO_ACCOUNTS": "This contact has no security account yet. Create one first: a punchout session is opened for an account, not for a contact."
+    },
+    "TOOLBAR": {
+      "SAVE": "Save",
+      "REFRESH": "Refresh",
+      "RESET": "Reset",
+      "DELETE": "Delete"
+    },
+    "ALERTS": {
+      "CLOSE_CONFIRMATION": "The punchout user has been modified. Close without saving?",
+      "DELETE": "Are you sure you want to delete the punchout user mapping '{externalId}'?"
+    },
+    "ERRORS": {
+      "externalId-required": "ExternalId is required",
+      "mapping-exists": "A mapping with ExternalId '{externalId}' already exists.",
+      "userId-memberId-required": "UserId and MemberId are required.",
+      "memberId-mismatch": "The user is not a security account of the specified contact.",
+      "user-is-admin-or-customer": "Only non-administrator accounts of Customer type can be mapped."
+    }
+  }
+}

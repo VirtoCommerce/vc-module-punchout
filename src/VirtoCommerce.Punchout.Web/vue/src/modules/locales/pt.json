@@ -1,0 +1,34 @@
+{
+  "PUNCHOUT": {
+    "WIDGET": {
+      "TITLE": "Usuário Punchout"
+    },
+    "MAPPING": {
+      "TITLE": "Usuário Punchout",
+      "CARD": "Identidade no sistema de compras",
+      "IS_ACTIVE": "Ativo",
+      "EXTERNAL_ID": "Identidade externa",
+      "EXTERNAL_ID_PLACEHOLDER": "Insira a identidade do usuário do sistema de compras",
+      "EXTERNAL_ID_HINT": "O valor que o sistema de compras envia em cXML Header/Sender/Credential/Identity.",
+      "ACCOUNT": "Conta",
+      "NO_ACCOUNTS": "Este contato ainda não tem uma conta de segurança. Crie uma primeiro: uma sessão Punchout é aberta para uma conta, não para um contato."
+    },
+    "TOOLBAR": {
+      "SAVE": "Salvar",
+      "REFRESH": "Atualizar",
+      "RESET": "Redefinir",
+      "DELETE": "Excluir"
+    },
+    "ALERTS": {
+      "CLOSE_CONFIRMATION": "O usuário Punchout foi modificado. Fechar sem salvar?",
+      "DELETE": "Tem certeza de que deseja excluir o mapeamento de usuário Punchout '{externalId}'?"
+    },
+    "ERRORS": {
+      "externalId-required": "ExternalId é obrigatório",
+      "mapping-exists": "Já existe um mapeamento com ExternalId '{externalId}'.",
+      "userId-memberId-required": "UserId e MemberId são obrigatórios.",
+      "memberId-mismatch": "O usuário não é uma conta de segurança do contato especificado.",
+      "user-is-admin-or-customer": "Somente contas do tipo Customer que não sejam de administrador podem ser mapeadas."
+    }
+  }
+}

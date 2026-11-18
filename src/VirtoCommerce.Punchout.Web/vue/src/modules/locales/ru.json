@@ -1,0 +1,34 @@
+{
+  "PUNCHOUT": {
+    "WIDGET": {
+      "TITLE": "Пользователь Punchout"
+    },
+    "MAPPING": {
+      "TITLE": "Пользователь Punchout",
+      "CARD": "Идентификатор в системе закупок",
+      "IS_ACTIVE": "Активен",
+      "EXTERNAL_ID": "Внешний идентификатор",
+      "EXTERNAL_ID_PLACEHOLDER": "Введите идентификатор пользователя в системе закупок",
+      "EXTERNAL_ID_HINT": "Значение, которое система закупок передает в cXML Header/Sender/Credential/Identity.",
+      "ACCOUNT": "Учётная запись",
+      "NO_ACCOUNTS": "У этого контакта пока нет учётной записи. Сначала создайте ее: сессия Punchout открывается для учётной записи, а не для контакта."
+    },
+    "TOOLBAR": {
+      "SAVE": "Сохранить",
+      "REFRESH": "Обновить",
+      "RESET": "Сбросить",
+      "DELETE": "Удалить"
+    },
+    "ALERTS": {
+      "CLOSE_CONFIRMATION": "Пользователь Punchout был изменён. Закрыть без сохранения?",
+      "DELETE": "Вы уверены, что хотите удалить сопоставление пользователя Punchout '{externalId}'?"
+    },
+    "ERRORS": {
+      "externalId-required": "ExternalId обязателен",
+      "mapping-exists": "Сопоставление с ExternalId '{externalId}' уже существует.",
+      "userId-memberId-required": "UserId и MemberId обязательны.",
+      "memberId-mismatch": "Пользователь не является учётной записью указанного контакта.",
+      "user-is-admin-or-customer": "Сопоставлять можно только учётные записи типа Customer без прав администратора."
+    }
+  }
+}

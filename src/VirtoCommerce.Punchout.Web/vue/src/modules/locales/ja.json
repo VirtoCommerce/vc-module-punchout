@@ -1,0 +1,34 @@
+{
+  "PUNCHOUT": {
+    "WIDGET": {
+      "TITLE": "Punchout ユーザー"
+    },
+    "MAPPING": {
+      "TITLE": "Punchout ユーザー",
+      "CARD": "調達システムの ID",
+      "IS_ACTIVE": "有効",
+      "EXTERNAL_ID": "外部 ID",
+      "EXTERNAL_ID_PLACEHOLDER": "調達システムのユーザー ID を入力してください",
+      "EXTERNAL_ID_HINT": "調達システムが cXML Header/Sender/Credential/Identity で送信する値です。",
+      "ACCOUNT": "アカウント",
+      "NO_ACCOUNTS": "この連絡先にはまだセキュリティアカウントがありません。先に作成してください。Punchout セッションは連絡先ではなくアカウントに対して開かれます。"
+    },
+    "TOOLBAR": {
+      "SAVE": "保存",
+      "REFRESH": "更新",
+      "RESET": "リセット",
+      "DELETE": "削除"
+    },
+    "ALERTS": {
+      "CLOSE_CONFIRMATION": "Punchout ユーザーが変更されました。保存せずに閉じますか？",
+      "DELETE": "Punchout ユーザー マッピング '{externalId}' を削除してもよろしいですか？"
+    },
+    "ERRORS": {
+      "externalId-required": "ExternalId は必須です",
+      "mapping-exists": "ExternalId '{externalId}' のマッピングは既に存在します。",
+      "userId-memberId-required": "UserId と MemberId は必須です。",
+      "memberId-mismatch": "このユーザーは指定された連絡先のセキュリティアカウントではありません。",
+      "user-is-admin-or-customer": "マッピングできるのは、管理者以外の Customer タイプのアカウントのみです。"
+    }
+  }
+}

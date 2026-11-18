@@ -1,0 +1,34 @@
+{
+  "PUNCHOUT": {
+    "WIDGET": {
+      "TITLE": "Punchout-käyttäjä"
+    },
+    "MAPPING": {
+      "TITLE": "Punchout-käyttäjä",
+      "CARD": "Hankintajärjestelmän tunniste",
+      "IS_ACTIVE": "Aktiivinen",
+      "EXTERNAL_ID": "Ulkoinen tunniste",
+      "EXTERNAL_ID_PLACEHOLDER": "Anna hankintajärjestelmän käyttäjätunniste",
+      "EXTERNAL_ID_HINT": "Arvo, jonka hankintajärjestelmä lähettää kentässä cXML Header/Sender/Credential/Identity.",
+      "ACCOUNT": "Tili",
+      "NO_ACCOUNTS": "Tällä yhteyshenkilöllä ei ole vielä suojaustiliä. Luo se ensin: Punchout-istunto avataan tilille, ei yhteyshenkilölle."
+    },
+    "TOOLBAR": {
+      "SAVE": "Tallenna",
+      "REFRESH": "Päivitä",
+      "RESET": "Palauta",
+      "DELETE": "Poista"
+    },
+    "ALERTS": {
+      "CLOSE_CONFIRMATION": "Punchout-käyttäjää on muokattu. Suljetaanko tallentamatta?",
+      "DELETE": "Haluatko varmasti poistaa Punchout-käyttäjäliitoksen '{externalId}'?"
+    },
+    "ERRORS": {
+      "externalId-required": "ExternalId on pakollinen",
+      "mapping-exists": "Määritys, jonka ExternalId on '{externalId}', on jo olemassa.",
+      "userId-memberId-required": "UserId ja MemberId ovat pakollisia.",
+      "memberId-mismatch": "Käyttäjä ei ole määritetyn yhteyshenkilön suojaustili.",
+      "user-is-admin-or-customer": "Vain Customer-tyyppisiä tilejä, jotka eivät ole järjestelmänvalvojia, voidaan määrittää."
+    }
+  }
+}

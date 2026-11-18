@@ -1,0 +1,34 @@
+{
+  "PUNCHOUT": {
+    "WIDGET": {
+      "TITLE": "Punchout-bruker"
+    },
+    "MAPPING": {
+      "TITLE": "Punchout-bruker",
+      "CARD": "Identitet i innkjøpssystemet",
+      "IS_ACTIVE": "Aktiv",
+      "EXTERNAL_ID": "Ekstern identitet",
+      "EXTERNAL_ID_PLACEHOLDER": "Angi brukeridentiteten til innkjøpssystemet",
+      "EXTERNAL_ID_HINT": "Verdien innkjøpssystemet sender i cXML Header/Sender/Credential/Identity.",
+      "ACCOUNT": "Konto",
+      "NO_ACCOUNTS": "Denne kontakten har ingen sikkerhetskonto ennå. Opprett en først: en Punchout-økt åpnes for en konto, ikke for en kontakt."
+    },
+    "TOOLBAR": {
+      "SAVE": "Lagre",
+      "REFRESH": "Oppdater",
+      "RESET": "Tilbakestill",
+      "DELETE": "Slett"
+    },
+    "ALERTS": {
+      "CLOSE_CONFIRMATION": "Punchout-brukeren er endret. Lukke uten å lagre?",
+      "DELETE": "Er du sikker på at du vil slette Punchout-brukertilordningen '{externalId}'?"
+    },
+    "ERRORS": {
+      "externalId-required": "ExternalId er påkrevd",
+      "mapping-exists": "En tilordning med ExternalId '{externalId}' finnes allerede.",
+      "userId-memberId-required": "UserId og MemberId er påkrevd.",
+      "memberId-mismatch": "Brukeren er ikke en sikkerhetskonto for den angitte kontakten.",
+      "user-is-admin-or-customer": "Bare kontoer av typen Customer som ikke er administratorer, kan tilordnes."
+    }
+  }
+}

@@ -23,6 +23,8 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
 
     public IQueryable<PunchoutOrderRequestEntity> PunchoutOrderRequests => DbContext.Set<PunchoutOrderRequestEntity>();
 
+    public IQueryable<PunchoutOrderLineEntity> PunchoutOrderLines => DbContext.Set<PunchoutOrderLineEntity>();
+
     public virtual async Task<IList<PunchoutSessionEntity>> GetPunchoutSessionsByIdsAsync(IList<string> ids, string responseGroup)
     {
         if (ids.IsNullOrEmpty())
@@ -117,5 +119,17 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
                 .SetProperty(x => x.ModifiedDate, now));
 
         return affected == 1;
+    }
+
+    public virtual async Task DeletePunchoutOrderLinesAsync(IList<string> ids)
+    {
+        if (ids.IsNullOrEmpty())
+        {
+            return;
+        }
+
+        await DbContext.Set<PunchoutOrderLineEntity>()
+            .Where(x => ids.Contains(x.Id))
+            .ExecuteDeleteAsync();
     }
 }

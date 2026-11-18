@@ -46,7 +46,7 @@ public class PunchoutOrderUpdateTests
     }
 
     [Theory]
-    [InlineData("3", "SKU-3", 1, 10, "an update cannot add lines")]
+    [InlineData("3", "SKU-3", 1, 10, "not in the order and not in a punchout requisition")]
     [InlineData("1", "OTHER", 1, 10, "does not match the order item")]
     [InlineData("1", "SKU-1", 1, 11, "does not match the order price")]
     [InlineData("1", "SKU-1", 1.5, 10, "must be a whole number")]
@@ -59,6 +59,49 @@ public class PunchoutOrderUpdateTests
         var error = handler.ReconcileOrderPublic(request, CreateOrder());
 
         Assert.Contains(expectedError, error);
+    }
+
+    [Theory]
+    [InlineData(2, null)]
+    [InlineData(3, "does not match the requisition quantity")]
+    public void ReconcileOrder_AddedLine_ComparesRequisitionQuantity(decimal quantity, string expectedError)
+    {
+        var handler = new TestPunchoutHandler();
+        var request = CreateRequest(("1", "SKU-1", 5m, 10m), ("3", "SKU-3", quantity, 7m));
+        request.Items[1].RequisitionItem = CreateRequisitionItem("cart-line-3", "SKU-3", 2, 7m);
+
+        var error = handler.ReconcileOrderPublic(request, CreateOrder());
+
+        if (expectedError is null)
+        {
+            Assert.Null(error);
+        }
+        else
+        {
+            Assert.Contains(expectedError, error);
+        }
+    }
+
+    [Fact]
+    public void UpdateOrderItems_AddsRequisitionItemWithItsPrice()
+    {
+        var handler = new TestPunchoutHandler();
+        var order = CreateOrder();
+        var request = CreateRequest(("1", "SKU-1", 5m, 10m), ("2", "SKU-2", 1m, 20m), ("3", "SKU-3", 2m, 7m));
+        request.Items[2].RequisitionItem = CreateRequisitionItem("cart-line-3", "SKU-3", 2, 7m, listPrice: 9m);
+
+        handler.UpdateOrderItemsPublic(request, order);
+
+        var lineItem = Assert.Single(order.Items, x => x.PurchaseOrderLineNumber == "3");
+        Assert.Equal("SKU-3", lineItem.Sku);
+        Assert.Equal("product-SKU-3", lineItem.ProductId);
+        Assert.Equal(2, lineItem.Quantity);
+        Assert.Equal(9m, lineItem.Price);
+        Assert.Equal(2m, lineItem.DiscountAmount);
+        Assert.Equal(7m, lineItem.PlacedPrice);
+
+        var shipmentItem = Assert.Single(order.Shipments.Single().Items, x => x.LineItem == lineItem);
+        Assert.Equal(2, shipmentItem.Quantity);
     }
 
     [Fact]
@@ -235,6 +278,24 @@ public class PunchoutOrderUpdateTests
         };
     }
 
+    internal static PunchoutRequisitionItem CreateRequisitionItem(string lineItemId, string sku, int quantity, decimal price, decimal? listPrice = null, string sessionId = "session-1")
+    {
+        return new PunchoutRequisitionItem
+        {
+            SessionId = sessionId,
+            LineItemId = lineItemId,
+            ProductId = $"product-{sku}",
+            CatalogId = "catalog",
+            Sku = sku,
+            Name = $"Product {sku}",
+            Quantity = quantity,
+            Currency = "USD",
+            ListPrice = listPrice ?? price,
+            DiscountAmount = (listPrice ?? price) - price,
+            PlacedPrice = price,
+        };
+    }
+
     private static CustomerOrder CreateOrder()
     {
         return new CustomerOrder
@@ -296,12 +357,16 @@ public class PunchoutOrderUpdateTests
         {
             NewOrderValidated = true;
 
-            return Task.FromResult(PunchoutOrderValidationResult.Valid(settings, userMapping, store, new PunchoutSession()));
+            return Task.FromResult(PunchoutOrderValidationResult.Valid(settings, userMapping, store));
         }
+
+        protected override Task<string> ValidateRequisitionItemsAsync(PunchoutOrderRequestData request, PunchoutConfiguration configuration,
+            PunchoutUserMapping userMapping, bool isNewOrder) =>
+            Task.FromResult<string>(null);
     }
 
     private sealed class TestRoutingHandler()
-        : DefaultPunchoutHandler(null, null, null, null, null, null, null, null)
+        : DefaultPunchoutHandler(null, null, null, null, null, null, null, null, null, null, null, null)
     {
         public string Route { get; private set; }
 
@@ -325,7 +390,7 @@ public class PunchoutOrderUpdateTests
     }
 
     private sealed class TestPunchoutHandler()
-        : DefaultPunchoutHandler(null, null, null, null, null, null, null, NullLogger<DefaultPunchoutHandler>.Instance)
+        : DefaultPunchoutHandler(null, null, null, null, null, null, null, null, null, null, null, NullLogger<DefaultPunchoutHandler>.Instance)
     {
         public string ReconcileOrderPublic(PunchoutOrderRequestData request, CustomerOrder order) =>
             ReconcileOrder(request, order);

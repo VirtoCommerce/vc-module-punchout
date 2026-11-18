@@ -83,6 +83,7 @@ public class Module : IModule, IHasConfiguration
 
         serviceCollection.AddTransient<IPunchoutOrderRequestService, PunchoutOrderRequestService>();
         serviceCollection.AddTransient<IPunchoutOrderRequestSearchService, PunchoutOrderRequestSearchService>();
+        serviceCollection.AddTransient<IPunchoutOrderLineService, PunchoutOrderLineService>();
 
         serviceCollection.AddTransient<ICxmlSerializer, CxmlSerializer>();
         serviceCollection.AddTransient<ICxmlResponseFactory, CxmlResponseFactory>();

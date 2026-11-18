@@ -39,4 +39,9 @@ public class PunchoutOrderRequestItem
     public IDictionary<string, string> Classifications { get; set; }
 
     public IList<PunchoutOrderRequestDistribution> Distributions { get; set; } = [];
+
+    /// <summary>
+    /// The requisition item the line orders, set by the validation. Null for a line of an 'update' that is already in the order.
+    /// </summary>
+    public PunchoutRequisitionItem RequisitionItem { get; set; }
 }

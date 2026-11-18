@@ -17,6 +17,8 @@ public interface IPunchoutRepository : IRepository
 
     IQueryable<PunchoutOrderRequestEntity> PunchoutOrderRequests { get; }
 
+    IQueryable<PunchoutOrderLineEntity> PunchoutOrderLines { get; }
+
     Task<IList<PunchoutSessionEntity>> GetPunchoutSessionsByIdsAsync(IList<string> ids, string responseGroup);
 
     Task<IList<PunchoutUserMappingEntity>> GetPunchoutUserMappingsByIdsAsync(IList<string> ids, string responseGroup);
@@ -36,4 +38,6 @@ public interface IPunchoutRepository : IRepository
     /// </summary>
     /// <returns>True if the session was returned by this call</returns>
     Task<bool> ReturnSessionAsync(string sessionId, DateTime now);
+
+    Task DeletePunchoutOrderLinesAsync(IList<string> ids);
 }

@@ -86,7 +86,25 @@ public class PunchoutOrderMessageProcessor(
         var orderMessage = CreateOrderMessage(handlerContext);
         await orderMessageService.SaveChangesAsync([orderMessage]);
 
+        await CompleteOrderMessageAsync(handler, handlerContext);
+
         return handlerContext.Result;
+    }
+
+    /// <summary>
+    /// The requisition is already returned, a failure here is logged and does not change the result.
+    /// </summary>
+    protected virtual async Task CompleteOrderMessageAsync(IPunchoutHandler handler, PunchoutOrderMessageHandlerContext context)
+    {
+        try
+        {
+            await handler.HandleOrderMessageReturnedAsync(context);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Punchout '{HandlerName}' handler failed to complete the order message for session '{SessionId}'.",
+                handler.GetType().Name, context.Session.Id);
+        }
     }
 
     protected virtual async Task<PunchoutOrderMessageValidationResult> ValidateAsync(PunchoutOrderMessageRequest request)
@@ -180,6 +198,7 @@ public class PunchoutOrderMessageProcessor(
 
         orderMessage.SessionId = context.Session.Id;
         orderMessage.Cxml = context.Result.Cxml;
+        orderMessage.Items = context.Items ?? [];
 
         return orderMessage;
     }

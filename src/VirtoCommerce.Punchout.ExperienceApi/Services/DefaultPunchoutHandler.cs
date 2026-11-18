@@ -3,49 +3,57 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
-using FluentValidation;
-using GraphQL;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using VirtoCommerce.CartModule.Core.Model;
+using VirtoCommerce.CartModule.Core.Services;
+using VirtoCommerce.CustomerModule.Core.Model;
+using VirtoCommerce.CustomerModule.Core.Services;
 using VirtoCommerce.OrdersModule.Core.Model;
 using VirtoCommerce.OrdersModule.Core.Services;
 using VirtoCommerce.PaymentModule.Core.Model;
+using VirtoCommerce.PaymentModule.Core.Model.Search;
+using VirtoCommerce.PaymentModule.Core.Services;
 using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Punchout.Core.Cxml;
 using VirtoCommerce.Punchout.Core.Cxml.Services;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Services;
 using VirtoCommerce.ShippingModule.Core.Model;
-using VirtoCommerce.Xapi.Core.Helpers;
+using VirtoCommerce.ShippingModule.Core.Model.Search;
+using VirtoCommerce.ShippingModule.Core.Services;
 using VirtoCommerce.XCart.Core;
 using VirtoCommerce.XCart.Core.Queries;
 using VirtoCommerce.XCart.Core.Services;
-using VirtoCommerce.XOrder.Core;
-using VirtoCommerce.XOrder.Core.Commands;
 using AddressType = VirtoCommerce.CoreModule.Core.Common.AddressType;
 using CoreAddress = VirtoCommerce.CoreModule.Core.Common.Address;
 using Address = VirtoCommerce.CartModule.Core.Model.Address;
 using LineItem = VirtoCommerce.CartModule.Core.Model.LineItem;
 using OrderAddress = VirtoCommerce.OrdersModule.Core.Model.Address;
 using OrderLineItem = VirtoCommerce.OrdersModule.Core.Model.LineItem;
+using OrderShipmentItem = VirtoCommerce.OrdersModule.Core.Model.ShipmentItem;
 using Payment = VirtoCommerce.CartModule.Core.Model.Payment;
 using Shipment = VirtoCommerce.CartModule.Core.Model.Shipment;
-using ShipmentItem = VirtoCommerce.OrdersModule.Core.Model.ShipmentItem;
+using ShipmentItem = VirtoCommerce.CartModule.Core.Model.ShipmentItem;
 
 namespace VirtoCommerce.Punchout.ExperienceApi.Services;
 
 /// <summary>
-/// Default handler: the setup is not customized, the order message is built from the current user cart.
+/// Default handler: the setup is not customized, the order message is built from the current user cart,
+/// the customer order is created from the snapshot of the requisition items stored with the order messages.
 /// </summary>
 public class DefaultPunchoutHandler(
     IMediator mediator,
     ICxmlSerializer cxmlSerializer,
     IPunchoutOrderMessageBuilder orderMessageBuilder,
     ICartAggregateRepository cartAggregateRepository,
-    ICartAvailMethodsService availableCartMethodsService,
     ICustomerOrderService customerOrderService,
     ICustomerOrderTotalsCalculator customerOrderTotalsCalculator,
+    ICustomerOrderBuilder customerOrderBuilder,
+    IShoppingCartTotalsCalculator shoppingCartTotalsCalculator,
+    IShippingMethodsSearchService shippingMethodsSearchService,
+    IPaymentMethodsSearchService paymentMethodsSearchService,
+    IMemberService memberService,
     ILogger<DefaultPunchoutHandler> logger)
     : IPunchoutHandler
 {
@@ -55,8 +63,6 @@ public class DefaultPunchoutHandler(
     protected const string CancelledOrderStatus = "Cancelled";
 
     protected const string PriceFormat = "0.00";
-
-    protected const string CartValidationRuleSet = "*";
 
     public virtual Task HandleSetupAsync(PunchoutSetupHandlerContext context)
     {
@@ -82,6 +88,84 @@ public class DefaultPunchoutHandler(
         var document = orderMessageBuilder.Build(context.Session, cartAggregate);
 
         context.Result.Cxml = cxmlSerializer.Serialize(document);
+        context.CartId = cartAggregate.Cart.Id;
+        context.Items = BuildRequisitionItems(cartAggregate);
+    }
+
+    /// <summary>
+    /// Removes the sent items from the cart: the buyer keeps them in its requisition,
+    /// a next punchout session must not send them again.
+    /// </summary>
+    public virtual async Task HandleOrderMessageReturnedAsync(PunchoutOrderMessageHandlerContext context)
+    {
+        if (string.IsNullOrEmpty(context.CartId) || context.Items.IsNullOrEmpty())
+        {
+            return;
+        }
+
+        var cartAggregate = await cartAggregateRepository.GetCartByIdAsync(context.CartId);
+        var cartItems = cartAggregate?.Cart.Items ?? [];
+
+        var sentItemIds = context.Items
+            .Select(x => x.LineItemId)
+            .Where(id => cartItems.Any(x => x.Id == id))
+            .ToArray();
+
+        if (sentItemIds.Length == 0)
+        {
+            return;
+        }
+
+        await cartAggregate.RemoveItemsAsync(sentItemIds);
+        await cartAggregateRepository.SaveAsync(cartAggregate);
+    }
+
+    /// <summary>
+    /// The snapshot of the sent cart line items, the customer order is created from it.
+    /// </summary>
+    protected virtual IList<PunchoutRequisitionItem> BuildRequisitionItems(CartAggregate cartAggregate)
+    {
+        var cart = cartAggregate.Cart;
+
+        return cart.Items
+            .Where(x => x.SelectedForCheckout)
+            .Select(x => BuildRequisitionItem(cart, x))
+            .ToList();
+    }
+
+    protected virtual PunchoutRequisitionItem BuildRequisitionItem(ShoppingCart cart, LineItem lineItem)
+    {
+        var item = AbstractTypeFactory<PunchoutRequisitionItem>.TryCreateInstance();
+
+        item.LineItemId = lineItem.Id;
+        item.ProductId = lineItem.ProductId;
+        item.CatalogId = lineItem.CatalogId;
+        item.CategoryId = lineItem.CategoryId;
+        item.Sku = lineItem.Sku;
+        item.Name = lineItem.Name;
+        item.ImageUrl = lineItem.ImageUrl;
+        item.ProductType = lineItem.ProductType;
+        item.ProductOuterId = lineItem.ProductOuterId;
+        item.PriceId = lineItem.PriceId;
+        item.IsGift = lineItem.IsGift;
+        item.FulfillmentCenterId = lineItem.FulfillmentCenterId;
+        item.FulfillmentCenterName = lineItem.FulfillmentCenterName;
+        item.WeightUnit = lineItem.WeightUnit;
+        item.Weight = lineItem.Weight;
+        item.MeasureUnit = lineItem.MeasureUnit;
+        item.Height = lineItem.Height;
+        item.Length = lineItem.Length;
+        item.Width = lineItem.Width;
+        item.Quantity = lineItem.Quantity;
+        item.Currency = lineItem.Currency ?? cart.Currency;
+        item.ListPrice = lineItem.ListPrice;
+        item.SalePrice = lineItem.SalePrice;
+        item.DiscountAmount = lineItem.DiscountAmount;
+        item.PlacedPrice = lineItem.PlacedPrice;
+        item.TaxType = lineItem.TaxType;
+        item.TaxPercentRate = lineItem.TaxPercentRate;
+
+        return item;
     }
 
     public virtual Task HandleOrderRequestAsync(PunchoutOrderRequestHandlerContext context)
@@ -103,83 +187,224 @@ public class DefaultPunchoutHandler(
     }
 
     /// <summary>
-    /// Creates the customer order from the requisition cart.
+    /// Creates the customer order from the requisition items the processor matched with the order lines.
+    /// The prices are the prices sent to the buyer, they are not calculated again.
     /// </summary>
     protected virtual async Task CreateOrderFromRequestAsync(PunchoutOrderRequestHandlerContext context)
     {
-        var lineItemIdsError = ValidateLineItemIds(context.Request);
-        if (lineItemIdsError != null)
+        var missingItem = context.Request.Items.FirstOrDefault(x => x.RequisitionItem is null);
+        if (missingItem != null)
         {
-            context.Fail(PunchoutOrderStatus.InvalidRequest, lineItemIdsError);
+            context.Fail(PunchoutOrderStatus.InvalidRequest, $"Line {missingItem.LineNumber}: item '{missingItem.SupplierPartId}' is not in the punchout requisition.");
             return;
         }
 
-        var cachedCartAggregate = await SearchCartAsync(context);
-        if (cachedCartAggregate == null)
-        {
-            context.Fail(PunchoutOrderStatus.InvalidRequest, "The order items do not match any cart.");
-            return;
-        }
+        var cart = await BuildCartAsync(context);
+        var order = await customerOrderBuilder.PlaceCustomerOrderFromCartAsync(cart);
 
-        // The cart aggregate is cached and shared, the changes of a rejected order must not stay in it
-        var cartAggregate = cachedCartAggregate.CloneTyped();
+        context.Result.CustomerOrderId = order.Id;
+        context.Result.PurchaseOrderNumber = context.Request.OrderId;
+    }
 
-        // The cart wins: the order is created only when the purchase order matches the cart
-        var errors = ReconcileCart(context.Request, cartAggregate);
-        if (errors.Count > 0)
-        {
-            context.Fail(PunchoutOrderStatus.InvalidRequest, string.Join(" ", errors));
-            return;
-        }
+    /// <summary>
+    /// Builds a cart that is not stored, the order builder converts it to the customer order as at the checkout.
+    /// </summary>
+    protected virtual async Task<ShoppingCart> BuildCartAsync(PunchoutOrderRequestHandlerContext context)
+    {
+        var request = context.Request;
+        var cart = AbstractTypeFactory<ShoppingCart>.TryCreateInstance();
 
-        try
-        {
-            await SelectOrderItemsAsync(context.Request, cartAggregate);
+        cart.StoreId = context.Store.Id;
+        cart.Currency = request.Currency;
+        cart.LanguageCode = context.Store.DefaultLanguage;
+        cart.CustomerId = context.UserMapping.UserId;
+        cart.CustomerName = context.UserMapping.UserName;
+        cart.PurchaseOrderNumber = request.OrderId;
 
-            await cartAggregate.ChangePurchaseOrderNumber(context.Request.OrderId);
+        await SetCustomerAsync(context, cart);
 
-            foreach (var requestItem in context.Request.Items)
+        cart.Items = request.Items.Select(x => CreateLineItem(request, x)).ToList();
+        cart.Addresses = new[]
             {
-                await cartAggregate.ChangePurchaseOrderLineNumberAsync(requestItem.LineItemId, requestItem.LineNumber);
+                MapAddress<Address>(request.ShipTo, AddressType.Shipping),
+                MapAddress<Address>(request.BillTo, AddressType.Billing),
             }
+            .Where(x => x != null)
+            .ToList();
+        cart.Shipments = [await CreateShipmentAsync(context, cart)];
+        cart.Payments = [];
 
-            await AddAddressesAsync(context, cartAggregate);
-            await AddShipmentAsync(context, cartAggregate);
-            await AddPaymentAsync(context, cartAggregate);
+        // The payment covers the order total with the shipment
+        shoppingCartTotalsCalculator.CalculateTotals(cart);
+        cart.Payments = [await CreatePaymentAsync(context, cart)];
 
-            // The cart is validated before it is saved, so a rejected order does not change the buyer cart
-            var validationError = await ValidateCartAsync(cartAggregate);
-            if (validationError != null)
+        return cart;
+    }
+
+    /// <summary>
+    /// The customer name and the organization of the contact the user mapping belongs to.
+    /// </summary>
+    protected virtual async Task SetCustomerAsync(PunchoutOrderRequestHandlerContext context, ShoppingCart cart)
+    {
+        var memberId = context.UserMapping.MemberId;
+        if (string.IsNullOrEmpty(memberId))
+        {
+            return;
+        }
+
+        if (await memberService.GetByIdAsync(memberId) is not Contact contact)
+        {
+            return;
+        }
+
+        cart.CustomerName = contact.FullName.EmptyToNull() ?? contact.Name.EmptyToNull() ?? cart.CustomerName;
+
+        var organizationId = contact.Organizations?.FirstOrDefault();
+        if (string.IsNullOrEmpty(organizationId))
+        {
+            return;
+        }
+
+        var organization = await memberService.GetByIdAsync(organizationId);
+
+        cart.OrganizationId = organizationId;
+        cart.OrganizationName = organization?.Name;
+    }
+
+    /// <summary>
+    /// The cart line item from the requisition item. The line item id of the requisition is kept, the order builder maps the shipment items by it.
+    /// </summary>
+    protected virtual LineItem CreateLineItem(PunchoutOrderRequestData request, PunchoutOrderRequestItem item)
+    {
+        var requisitionItem = item.RequisitionItem;
+        var lineItem = AbstractTypeFactory<LineItem>.TryCreateInstance();
+
+        lineItem.Id = requisitionItem.LineItemId;
+        lineItem.ProductId = requisitionItem.ProductId;
+        lineItem.CatalogId = requisitionItem.CatalogId;
+        lineItem.CategoryId = requisitionItem.CategoryId;
+        lineItem.Sku = requisitionItem.Sku;
+        lineItem.Name = requisitionItem.Name;
+        lineItem.ImageUrl = requisitionItem.ImageUrl;
+        lineItem.ProductType = requisitionItem.ProductType;
+        lineItem.ProductOuterId = requisitionItem.ProductOuterId;
+        lineItem.PriceId = requisitionItem.PriceId;
+        lineItem.IsGift = requisitionItem.IsGift;
+        lineItem.FulfillmentCenterId = requisitionItem.FulfillmentCenterId;
+        lineItem.FulfillmentCenterName = requisitionItem.FulfillmentCenterName;
+        lineItem.WeightUnit = requisitionItem.WeightUnit;
+        lineItem.Weight = requisitionItem.Weight;
+        lineItem.MeasureUnit = requisitionItem.MeasureUnit;
+        lineItem.Height = requisitionItem.Height;
+        lineItem.Length = requisitionItem.Length;
+        lineItem.Width = requisitionItem.Width;
+        lineItem.Quantity = (int)item.Quantity;
+        lineItem.Currency = request.Currency;
+        lineItem.TaxType = requisitionItem.TaxType;
+        lineItem.TaxPercentRate = requisitionItem.TaxPercentRate;
+        lineItem.PurchaseOrderLineNumber = item.LineNumber;
+        lineItem.SelectedForCheckout = true;
+
+        // The calculators set the placed price to the list price without the discount, it must stay the price sent to the buyer
+        lineItem.ListPrice = Math.Max(requisitionItem.ListPrice, requisitionItem.PlacedPrice);
+        lineItem.SalePrice = requisitionItem.SalePrice;
+        lineItem.DiscountAmount = lineItem.ListPrice - requisitionItem.PlacedPrice;
+        lineItem.PlacedPrice = requisitionItem.PlacedPrice;
+
+        return lineItem;
+    }
+
+    /// <summary>
+    /// One shipment with all the items, the configured default shipping method and the ShipTo address.
+    /// </summary>
+    protected virtual async Task<Shipment> CreateShipmentAsync(PunchoutOrderRequestHandlerContext context, ShoppingCart cart)
+    {
+        var shipment = AbstractTypeFactory<Shipment>.TryCreateInstance();
+
+        shipment.Currency = cart.Currency;
+        shipment.DeliveryAddress = MapAddress<Address>(context.Request.ShipTo, AddressType.Shipping);
+        shipment.Items = cart.Items
+            .Select(x =>
             {
-                context.Fail(PunchoutOrderStatus.InvalidRequest, validationError);
-                return;
-            }
+                var shipmentItem = AbstractTypeFactory<ShipmentItem>.TryCreateInstance();
+                shipmentItem.LineItemId = x.Id;
+                shipmentItem.LineItem = x;
+                shipmentItem.Quantity = x.Quantity;
+                return shipmentItem;
+            })
+            .ToList();
 
-            await cartAggregateRepository.SaveAsync(cartAggregate);
-            var order = await CreateOrderAsync(cartAggregate);
-
-            context.Result.CustomerOrderId = order.Order.Id;
-            context.Result.PurchaseOrderNumber = context.Request.OrderId;
-        }
-        catch (ValidationException ex)
+        var rate = await GetShippingRateAsync(context, cart, shipment);
+        if (rate is not null)
         {
-            // A cart operation did not pass the platform validation
-            context.Fail(PunchoutOrderStatus.InvalidRequest, GetValidationErrorMessage(ex));
-            return;
-        }
-        catch (ExecutionError ex) when (ex.Code == Constants.ValidationErrorCode)
-        {
-            // The order creation did not pass the cart validation 
-            context.Fail(PunchoutOrderStatus.InvalidRequest, GetValidationErrorMessage(ex));
-            return;
+            shipment.ShipmentMethodCode = rate.ShippingMethod.Code;
+            shipment.ShipmentMethodOption = rate.OptionName;
+            shipment.Price = rate.Rate;
         }
 
-        await ClearCartAsync(cartAggregate.Cart.Id);
+        return shipment;
+    }
+
+    /// <summary>
+    /// The rate of the configured default shipping method, or null when it is not configured or not available.
+    /// </summary>
+    protected virtual async Task<ShippingRate> GetShippingRateAsync(PunchoutOrderRequestHandlerContext context, ShoppingCart cart, Shipment shipment)
+    {
+        var methodCode = context.Configuration.DefaultShipmentMethodCode;
+        if (string.IsNullOrEmpty(methodCode))
+        {
+            return null;
+        }
+
+        var criteria = AbstractTypeFactory<ShippingMethodsSearchCriteria>.TryCreateInstance();
+        criteria.StoreId = cart.StoreId;
+        criteria.IsActive = true;
+        criteria.Take = int.MaxValue;
+
+        var methods = (await shippingMethodsSearchService.SearchAsync(criteria)).Results
+            .Where(x => x.Code.EqualsIgnoreCase(methodCode))
+            .ToList();
+
+        // The rates are calculated for the cart with the delivery address
+        cart.Shipments = [shipment];
+        var evaluationContext = new ShippingEvaluationContext(cart);
+
+        return methods
+            .SelectMany(x => x.CalculateRates(evaluationContext))
+            .FirstOrDefault(x => x.ShippingMethod?.Code.EqualsIgnoreCase(methodCode) == true);
+    }
+
+    /// <summary>
+    /// The payment of the order total with the configured default payment method and the BillTo address.
+    /// </summary>
+    protected virtual async Task<Payment> CreatePaymentAsync(PunchoutOrderRequestHandlerContext context, ShoppingCart cart)
+    {
+        var payment = AbstractTypeFactory<Payment>.TryCreateInstance();
+
+        payment.Currency = cart.Currency;
+        payment.Amount = cart.Total;
+        payment.BillingAddress = MapAddress<Address>(context.Request.BillTo, AddressType.Billing);
+
+        var methodCode = context.Configuration.DefaultPaymentMethodCode;
+        if (!string.IsNullOrEmpty(methodCode))
+        {
+            var criteria = AbstractTypeFactory<PaymentMethodsSearchCriteria>.TryCreateInstance();
+            criteria.StoreId = cart.StoreId;
+            criteria.IsActive = true;
+            criteria.Codes = [methodCode];
+            criteria.Take = 1;
+
+            var method = (await paymentMethodsSearchService.SearchAsync(criteria)).Results.FirstOrDefault();
+            payment.PaymentGatewayCode = method?.Code;
+        }
+
+        return payment;
     }
 
     /// <summary>
     /// Applies a new version of the purchase order to the customer order created by the previous version.
-    /// The update replaces the order content: the lines are matched by lineNumber, the missing lines are removed.
+    /// The update replaces the order content: the lines are matched by lineNumber, the missing lines are removed,
+    /// the new lines are added from the requisition items.
     /// </summary>
     protected virtual async Task UpdateOrderAsync(PunchoutOrderRequestHandlerContext context)
     {
@@ -266,7 +491,8 @@ public class DefaultPunchoutHandler(
 
     /// <summary>
     /// Compares the purchase order with the customer order. Only the lines created from a purchase order line (with a line number)
-    /// are changed by an update, lines cannot be added. Returns the mismatches, or null when the update can be applied.
+    /// are changed by an update. A line that is not in the order is added from its requisition item.
+    /// Returns the mismatches, or null when the update can be applied.
     /// </summary>
     protected virtual string ReconcileOrder(PunchoutOrderRequestData request, CustomerOrder order)
     {
@@ -295,7 +521,7 @@ public class DefaultPunchoutHandler(
             var lineItem = FindOrderLineItem(order, item.LineNumber);
 
             var error = lineItem is null
-                ? $"Line {item.LineNumber}: the line is not in the order, an update cannot add lines."
+                ? ReconcileAddedItem(item)
                 : ReconcileOrderItem(item, lineItem, order);
 
             if (error != null)
@@ -336,13 +562,34 @@ public class DefaultPunchoutHandler(
         return null;
     }
 
+    /// <summary>
+    /// A line added by an update orders a requisition item. The processor compared its SKU and price, the quantity must match the requisition.
+    /// Returns the mismatch, or null when the line can be added.
+    /// </summary>
+    protected virtual string ReconcileAddedItem(PunchoutOrderRequestItem item)
+    {
+        var requisitionItem = item.RequisitionItem;
+
+        if (requisitionItem is null)
+        {
+            return $"Line {item.LineNumber}: the line is not in the order and not in a punchout requisition.";
+        }
+
+        if (item.Quantity != requisitionItem.Quantity)
+        {
+            return $"Line {item.LineNumber}: quantity {item.Quantity.ToString(CultureInfo.InvariantCulture)} does not match the requisition quantity {requisitionItem.Quantity}.";
+        }
+
+        return null;
+    }
+
     protected virtual OrderLineItem FindOrderLineItem(CustomerOrder order, string lineNumber)
     {
         return order.Items?.FirstOrDefault(x => x.PurchaseOrderLineNumber.EqualsIgnoreCase(lineNumber));
     }
 
     /// <summary>
-    /// Changes the quantities of the lines in the purchase order and removes the lines missing from it.
+    /// Changes the quantities of the lines in the purchase order, removes the lines missing from it and adds the new lines.
     /// Lines without a purchase order line number, e.g. gifts, are kept.
     /// </summary>
     protected virtual void UpdateOrderItems(PunchoutOrderRequestData request, CustomerOrder order)
@@ -360,6 +607,11 @@ public class DefaultPunchoutHandler(
             {
                 RemoveOrderItem(order, lineItem);
             }
+        }
+
+        foreach (var requestItem in request.Items.Where(x => FindOrderLineItem(order, x.LineNumber) is null))
+        {
+            AddOrderItem(request, order, requestItem);
         }
     }
 
@@ -393,7 +645,68 @@ public class DefaultPunchoutHandler(
         }
     }
 
-    private static void RemoveShipmentItems(ICollection<ShipmentItem> shipmentItems, string lineItemId)
+    /// <summary>
+    /// Adds the requisition item to the order and to its first shipment.
+    /// </summary>
+    protected virtual void AddOrderItem(PunchoutOrderRequestData request, CustomerOrder order, PunchoutOrderRequestItem item)
+    {
+        var lineItem = CreateOrderLineItem(request, item);
+
+        order.Items ??= new List<OrderLineItem>();
+        order.Items.Add(lineItem);
+
+        var shipment = order.Shipments?.FirstOrDefault(x => !x.IsCancelled);
+        if (shipment is null)
+        {
+            return;
+        }
+
+        var shipmentItem = AbstractTypeFactory<OrderShipmentItem>.TryCreateInstance();
+        shipmentItem.LineItem = lineItem;
+        shipmentItem.Quantity = lineItem.Quantity;
+
+        shipment.Items ??= new List<OrderShipmentItem>();
+        shipment.Items.Add(shipmentItem);
+    }
+
+    protected virtual OrderLineItem CreateOrderLineItem(PunchoutOrderRequestData request, PunchoutOrderRequestItem item)
+    {
+        var requisitionItem = item.RequisitionItem;
+        var lineItem = AbstractTypeFactory<OrderLineItem>.TryCreateInstance();
+
+        lineItem.ProductId = requisitionItem.ProductId;
+        lineItem.CatalogId = requisitionItem.CatalogId;
+        lineItem.CategoryId = requisitionItem.CategoryId;
+        lineItem.Sku = requisitionItem.Sku;
+        lineItem.Name = requisitionItem.Name;
+        lineItem.ImageUrl = requisitionItem.ImageUrl;
+        lineItem.ProductType = requisitionItem.ProductType;
+        lineItem.ProductOuterId = requisitionItem.ProductOuterId;
+        lineItem.PriceId = requisitionItem.PriceId;
+        lineItem.IsGift = requisitionItem.IsGift;
+        lineItem.FulfillmentCenterId = requisitionItem.FulfillmentCenterId;
+        lineItem.FulfillmentCenterName = requisitionItem.FulfillmentCenterName;
+        lineItem.WeightUnit = requisitionItem.WeightUnit;
+        lineItem.Weight = requisitionItem.Weight;
+        lineItem.MeasureUnit = requisitionItem.MeasureUnit;
+        lineItem.Height = requisitionItem.Height;
+        lineItem.Length = requisitionItem.Length;
+        lineItem.Width = requisitionItem.Width;
+        lineItem.Quantity = (int)item.Quantity;
+        lineItem.Currency = request.Currency;
+        lineItem.TaxType = requisitionItem.TaxType;
+        lineItem.TaxPercentRate = requisitionItem.TaxPercentRate;
+        lineItem.PurchaseOrderLineNumber = item.LineNumber;
+
+        // The order calculator sets the placed price to the price without the discount
+        lineItem.Price = Math.Max(requisitionItem.ListPrice, requisitionItem.PlacedPrice);
+        lineItem.DiscountAmount = lineItem.Price - requisitionItem.PlacedPrice;
+        lineItem.PlacedPrice = requisitionItem.PlacedPrice;
+
+        return lineItem;
+    }
+
+    private static void RemoveShipmentItems(ICollection<OrderShipmentItem> shipmentItems, string lineItemId)
     {
         if (shipmentItems is null)
         {
@@ -411,7 +724,7 @@ public class DefaultPunchoutHandler(
         }
     }
 
-    protected virtual IList<ShipmentItem> GetShipmentItems(CustomerOrder order, string lineItemId)
+    protected virtual IList<OrderShipmentItem> GetShipmentItems(CustomerOrder order, string lineItemId)
     {
         return (order.Shipments ?? [])
             .SelectMany(x => (x.Items ?? []).Concat((x.Packages ?? []).SelectMany(p => p.Items ?? [])))
@@ -490,10 +803,7 @@ public class DefaultPunchoutHandler(
             return;
         }
 
-        var orderId = context.PreviousRequest.CustomerOrderId;
-        var order = string.IsNullOrEmpty(orderId)
-            ? null
-            : await customerOrderService.GetByIdAsync(orderId, CustomerOrderResponseGroup.Full.ToString());
+        var order = await customerOrderService.GetByIdAsync(context.PreviousRequest.CustomerOrderId, CustomerOrderResponseGroup.Full.ToString());
 
         if (order is null || !order.StoreId.EqualsIgnoreCase(context.Store.Id))
         {
@@ -554,32 +864,6 @@ public class DefaultPunchoutHandler(
         order.CancelReason = request.PayloadId;
     }
 
-    /// <summary>
-    /// Temporary, until punchout gets its own cart: clear the current cart completely (unselected items, addresses)  
-    /// </summary>
-    protected virtual async Task ClearCartAsync(string cartId)
-    {
-        try
-        {
-            var cartAggregate = await cartAggregateRepository.GetCartByIdAsync(cartId);
-            var cart = cartAggregate?.Cart;
-
-            if (cart is null || (cart.Items.IsNullOrEmpty() && cart.Addresses.IsNullOrEmpty()))
-            {
-                return;
-            }
-
-            cart.Items?.Clear();
-            cart.Addresses?.Clear();
-
-            await cartAggregateRepository.SaveAsync(cartAggregate);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Punchout cart '{CartId}' cannot be cleared after the order is created.", cartId);
-        }
-    }
-
     protected virtual Task<CartAggregate> GetCartAsync(PunchoutOrderMessageHandlerContext context)
     {
         return mediator.Send(CreateGetCartQuery(context));
@@ -599,278 +883,12 @@ public class DefaultPunchoutHandler(
         return query;
     }
 
-    protected virtual SearchCartQuery CreateSearchCartQuery(PunchoutOrderRequestHandlerContext context)
-    {
-        var lineItemIds = GetLineItemIds(context.Request);
-        if (lineItemIds.Count == 0)
-        {
-            return null;
-        }
-
-        var query = AbstractTypeFactory<SearchCartQuery>.TryCreateInstance();
-        query.StoreId = context.Store.Id;
-        query.UserId = context.UserMapping.UserId;
-        query.LineItemIds = lineItemIds;
-        query.Take = 1;
-
-        return query;
-    }
-
-    /// <summary>
-    /// The order message sends the cart line item id in SupplierPartAuxiliaryID, the buyer returns it unchanged.
-    /// </summary>
-    protected virtual IList<string> GetLineItemIds(PunchoutOrderRequestData request)
-    {
-        return request.Items
-            .Select(x => x.LineItemId)
-            .Where(x => !string.IsNullOrEmpty(x))
-            .Distinct()
-            .ToList();
-    }
-
-    /// <summary>
-    /// Every order line must reference exactly one cart line item. Returns the error message, or null when the ids are valid.
-    /// </summary>
-    protected virtual string ValidateLineItemIds(PunchoutOrderRequestData request)
-    {
-        var lineItemIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var item in request.Items)
-        {
-            if (string.IsNullOrEmpty(item.LineItemId))
-            {
-                return $"Line {item.LineNumber}: SupplierPartAuxiliaryID is missing.";
-            }
-
-            if (!lineItemIds.Add(item.LineItemId))
-            {
-                return $"Line {item.LineNumber}: SupplierPartAuxiliaryID '{item.SupplierPartAuxiliaryId}' is used by another line.";
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Compares the purchase order with the cart. Returns the mismatches, empty when the order matches the cart.
-    /// </summary>
-    protected virtual IList<string> ReconcileCart(PunchoutOrderRequestData request, CartAggregate cartAggregate)
-    {
-        var errors = new List<string>();
-        var cart = cartAggregate.Cart;
-
-        if (!request.Currency.EqualsIgnoreCase(cart.Currency))
-        {
-            errors.Add($"The order currency '{request.Currency}' does not match the cart currency '{cart.Currency}'.");
-        }
-
-        foreach (var item in request.Items)
-        {
-            var lineItem = cart.Items?.FirstOrDefault(x => x.Id.EqualsIgnoreCase(item.LineItemId));
-
-            var error = lineItem is null
-                ? $"Line {item.LineNumber}: item '{item.SupplierPartAuxiliaryId}' is not in the cart."
-                : ReconcileItem(item, lineItem);
-
-            if (error != null)
-            {
-                errors.Add(error);
-            }
-        }
-
-        return errors;
-    }
-
-    /// <summary>
-    /// Compares an order line with the cart line item. Returns the mismatch, or null when they match.
-    /// </summary>
-    protected virtual string ReconcileItem(PunchoutOrderRequestItem item, LineItem lineItem)
-    {
-        if (!item.SupplierPartId.EqualsIgnoreCase(lineItem.Sku))
-        {
-            return $"Line {item.LineNumber}: SupplierPartID '{item.SupplierPartId}' does not match the cart item '{lineItem.Sku}'.";
-        }
-
-        if (item.Quantity != lineItem.Quantity)
-        {
-            return $"Line {item.LineNumber}: quantity {item.Quantity.ToString(CultureInfo.InvariantCulture)} does not match the cart quantity {lineItem.Quantity}.";
-        }
-
-        if (item.UnitPrice is null || RoundPrice(item.UnitPrice.Value) != RoundPrice(lineItem.PlacedPrice))
-        {
-            return $"Line {item.LineNumber}: unit price {item.UnitPrice?.ToString(PriceFormat, CultureInfo.InvariantCulture)} does not match the cart price {lineItem.PlacedPrice.ToString(PriceFormat, CultureInfo.InvariantCulture)}.";
-        }
-
-        return null;
-    }
-
     /// <summary>
     /// The order message sends the prices with two decimals, see <see cref="PunchoutOrderMessageBuilder"/>.
     /// </summary>
     protected virtual decimal RoundPrice(decimal price)
     {
         return Math.Round(price, 2, MidpointRounding.AwayFromZero);
-    }
-
-    /// <summary>
-    /// Selects for checkout only the cart items that are in the purchase order, so the order does not include items added after the punchout.
-    /// </summary>
-    protected virtual async Task SelectOrderItemsAsync(PunchoutOrderRequestData request, CartAggregate cartAggregate)
-    {
-        var orderLineItemIds = new HashSet<string>(GetLineItemIds(request), StringComparer.OrdinalIgnoreCase);
-        var cartItems = cartAggregate.Cart.Items ?? [];
-
-        var itemsToSelect = cartItems
-            .Where(x => !x.SelectedForCheckout && orderLineItemIds.Contains(x.Id))
-            .Select(x => x.Id)
-            .ToList();
-
-        var itemsToUnselect = cartItems
-            .Where(x => x.SelectedForCheckout && !orderLineItemIds.Contains(x.Id))
-            .Select(x => x.Id)
-            .ToList();
-
-        if (itemsToSelect.Count > 0)
-        {
-            await cartAggregate.ChangeItemsSelectedAsync(itemsToSelect, selectedForCheckout: true);
-        }
-
-        if (itemsToUnselect.Count > 0)
-        {
-            await cartAggregate.ChangeItemsSelectedAsync(itemsToUnselect, selectedForCheckout: false);
-        }
-    }
-
-    protected virtual async Task AddAddressesAsync(PunchoutOrderRequestHandlerContext context, CartAggregate cartAggregate)
-    {
-        var request = context.Request;
-        var shippingAddress = MapAddress(request.ShipTo, AddressType.Shipping);
-        if (shippingAddress != null)
-        {
-            await cartAggregate.AddOrUpdateCartAddressByTypeAsync(shippingAddress);
-        }
-
-        var billingAddress = MapAddress(request.BillTo, AddressType.Billing);
-        if (billingAddress != null)
-        {
-            await cartAggregate.AddOrUpdateCartAddressByTypeAsync(billingAddress);
-        }
-    }
-
-    /// <summary>
-    /// Adds the default shipping method with the ShipTo address.
-    /// </summary>
-    protected virtual async Task AddShipmentAsync(PunchoutOrderRequestHandlerContext context, CartAggregate cartAggregate)
-    {
-        var shipment = AbstractTypeFactory<Shipment>.TryCreateInstance();
-
-        var methodCode = context.Configuration.DefaultShipmentMethodCode;
-        var availableRates = new List<ShippingRate>();
-
-        if (!methodCode.IsNullOrEmpty())
-        {
-            availableRates = (await availableCartMethodsService.GetAvailableShippingRatesAsync(cartAggregate)).ToList();
-            var rate = availableRates.FirstOrDefault(x => x.ShippingMethod?.Code.EqualsIgnoreCase(methodCode) == true);
-
-            if (rate is not null)
-            {
-                shipment.ShipmentMethodCode = rate.ShippingMethod.Code;
-                shipment.ShipmentMethodOption = rate.OptionName;
-                shipment.Price = rate.Rate;
-            }
-        }
-
-        // Replace the shipment the buyer may have selected in the storefront
-        shipment.Id = cartAggregate.Cart.Shipments?.FirstOrDefault()?.Id;
-
-        shipment.Currency = cartAggregate.Cart.Currency;
-        shipment.DeliveryAddress = MapAddress(context.Request.ShipTo, AddressType.Shipping);
-
-        await cartAggregate.AddShipmentAsync(shipment, availableRates);
-    }
-
-    /// <summary>
-    /// Adds the default payment method with the BillTo address.
-    /// </summary>
-    protected virtual async Task AddPaymentAsync(PunchoutOrderRequestHandlerContext context, CartAggregate cartAggregate)
-    {
-        var payment = AbstractTypeFactory<Payment>.TryCreateInstance();
-
-        var methodCode = context.Configuration.DefaultPaymentMethodCode;
-        var availableMethods = new List<PaymentMethod>();
-
-        if (!methodCode.IsNullOrEmpty())
-        {
-            availableMethods = (await availableCartMethodsService.GetAvailablePaymentMethodsAsync(cartAggregate)).ToList();
-            var method = availableMethods.FirstOrDefault(x => x.Code.EqualsIgnoreCase(methodCode));
-
-            if (method is not null)
-            {
-                payment.PaymentGatewayCode = method.Code;
-            }
-        }
-
-        // Replace the payment the buyer may have selected in the storefront
-        payment.Id = cartAggregate.Cart.Payments?.FirstOrDefault()?.Id;
-        payment.Currency = cartAggregate.Cart.Currency;
-
-        // The total must include only the order items and the default shipment
-        await cartAggregate.RecalculateAsync();
-        payment.Amount = cartAggregate.Cart.Total;
-        payment.BillingAddress = MapAddress(context.Request.BillTo, AddressType.Billing);
-
-        await cartAggregate.AddPaymentAsync(payment, availableMethods);
-    }
-
-    /// <summary>
-    /// Validates the cart with the same rules as the order creation
-    /// </summary>
-    protected virtual async Task<string> ValidateCartAsync(CartAggregate cartAggregate)
-    {
-        // The cart was changed after it was loaded, the cached validation results are stale
-        cartAggregate.ClearValidationCache();
-
-        var errors = (await cartAggregate.ValidateAsync(CartValidationRuleSet))
-            .Concat(cartAggregate.OperationValidationErrors)
-            .Select(x => x.ErrorMessage)
-            .Where(x => !string.IsNullOrEmpty(x))
-            .Distinct()
-            .ToList();
-
-        return errors.Count > 0
-            ? string.Join(" ", errors)
-            : null;
-    }
-
-    protected virtual string GetValidationErrorMessage(ValidationException exception)
-    {
-        var messages = exception.Errors?
-            .Select(x => x.ErrorMessage)
-            .Where(x => !string.IsNullOrEmpty(x))
-            .Distinct()
-            .ToList();
-
-        return messages.IsNullOrEmpty()
-            ? exception.Message
-            : string.Join(" ", messages);
-    }
-
-    protected virtual string GetValidationErrorMessage(ExecutionError error)
-    {
-        var messages = error.Data.Values
-            .OfType<string>()
-            .Where(x => !string.IsNullOrEmpty(x))
-            .Distinct()
-            .ToList();
-
-        return messages.Count > 0
-            ? string.Join(" ", messages)
-            : error.Message;
-    }
-
-    protected virtual Address MapAddress(PunchoutAddress punchoutAddress, AddressType addressType)
-    {
-        return MapAddress<Address>(punchoutAddress, addressType);
     }
 
     protected virtual TAddress MapAddress<TAddress>(PunchoutAddress punchoutAddress, AddressType addressType)
@@ -924,34 +942,5 @@ public class DefaultPunchoutHandler(
         {
             return isoCountryCode;
         }
-    }
-
-    protected virtual async Task<CartAggregate> SearchCartAsync(PunchoutOrderRequestHandlerContext context)
-    {
-        var searchQuery = CreateSearchCartQuery(context);
-        if (searchQuery == null)
-        {
-            return null;
-        }
-
-        var results = await mediator.Send(searchQuery);
-        if (results.TotalCount != 1)
-        {
-            return null;
-        }
-
-        return results.Results.FirstOrDefault();
-    }
-
-    protected virtual async Task<CustomerOrderAggregate> CreateOrderAsync(CartAggregate cartAggregate)
-    {
-        var command = CreateCreateOrderFromCartCommand(cartAggregate);
-        var order = await mediator.Send(command);
-        return order;
-    }
-
-    protected virtual CreateOrderFromCartCommand CreateCreateOrderFromCartCommand(CartAggregate cartAggregate)
-    {
-        return new CreateOrderFromCartCommand(cartAggregate.Cart.Id);
     }
 }

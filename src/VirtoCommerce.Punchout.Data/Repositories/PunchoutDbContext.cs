@@ -63,6 +63,19 @@ public class PunchoutDbContext : DbContextBase
             .HasIndex(x => x.CustomerOrderId)
             .HasDatabaseName("IX_PunchoutOrderRequest_CustomerOrderId");
 
+        // A requisition item is ordered by one purchase order only
+        modelBuilder.Entity<PunchoutOrderLineEntity>().ToAuditableEntityTable("PunchoutOrderLine");
+        modelBuilder.Entity<PunchoutOrderLineEntity>()
+            .HasIndex(x => new { x.ConfigurationId, x.SessionId, x.LineItemId })
+            .IsUnique()
+            .HasDatabaseName("IX_PunchoutOrderLine_ConfigurationId_SessionId_LineItemId");
+        modelBuilder.Entity<PunchoutOrderLineEntity>()
+            .HasIndex(x => new { x.ConfigurationId, x.LineItemId })
+            .HasDatabaseName("IX_PunchoutOrderLine_ConfigurationId_LineItemId");
+        modelBuilder.Entity<PunchoutOrderLineEntity>()
+            .HasIndex(x => new { x.ConfigurationId, x.PurchaseOrderNumber })
+            .HasDatabaseName("IX_PunchoutOrderLine_ConfigurationId_PurchaseOrderNumber");
+
         switch (Database.ProviderName)
         {
             case "Pomelo.EntityFrameworkCore.MySql":

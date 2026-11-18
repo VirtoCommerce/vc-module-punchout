@@ -19,6 +19,12 @@ public interface IPunchoutHandler
     Task HandleOrderMessageAsync(PunchoutOrderMessageHandlerContext context);
 
     /// <summary>
+    /// Called after the session is returned and the order message is stored, e.g. to remove the sent items from the cart,
+    /// so the next punchout session does not send them again.
+    /// </summary>
+    Task HandleOrderMessageReturnedAsync(PunchoutOrderMessageHandlerContext context) => Task.CompletedTask;
+
+    /// <summary>
     /// Processes the order request
     /// </summary>
     Task HandleOrderRequestAsync(PunchoutOrderRequestHandlerContext context);

@@ -52,6 +52,7 @@ public static class ModuleConstants
         public const int PurchaseOrderNumber = 256;
         public const int OrderType = 32;
         public const int OrderVersion = 128;
+        public const int LineNumber = 128;
         public const int Currency = 64;
         public const int Status = 64;
         public const int ErrorCode = 64;

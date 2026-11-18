@@ -22,6 +22,70 @@ namespace VirtoCommerce.Punchout.Data.MySql.Migrations
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
+            modelBuilder.Entity("VirtoCommerce.Punchout.Data.Models.PunchoutOrderLineEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("ConfigurationId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("LineItemId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("LineNumber")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("OrderRequestId")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("PurchaseOrderNumber")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConfigurationId", "LineItemId")
+                        .HasDatabaseName("IX_PunchoutOrderLine_ConfigurationId_LineItemId");
+
+                    b.HasIndex("ConfigurationId", "PurchaseOrderNumber")
+                        .HasDatabaseName("IX_PunchoutOrderLine_ConfigurationId_PurchaseOrderNumber");
+
+                    b.HasIndex("ConfigurationId", "SessionId", "LineItemId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_PunchoutOrderLine_ConfigurationId_SessionId_LineItemId");
+
+                    b.ToTable("PunchoutOrderLine", (string)null);
+                });
+
             modelBuilder.Entity("VirtoCommerce.Punchout.Data.Models.PunchoutOrderMessageEntity", b =>
                 {
                     b.Property<string>("Id")
@@ -37,6 +101,9 @@ namespace VirtoCommerce.Punchout.Data.MySql.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("Cxml")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Items")
                         .HasColumnType("longtext");
 
                     b.Property<string>("ModifiedBy")
@@ -90,6 +157,9 @@ namespace VirtoCommerce.Punchout.Data.MySql.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)");
 
+                    b.Property<string>("Cxml")
+                        .HasColumnType("longtext");
+
                     b.Property<string>("ErrorCode")
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
@@ -109,8 +179,16 @@ namespace VirtoCommerce.Punchout.Data.MySql.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("varchar(32)");
 
+                    b.Property<string>("OrderVersion")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
                     b.Property<string>("PayloadId")
                         .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<string>("PreviousPayloadId")
                         .HasMaxLength(512)
                         .HasColumnType("varchar(512)");
 

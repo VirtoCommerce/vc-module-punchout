@@ -25,9 +25,9 @@ using VirtoCommerce.ShippingModule.Core.Services;
 using VirtoCommerce.XCart.Core;
 using VirtoCommerce.XCart.Core.Queries;
 using VirtoCommerce.XCart.Core.Services;
+using Address = VirtoCommerce.CartModule.Core.Model.Address;
 using AddressType = VirtoCommerce.CoreModule.Core.Common.AddressType;
 using CoreAddress = VirtoCommerce.CoreModule.Core.Common.Address;
-using Address = VirtoCommerce.CartModule.Core.Model.Address;
 using LineItem = VirtoCommerce.CartModule.Core.Model.LineItem;
 using OrderAddress = VirtoCommerce.OrdersModule.Core.Model.Address;
 using OrderLineItem = VirtoCommerce.OrdersModule.Core.Model.LineItem;
@@ -652,6 +652,8 @@ public class DefaultPunchoutHandler(
     {
         var lineItem = CreateOrderLineItem(request, item);
 
+        lineItem.Id ??= Guid.NewGuid().ToString();
+
         order.Items ??= new List<OrderLineItem>();
         order.Items.Add(lineItem);
 
@@ -663,6 +665,7 @@ public class DefaultPunchoutHandler(
 
         var shipmentItem = AbstractTypeFactory<OrderShipmentItem>.TryCreateInstance();
         shipmentItem.LineItem = lineItem;
+        shipmentItem.LineItemId = lineItem.Id;
         shipmentItem.Quantity = lineItem.Quantity;
 
         shipment.Items ??= new List<OrderShipmentItem>();

@@ -790,20 +790,20 @@ public class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// The line number as it is stored in the ordered line.
-    /// </summary>
-    protected virtual string GetStoredLineNumber(PunchoutOrderRequestItem item)
-    {
-        return Truncate(item.LineNumber, ModuleConstants.FieldLength.LineNumber) ?? string.Empty;
-    }
-
-    /// <summary>
     /// The buyer may return the line item id without the session id, then the line item id is compared only.
     /// </summary>
     protected virtual bool IsSameItem(PunchoutRequisitionItem requisitionItem, PunchoutOrderRequestItem item)
     {
         return requisitionItem.LineItemId.EqualsIgnoreCase(item.LineItemId) &&
                (string.IsNullOrEmpty(item.SessionId) || requisitionItem.SessionId.EqualsIgnoreCase(item.SessionId));
+    }
+
+    /// <summary>
+    /// The line number as it is stored in the ordered line.
+    /// </summary>
+    protected virtual string GetStoredLineNumber(PunchoutOrderRequestItem item)
+    {
+        return Truncate(item.LineNumber, ModuleConstants.FieldLength.LineNumber) ?? string.Empty;
     }
 
     /// <summary>

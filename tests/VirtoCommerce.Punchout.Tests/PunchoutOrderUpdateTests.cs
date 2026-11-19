@@ -3,7 +3,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
 using VirtoCommerce.OrdersModule.Core.Model;
+using VirtoCommerce.OrdersModule.Data.Model;
 using VirtoCommerce.PaymentModule.Core.Model;
+using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Punchout.Core.Cxml;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Data.Services;
@@ -101,6 +103,28 @@ public class PunchoutOrderUpdateTests
         Assert.Equal(7m, lineItem.PlacedPrice);
 
         var shipmentItem = Assert.Single(order.Shipments.Single().Items, x => x.LineItem == lineItem);
+        Assert.Equal(2, shipmentItem.Quantity);
+    }
+
+    [Fact]
+    public void UpdateOrderItems_AddedLine_StaysInShipmentWhenOrderIsSaved()
+    {
+        var handler = new TestPunchoutHandler();
+        var storedOrder = new CustomerOrderEntity().FromModel(CreateLoadedOrder(), new PrimaryKeyResolvingMap());
+
+        var order = CreateLoadedOrder();
+        var request = CreateRequest(("1", "SKU-1", 5m, 10m), ("2", "SKU-2", 1m, 20m), ("3", "SKU-3", 2m, 7m));
+        request.Items[2].RequisitionItem = CreateRequisitionItem("cart-line-3", "SKU-3", 2, 7m);
+
+        handler.UpdateOrderItemsPublic(request, order);
+
+        // The customer order service patches the stored order with the changed one
+        new CustomerOrderEntity().FromModel(order, new PrimaryKeyResolvingMap()).Patch(storedOrder);
+
+        var addedLine = Assert.Single(storedOrder.Items, x => x.PurchaseOrderLineNumber == "3");
+        var shipment = Assert.Single(storedOrder.Shipments);
+        Assert.Equal(3, shipment.Items.Count);
+        var shipmentItem = Assert.Single(shipment.Items, x => x.LineItemId == addedLine.Id);
         Assert.Equal(2, shipmentItem.Quantity);
     }
 
@@ -374,6 +398,21 @@ public class PunchoutOrderUpdateTests
         };
     }
 
+    /// <summary>
+    /// A loaded order references the line items from the shipment items as the customer order service returns it.
+    /// </summary>
+    private static CustomerOrder CreateLoadedOrder()
+    {
+        var order = CreateOrder();
+
+        foreach (var shipmentItem in order.Shipments.SelectMany(x => x.Items))
+        {
+            shipmentItem.LineItem = order.Items.Single(x => x.Id == shipmentItem.LineItemId);
+        }
+
+        return order;
+    }
+
     private static CustomerOrder CreateOrder()
     {
         return new CustomerOrder
@@ -392,6 +431,7 @@ public class PunchoutOrderUpdateTests
             {
                 new()
                 {
+                    Id = "shipment",
                     Items = new List<ShipmentItem>
                     {
                         new() { Id = "shipment-item-1", LineItemId = "line-1", Quantity = 5 },

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Services;
@@ -261,24 +262,42 @@ public class PunchoutOrderMessageReturnedTests
     }
 
     [Fact]
-    public async Task CompleteOrderMessage_HandlerWithoutReturnedInterface_IsSkipped()
-    {
-        await new TestOrderMessageProcessor().CompletePublicAsync(new PlainHandler(), new PunchoutOrderMessageHandlerContext());
-    }
-
-    [Fact]
     public async Task CompleteOrderMessage_Failure_IsLoggedOnly()
     {
+        var handler = new ReturnedHandler { Throws = true };
+        var logger = new ErrorCollectingLogger();
         var context = new PunchoutOrderMessageHandlerContext { Session = new PunchoutSession { Id = "session" } };
 
-        await new TestOrderMessageProcessor().CompletePublicAsync(new ReturnedHandler { Throws = true }, context);
+        await new TestOrderMessageProcessor(logger).CompletePublicAsync(handler, context);
+
+        Assert.True(handler.IsCalled);
+        var error = Assert.Single(logger.Errors);
+        Assert.IsType<InvalidOperationException>(error.Exception);
+        Assert.Contains("session", error.Message);
     }
 
-    private sealed class TestOrderMessageProcessor()
-        : PunchoutOrderMessageProcessor(null, null, null, null, null, null, NullLogger<PunchoutOrderMessageProcessor>.Instance)
+    private sealed class TestOrderMessageProcessor(ILogger<PunchoutOrderMessageProcessor> logger = null)
+        : PunchoutOrderMessageProcessor(null, null, null, null, null, null, logger ?? NullLogger<PunchoutOrderMessageProcessor>.Instance)
     {
         public Task CompletePublicAsync(IPunchoutHandler handler, PunchoutOrderMessageHandlerContext context) =>
             CompleteOrderMessageAsync(handler, context);
+    }
+
+    private sealed class ErrorCollectingLogger : ILogger<PunchoutOrderMessageProcessor>
+    {
+        public List<(string Message, Exception Exception)> Errors { get; } = [];
+
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+        {
+            if (logLevel == LogLevel.Error)
+            {
+                Errors.Add((formatter(state, exception), exception));
+            }
+        }
     }
 
     private class PlainHandler : IPunchoutHandler

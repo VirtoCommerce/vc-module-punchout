@@ -69,13 +69,18 @@ public class DefaultPunchoutHandler(
     /// </summary>
     public virtual async Task HandleOrderMessageReturnedAsync(PunchoutOrderMessageHandlerContext context)
     {
-        if (string.IsNullOrEmpty(context.CartId) || context.Items.IsNullOrEmpty())
+        if (context.CartId.IsNullOrEmpty() || context.Items.IsNullOrEmpty())
         {
             return;
         }
 
         var cartAggregate = await cartAggregateRepository.GetCartByIdAsync(context.CartId);
-        var cartItems = cartAggregate?.Cart.Items ?? [];
+        if (cartAggregate == null)
+        {
+            return;
+        }
+
+        var cartItems = cartAggregate.Cart.Items ?? [];
 
         var sentItemIds = context.Items
             .Select(x => x.LineItemId)

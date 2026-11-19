@@ -52,7 +52,6 @@ public static class CxmlSanitizer
         document
             .Descendants()
             .Where(x => SecretElementNames.Contains(x.Name.LocalName))
-            .ToList()
             .Remove();
 
         // The DOCTYPE is not kept, DTD processing is disabled for security

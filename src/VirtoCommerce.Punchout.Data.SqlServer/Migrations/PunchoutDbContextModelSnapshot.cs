@@ -498,8 +498,15 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("OrganizationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("OrganizationName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
                     b.Property<string>("UserId")
-                        .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
 
@@ -510,11 +517,13 @@ namespace VirtoCommerce.Punchout.Data.SqlServer.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ExternalId")
-                        .IsUnique()
                         .HasDatabaseName("IX_PunchoutUserMapping_ExternalId");
 
                     b.HasIndex("MemberId")
                         .HasDatabaseName("IX_PunchoutUserMapping_MemberId");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("IX_PunchoutUserMapping_OrganizationId");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("IX_PunchoutUserMapping_UserId");

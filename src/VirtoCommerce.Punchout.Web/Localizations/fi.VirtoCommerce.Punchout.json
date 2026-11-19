@@ -23,6 +23,8 @@
           "externalId-required": "ExternalId on pakollinen",
           "mapping-exists": "Määritys, jonka ExternalId on '{{externalId}}', on jo olemassa.",
           "userId-memberId-required": "UserId ja MemberId ovat pakollisia.",
+          "userId-or-organizationId-required": "Joko UserId tai OrganizationId vaaditaan, mutta ei molempia.",
+          "organization-not-found": "Organisaatiota ei löydy.",
           "memberId-mismatch": "Käyttäjä ei ole määritetyn yhteyshenkilön suojaustili.",
           "user-is-admin-or-customer": "Vain Customer-tyyppisiä tilejä, jotka eivät ole järjestelmänvalvojia, voidaan määrittää."
         }

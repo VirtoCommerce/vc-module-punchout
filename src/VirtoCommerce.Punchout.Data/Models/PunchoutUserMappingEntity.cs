@@ -13,7 +13,6 @@ public class PunchoutUserMappingEntity : AuditableEntity, IDataEntity<PunchoutUs
     [StringLength(256)]
     public string ExternalId { get; set; }
 
-    [Required]
     [StringLength(128)]
     public string UserId { get; set; }
 
@@ -22,6 +21,12 @@ public class PunchoutUserMappingEntity : AuditableEntity, IDataEntity<PunchoutUs
 
     [StringLength(128)]
     public string MemberId { get; set; }
+
+    [StringLength(128)]
+    public string OrganizationId { get; set; }
+
+    [StringLength(256)]
+    public string OrganizationName { get; set; }
 
     public virtual PunchoutUserMapping ToModel(PunchoutUserMapping model)
     {
@@ -36,6 +41,8 @@ public class PunchoutUserMappingEntity : AuditableEntity, IDataEntity<PunchoutUs
         model.UserId = UserId;
         model.UserName = UserName;
         model.MemberId = MemberId;
+        model.OrganizationId = OrganizationId;
+        model.OrganizationName = OrganizationName;
 
         return model;
     }
@@ -55,6 +62,8 @@ public class PunchoutUserMappingEntity : AuditableEntity, IDataEntity<PunchoutUs
         UserId = model.UserId;
         UserName = model.UserName;
         MemberId = model.MemberId;
+        OrganizationId = model.OrganizationId;
+        OrganizationName = model.OrganizationName;
 
         return this;
     }
@@ -66,5 +75,7 @@ public class PunchoutUserMappingEntity : AuditableEntity, IDataEntity<PunchoutUs
         target.UserId = UserId;
         target.UserName = UserName;
         target.MemberId = MemberId;
+        target.OrganizationId = OrganizationId;
+        target.OrganizationName = OrganizationName;
     }
 }

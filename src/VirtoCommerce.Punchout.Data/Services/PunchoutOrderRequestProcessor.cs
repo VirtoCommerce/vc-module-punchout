@@ -318,11 +318,12 @@ public partial class PunchoutOrderRequestProcessor(
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidCredentials);
         }
 
-        var userMapping = await FindUserMappingAsync(request.Sender);
+        var mappingIdentity = GetMappingIdentity(request);
+        var userMapping = await FindUserMappingAsync(mappingIdentity);
 
         if (userMapping is null)
         {
-            LogUserNotFound(request.Sender);
+            LogUserNotFound(mappingIdentity);
 
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.UserNotFound, null, settings);
         }
@@ -639,8 +640,8 @@ public partial class PunchoutOrderRequestProcessor(
     [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request rejected for sender identity '{SenderIdentity}': invalid credentials.")]
     private partial void LogInvalidCredentials(string senderIdentity);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request rejected: sender identity '{SenderIdentity}' is not linked to any user.")]
-    private partial void LogUserNotFound(string senderIdentity);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request rejected: identity '{MappingIdentity}' is not linked to any user or organization.")]
+    private partial void LogUserNotFound(string mappingIdentity);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request rejected for sender identity '{SenderIdentity}': store '{StoreId}' does not exist or punchout is disabled for it.")]
     private partial void LogStoreNotConfigured(string senderIdentity, string storeId);

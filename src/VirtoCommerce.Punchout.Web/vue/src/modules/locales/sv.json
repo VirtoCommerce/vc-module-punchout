@@ -27,6 +27,8 @@
       "externalId-required": "ExternalId krävs",
       "mapping-exists": "En mappning med ExternalId '{externalId}' finns redan.",
       "userId-memberId-required": "UserId och MemberId krävs.",
+      "userId-or-organizationId-required": "Antingen UserId eller OrganizationId krävs, men inte båda.",
+      "organization-not-found": "Organisationen hittades inte.",
       "memberId-mismatch": "Användaren är inte ett säkerhetskonto för den angivna kontakten.",
       "user-is-admin-or-customer": "Endast konton av typen Customer som inte är administratörer kan mappas."
     }

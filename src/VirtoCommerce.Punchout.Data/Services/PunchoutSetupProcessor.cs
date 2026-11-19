@@ -132,11 +132,12 @@ public partial class PunchoutSetupProcessor(
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.ReturnUrlNotAllowed);
         }
 
-        var userMapping = await FindUserMappingAsync(request.Sender);
+        var mappingIdentity = GetMappingIdentity(request);
+        var userMapping = await FindUserMappingAsync(mappingIdentity);
 
         if (userMapping is null)
         {
-            LogUserNotFound(request.Sender);
+            LogUserNotFound(mappingIdentity);
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.UserNotFound);
         }
@@ -269,8 +270,8 @@ public partial class PunchoutSetupProcessor(
     private partial void LogReturnUrlNotAllowed(string senderIdentity, string returnUrl);
 
     [LoggerMessage(Level = LogLevel.Warning,
-        Message = "Punchout setup rejected: sender identity '{SenderIdentity}' is not linked to any user.")]
-    private partial void LogUserNotFound(string senderIdentity);
+        Message = "Punchout setup rejected: identity '{MappingIdentity}' is not linked to any user or organization.")]
+    private partial void LogUserNotFound(string mappingIdentity);
 
     [LoggerMessage(Level = LogLevel.Warning,
         Message = "Punchout setup rejected for sender identity '{SenderIdentity}': store '{StoreId}' does not exist or punchout is disabled for it.")]

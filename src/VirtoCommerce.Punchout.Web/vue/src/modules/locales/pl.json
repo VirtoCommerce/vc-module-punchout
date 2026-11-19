@@ -27,6 +27,8 @@
       "externalId-required": "ExternalId jest wymagany",
       "mapping-exists": "Mapowanie z ExternalId '{externalId}' już istnieje.",
       "userId-memberId-required": "UserId i MemberId są wymagane.",
+      "userId-or-organizationId-required": "Wymagane jest UserId albo OrganizationId, ale nie oba jednocześnie.",
+      "organization-not-found": "Nie znaleziono organizacji.",
       "memberId-mismatch": "Użytkownik nie jest kontem zabezpieczeń wskazanego kontaktu.",
       "user-is-admin-or-customer": "Można mapować tylko konta typu Customer niebędące kontami administratora."
     }

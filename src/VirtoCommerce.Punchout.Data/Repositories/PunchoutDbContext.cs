@@ -34,7 +34,6 @@ public class PunchoutDbContext : DbContextBase
         modelBuilder.Entity<PunchoutUserMappingEntity>().ToAuditableEntityTable("PunchoutUserMapping");
         modelBuilder.Entity<PunchoutUserMappingEntity>()
             .HasIndex(x => x.ExternalId)
-            .IsUnique()
             .HasDatabaseName("IX_PunchoutUserMapping_ExternalId");
         modelBuilder.Entity<PunchoutUserMappingEntity>()
             .HasIndex(x => x.MemberId)
@@ -42,6 +41,9 @@ public class PunchoutDbContext : DbContextBase
         modelBuilder.Entity<PunchoutUserMappingEntity>()
             .HasIndex(x => x.UserId)
             .HasDatabaseName("IX_PunchoutUserMapping_UserId");
+        modelBuilder.Entity<PunchoutUserMappingEntity>()
+            .HasIndex(x => x.OrganizationId)
+            .HasDatabaseName("IX_PunchoutUserMapping_OrganizationId");
 
         modelBuilder.Entity<PunchoutOrderMessageEntity>().ToAuditableEntityTable("PunchoutOrderMessage");
         modelBuilder.Entity<PunchoutOrderMessageEntity>()

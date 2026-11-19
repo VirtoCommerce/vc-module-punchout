@@ -14,5 +14,7 @@ public class PunchoutUserMappingSearchCriteria : SearchCriteriaBase
 
     public IList<string> MemberIds { get; set; }
 
+    public IList<string> OrganizationIds { get; set; }
+
     public bool? IsActive { get; set; }
 }

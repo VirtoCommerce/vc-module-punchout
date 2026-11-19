@@ -47,20 +47,29 @@ public abstract class BasePunchoutProcessor(
                settings.SenderDomain.EqualsIgnoreCase(request.SenderDomain);
     }
 
-    protected virtual async Task<PunchoutUserMapping> FindUserMappingAsync(string senderIdentity)
+    /// <summary>
+    /// Returns the identity the user mapping is looked up by.
+    /// </summary>
+    protected virtual string GetMappingIdentity(BasePunchoutRequest request) => request.Sender;
+
+    /// <summary>
+    /// Finds the active mapping for the identity. A user mapping takes precedence over an organization mapping.
+    /// </summary>
+    protected virtual async Task<PunchoutUserMapping> FindUserMappingAsync(string identity)
     {
-        if (string.IsNullOrEmpty(senderIdentity))
+        if (string.IsNullOrEmpty(identity))
         {
             return null;
         }
 
         var criteria = AbstractTypeFactory<PunchoutUserMappingSearchCriteria>.TryCreateInstance();
-        criteria.ExternalIds = [senderIdentity];
+        criteria.ExternalIds = [identity];
         criteria.IsActive = true;
-        criteria.Take = 1;
 
         var searchResult = await userMappingSearchService.SearchNoCloneAsync(criteria);
 
-        return searchResult.Results.FirstOrDefault();
+        return searchResult.Results
+            .OrderBy(x => x.IsOrganizationMapping)
+            .FirstOrDefault();
     }
 }

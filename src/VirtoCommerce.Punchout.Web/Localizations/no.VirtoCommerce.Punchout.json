@@ -23,6 +23,8 @@
           "externalId-required": "ExternalId er påkrevd",
           "mapping-exists": "En tilordning med ExternalId '{{externalId}}' finnes allerede.",
           "userId-memberId-required": "UserId og MemberId er påkrevd.",
+          "userId-or-organizationId-required": "Enten UserId eller OrganizationId er påkrevd, men ikke begge.",
+          "organization-not-found": "Organisasjonen ble ikke funnet.",
           "memberId-mismatch": "Brukeren er ikke en sikkerhetskonto for den angitte kontakten.",
           "user-is-admin-or-customer": "Bare kontoer av typen Customer som ikke er administratorer, kan tilordnes."
         }

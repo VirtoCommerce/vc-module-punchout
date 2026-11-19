@@ -27,6 +27,8 @@
       "externalId-required": "ExternalId обязателен",
       "mapping-exists": "Сопоставление с ExternalId '{externalId}' уже существует.",
       "userId-memberId-required": "UserId и MemberId обязательны.",
+      "userId-or-organizationId-required": "Укажите либо UserId, либо OrganizationId, но не оба.",
+      "organization-not-found": "Организация не найдена.",
       "memberId-mismatch": "Пользователь не является учётной записью указанного контакта.",
       "user-is-admin-or-customer": "Сопоставлять можно только учётные записи типа Customer без прав администратора."
     }

@@ -23,6 +23,8 @@
           "externalId-required": "ExternalId は必須です",
           "mapping-exists": "ExternalId '{{externalId}}' のマッピングは既に存在します。",
           "userId-memberId-required": "UserId と MemberId は必須です。",
+          "userId-or-organizationId-required": "UserId または OrganizationId のいずれか一方が必須です（両方は指定できません）。",
+          "organization-not-found": "組織が見つかりません。",
           "memberId-mismatch": "このユーザーは指定された連絡先のセキュリティアカウントではありません。",
           "user-is-admin-or-customer": "マッピングできるのは、管理者以外の Customer タイプのアカウントのみです。"
         }

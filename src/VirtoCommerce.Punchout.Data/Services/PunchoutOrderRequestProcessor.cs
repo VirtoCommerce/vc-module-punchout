@@ -107,9 +107,6 @@ public partial class PunchoutOrderRequestProcessor(
         return PunchoutOrderResult.Success(handlerContext.Result.CustomerOrderId, handlerContext.Result.PurchaseOrderNumber);
     }
 
-    /// <summary>
-    /// A handler result that rejects the order content is Rejected, a processing problem is Failed.
-    /// </summary>
     protected virtual string GetOrderRequestStatus(PunchoutOrderResult result)
     {
         return result.Status switch
@@ -121,8 +118,7 @@ public partial class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// Creates the record of the request. A failed or rejected attempt of the same document is processed again in its record,
-    /// because the payload id is unique within the configuration.
+    /// A failed or rejected attempt of the same document reuses its record: the payload id is unique within the configuration.
     /// </summary>
     protected virtual PunchoutOrderRequest CreateOrderRequest(PunchoutOrderRequestData request, PunchoutOrderValidationResult validationResult, PunchoutOrderRequest existingRequest)
     {
@@ -135,7 +131,7 @@ public partial class PunchoutOrderRequestProcessor(
 
         orderRequest.ConfigurationId = configuration.Id;
         orderRequest.StoreId = configuration.StoreId;
-        // A rejected request is stored with the values it was rejected for, cut to the column sizes.
+        // Truncated to the column sizes, a rejected request is stored too
         orderRequest.PayloadId = request.PayloadId;
         orderRequest.SenderIdentity = Truncate(request.Sender, ModuleConstants.FieldLength.Identity);
         orderRequest.BuyerIdentity = Truncate(request.From, ModuleConstants.FieldLength.Identity);
@@ -154,8 +150,7 @@ public partial class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// Stores the request as Processing. Returns null when the processing can start,
-    /// or the result for the same document stored by a concurrent request.
+    /// Returns null when the processing can start, or the result of a concurrent request for the same document.
     /// </summary>
     protected virtual async Task<PunchoutOrderResult> StartProcessingAsync(PunchoutOrderRequestData request, PunchoutOrderRequest orderRequest)
     {
@@ -171,7 +166,7 @@ public partial class PunchoutOrderRequestProcessor(
         }
         catch (Exception ex)
         {
-            // The unique index on the configuration and payload id rejects the same document inserted by a concurrent request
+            // The unique payload id index rejects the same document inserted concurrently
             var concurrentRequest = await FindRequestByPayloadIdAsync(orderRequest.ConfigurationId, orderRequest.PayloadId);
 
             if (concurrentRequest is null || concurrentRequest.Id == orderRequest.Id)
@@ -187,12 +182,11 @@ public partial class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// Stores the outcome of the request. A storage failure is logged and does not change the result returned to the buyer.
+    /// A storage failure is logged and does not change the result returned to the buyer.
     /// </summary>
     protected virtual async Task SaveOrderRequestAsync(PunchoutOrderRequest orderRequest, string status, PunchoutOrderResult result)
     {
-        // The payload id is required and unique, a document without a valid one cannot be stored.
-        // A cut payload id could match another document.
+        // Not stored without a valid payload id: a truncated one could match another document
         if (orderRequest.PayloadId.IsNullOrEmpty() || orderRequest.PayloadId.Length > ModuleConstants.FieldLength.PayloadId)
         {
             return;
@@ -201,7 +195,7 @@ public partial class PunchoutOrderRequestProcessor(
         orderRequest.Status = status;
         orderRequest.CustomerOrderId = result.CustomerOrderId;
         orderRequest.ErrorCode = Truncate(result.Status == PunchoutOrderStatus.Success ? null : result.Status, ModuleConstants.FieldLength.ErrorCode);
-        // The handler may join many line errors, the message must fit or the request stays in Processing
+        // Joined line errors may not fit, and a failed save leaves the request in Processing
         orderRequest.ErrorMessage = Truncate(result.ErrorMessage, ModuleConstants.FieldLength.ErrorMessage);
 
         try
@@ -236,7 +230,7 @@ public partial class PunchoutOrderRequestProcessor(
     /// </summary>
     protected virtual async Task<PunchoutOrderRequest> FindExistingRequestAsync(PunchoutOrderRequestData request, PunchoutConfiguration configuration)
     {
-        // The same document sent again, e.g. the buyer did not receive the response
+        // The same document resent, e.g. the buyer did not receive the response
         var existingRequest = await FindRequestByPayloadIdAsync(configuration.Id, request.PayloadId);
 
         if (existingRequest?.Status is PunchoutOrderRequestStatus.Completed or PunchoutOrderRequestStatus.Processing)
@@ -244,9 +238,8 @@ public partial class PunchoutOrderRequestProcessor(
             return existingRequest;
         }
 
-        // A 'new' document, resent or delayed, after any version of the purchase order is processed or being processed.
-        // The order was created by an earlier 'new' or by an 'update' that came first, it must not be created again.
-        // Failed and rejected attempts do not block it, and an empty order number would match every request.
+        // A resent or delayed 'new' must not create the order again once any version is processed.
+        // An empty order number would match every request.
         if (string.IsNullOrEmpty(request.OrderId) || !IsNewOrder(request.OrderType))
         {
             return existingRequest;
@@ -257,9 +250,6 @@ public partial class PunchoutOrderRequestProcessor(
         return processedRequest ?? existingRequest;
     }
 
-    /// <summary>
-    /// The latest request of the purchase order of any type that is processed or being processed.
-    /// </summary>
     protected virtual async Task<PunchoutOrderRequest> FindProcessedOrderVersionAsync(string configurationId, string purchaseOrderNumber)
     {
         var criteria = AbstractTypeFactory<PunchoutOrderRequestSearchCriteria>.TryCreateInstance();
@@ -275,7 +265,7 @@ public partial class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// Returns the result for a request that was already received, or null when it has to be processed again.
+    /// Returns null when the request has to be processed again.
     /// </summary>
     protected virtual PunchoutOrderResult GetExistingRequestResult(PunchoutOrderRequestData request, PunchoutOrderRequest existingRequest)
     {
@@ -374,7 +364,6 @@ public partial class PunchoutOrderRequestProcessor(
                 $"Currency '{request.Currency}' is not supported.", settings, userMapping, store);
         }
 
-        // An update or delete changes the customer order created by an earlier request
         if (IsUpdateOrder(request.OrderType) || IsDeleteOrder(request.OrderType))
         {
             return await ValidateUpdateAsync(request, settings, userMapping, store);
@@ -384,7 +373,7 @@ public partial class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// A new order has no previous version to check. The handler matches its lines with the requisition items.
+    /// The lines are matched with the requisition items by the handler.
     /// </summary>
     protected virtual Task<PunchoutOrderValidationResult> ValidateNewOrderAsync(PunchoutOrderRequestData request, PunchoutConfiguration settings,
         PunchoutUserMapping userMapping, Store store)
@@ -392,9 +381,6 @@ public partial class PunchoutOrderRequestProcessor(
         return Task.FromResult(PunchoutOrderValidationResult.Valid(settings, userMapping, store));
     }
 
-    /// <summary>
-    /// Finds the current version of the purchase order and checks that the update or delete is newer than it.
-    /// </summary>
     protected virtual async Task<PunchoutOrderValidationResult> ValidateUpdateAsync(PunchoutOrderRequestData request, PunchoutConfiguration settings,
         PunchoutUserMapping userMapping, Store store)
     {
@@ -427,8 +413,7 @@ public partial class PunchoutOrderRequestProcessor(
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest, errorMessage, settings, userMapping, store);
         }
 
-        // The 'new' version was rejected or failed, so no customer order exists and the buyer will not send 'new' again.
-        // The update is then created from the requisition, its items still reference the punchout session.
+        // The 'new' failed and will not be resent: create the order from the requisition
         if (currentRequest is null && IsUpdateOrder(request.OrderType))
         {
             LogUpdateCreatedAsNewOrder(request.OrderId, request.PayloadId);
@@ -436,8 +421,7 @@ public partial class PunchoutOrderRequestProcessor(
             return await ValidateNewOrderAsync(request, settings, userMapping, store);
         }
 
-        // The buyer cancels a purchase order that never became a customer order, there is nothing to cancel.
-        // The handler accepts it without a previous request, so the buyer does not get an error for the cancellation.
+        // Nothing to cancel: accepted without a previous request, so the buyer gets no error
         if (string.IsNullOrEmpty(currentRequest?.CustomerOrderId) && IsDeleteOrder(request.OrderType))
         {
             LogDeleteWithoutCustomerOrder(request.OrderId, request.PayloadId);
@@ -466,8 +450,7 @@ public partial class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// The DocumentReference may point to any earlier version, even a rejected one: the buyer chains the versions it sent.
-    /// It must not point to another purchase order. Returns the error message or null.
+    /// The DocumentReference may point to any earlier version, even a rejected one, but not to another purchase order.
     /// </summary>
     protected virtual async Task<string> ValidateDocumentReferenceAsync(PunchoutOrderRequestData request, PunchoutConfiguration configuration)
     {
@@ -485,7 +468,7 @@ public partial class PunchoutOrderRequestProcessor(
 
         if (referencedRequest is null)
         {
-            // The previous version may have been sent before the order requests were stored, the order number is enough
+            // May predate the stored history, the order number is enough
             LogUnknownDocumentReference(request.OrderId, request.PayloadId, request.PreviousPayloadId);
 
             return null;
@@ -497,7 +480,7 @@ public partial class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// The last successfully processed version of the purchase order, it references the customer order.
+    /// The latest completed version, it references the customer order.
     /// </summary>
     protected virtual async Task<PunchoutOrderRequest> FindCurrentOrderVersionAsync(PunchoutOrderRequestData request, PunchoutConfiguration configuration)
     {
@@ -514,8 +497,7 @@ public partial class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// A failed or rejected document is processed again when the buyer resends it. Without orderVersion its age is not known,
-    /// so it must not overwrite a version received after it and already processed. Returns the error message or null.
+    /// A resent failed or rejected document must not overwrite a version received after it and already processed.
     /// </summary>
     protected virtual async Task<string> ValidateRetriedVersionAsync(PunchoutOrderRequestData request, PunchoutConfiguration configuration, PunchoutOrderRequest currentRequest)
     {
@@ -534,9 +516,6 @@ public partial class PunchoutOrderRequestProcessor(
         return $"A newer version of the order is already processed in document '{currentRequest.PayloadId}'.";
     }
 
-    /// <summary>
-    /// Another document of the same purchase order is being processed.
-    /// </summary>
     protected virtual async Task<bool> IsOrderInProgressAsync(PunchoutOrderRequestData request, PunchoutConfiguration configuration)
     {
         var criteria = AbstractTypeFactory<PunchoutOrderRequestSearchCriteria>.TryCreateInstance();
@@ -551,8 +530,7 @@ public partial class PunchoutOrderRequestProcessor(
     }
 
     /// <summary>
-    /// orderVersion is optional in cXML. When both versions are numbers, the update must be newer than the current version,
-    /// so a delayed or resent old version does not overwrite a newer one. Returns the error message or null.
+    /// orderVersion is optional. When both versions are numbers, the update must be newer than the current one.
     /// </summary>
     protected virtual string ValidateOrderVersion(PunchoutOrderRequestData request, PunchoutOrderRequest currentRequest)
     {

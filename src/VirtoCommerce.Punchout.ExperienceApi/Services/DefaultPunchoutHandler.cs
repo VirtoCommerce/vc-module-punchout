@@ -17,10 +17,8 @@ using VirtoCommerce.XCart.Core.Services;
 namespace VirtoCommerce.Punchout.ExperienceApi.Services;
 
 /// <summary>
-/// Default handler: the setup is not customized, the order message is built from the current user cart,
-/// the customer order is created from the snapshot of the requisition items stored with the order messages.
-/// The requisition items are matched and reserved by <see cref="IPunchoutRequisitionService"/>,
-/// the customer order is changed by <see cref="IPunchoutCustomerOrderService"/>.
+/// Builds the order message from the user cart. Orders are processed by <see cref="IPunchoutRequisitionService"/>
+/// and <see cref="IPunchoutCustomerOrderService"/>.
 /// </summary>
 public partial class DefaultPunchoutHandler(
     IMediator mediator,
@@ -64,8 +62,7 @@ public partial class DefaultPunchoutHandler(
     }
 
     /// <summary>
-    /// Removes the sent items from the cart: the buyer keeps them in its requisition,
-    /// a next punchout session must not send them again.
+    /// Removes the sent items from the cart, so the next session does not send them again.
     /// </summary>
     public virtual async Task HandleOrderMessageReturnedAsync(PunchoutOrderMessageHandlerContext context)
     {
@@ -96,9 +93,6 @@ public partial class DefaultPunchoutHandler(
         await cartAggregateRepository.SaveAsync(cartAggregate);
     }
 
-    /// <summary>
-    /// The snapshot of the sent cart line items, the customer order is created from it.
-    /// </summary>
     protected virtual IList<PunchoutRequisitionItem> BuildRequisitionItems(CartAggregate cartAggregate)
     {
         var cart = cartAggregate.Cart;
@@ -150,7 +144,7 @@ public partial class DefaultPunchoutHandler(
 
         var orderType = context.Request.OrderType;
 
-        // An update without a processed previous version is created from the requisition, see the processor validation
+        // An update without a processed previous version is created as a new order
         if (orderType.EqualsIgnoreCase(CxmlConstants.OrderRequestType.Update) && context.PreviousRequest is not null)
         {
             return UpdateOrderAsync(context);
@@ -164,9 +158,6 @@ public partial class DefaultPunchoutHandler(
         return CreateOrderAsync(context);
     }
 
-    /// <summary>
-    /// Every order line must be a requisition item returned to the user and not ordered by another purchase order.
-    /// </summary>
     protected virtual async Task CreateOrderAsync(PunchoutOrderRequestHandlerContext context)
     {
         var error = await requisitionService.MatchItemsAsync(context, isNewOrder: true);
@@ -179,9 +170,6 @@ public partial class DefaultPunchoutHandler(
         await ProcessReservedItemsAsync(context, () => punchoutOrderService.CreateOrderAsync(context));
     }
 
-    /// <summary>
-    /// The lines added by the update are requisition items, as in a new order. The items of the removed lines are released.
-    /// </summary>
     protected virtual async Task UpdateOrderAsync(PunchoutOrderRequestHandlerContext context)
     {
         var error = await requisitionService.MatchItemsAsync(context, isNewOrder: false);
@@ -199,9 +187,6 @@ public partial class DefaultPunchoutHandler(
         }
     }
 
-    /// <summary>
-    /// The items of a cancelled purchase order are released and may be ordered by another purchase order.
-    /// </summary>
     protected virtual async Task CancelOrderAsync(PunchoutOrderRequestHandlerContext context)
     {
         await punchoutOrderService.CancelOrderAsync(context);
@@ -213,8 +198,7 @@ public partial class DefaultPunchoutHandler(
     }
 
     /// <summary>
-    /// Reserves the requisition items before the customer order is changed, so a concurrent purchase order cannot order them.
-    /// The reserved items are released when the customer order is not changed.
+    /// Reserves the items before the order is changed and releases them if the change fails.
     /// </summary>
     protected virtual async Task ProcessReservedItemsAsync(PunchoutOrderRequestHandlerContext context, Func<Task> action)
     {
@@ -243,7 +227,7 @@ public partial class DefaultPunchoutHandler(
     }
 
     /// <summary>
-    /// The customer order is already processed, a failure to release the items is logged and does not change the result.
+    /// A failure is logged and does not change the result: the customer order is already processed.
     /// </summary>
     protected virtual async Task ReleaseItemsAsync(PunchoutOrderRequestHandlerContext context, Func<Task> release)
     {

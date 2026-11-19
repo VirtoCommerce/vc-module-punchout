@@ -12,7 +12,7 @@ public class PunchoutRequisitionItem : Entity, ICloneable
     public string OrderMessageId { get; set; }
 
     /// <summary>
-    /// The session that returned the item, the session of the order message.
+    /// The session of the order message.
     /// </summary>
     public string SessionId { get; set; }
 

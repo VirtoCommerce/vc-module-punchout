@@ -20,12 +20,6 @@ public partial class PunchoutRequisitionService(
 {
     protected const string PriceFormat = "0.00";
 
-    /// <summary>
-    /// The items of one purchase order may come from several sessions, each line references its session in the SupplierPartAuxiliaryID.
-    /// A line without the session id is matched by the line item id among all the requisitions returned to the user, it must be in one of them.
-    /// A requisition item ordered by another purchase order is rejected. A line of an 'update' whose line number is already ordered by the purchase order
-    /// is not matched, the customer order line is compared with it. It must order the same requisition item as before.
-    /// </summary>
     public virtual async Task<string> MatchItemsAsync(PunchoutOrderRequestHandlerContext context, bool isNewOrder)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -83,8 +77,7 @@ public partial class PunchoutRequisitionService(
     }
 
     /// <summary>
-    /// Matches one line of the order request. An existing line of the purchase order is compared with the ordered line,
-    /// any other line is matched with a requisition item. Returns the error or null.
+    /// An existing line of the purchase order is compared with the ordered line, any other line is matched with a requisition item.
     /// </summary>
     protected virtual string MatchItem(PunchoutOrderRequestData request, PunchoutOrderRequestItem item, IList<PunchoutOrderLine> orderedLines,
         IList<PunchoutRequisitionItem> requisitionItems, IList<PunchoutOrderLine> purchaseOrderLines, bool isNewOrder)
@@ -98,7 +91,7 @@ public partial class PunchoutRequisitionService(
 
         if (!isNewOrder)
         {
-            // The customer order lines are matched by the line number, an existing line is found the same way
+            // Matched by line number, as the customer order lines
             var purchaseOrderLine = purchaseOrderLines.FirstOrDefault(x => x.LineNumber.EqualsIgnoreCase(GetStoredLineNumber(item)));
 
             if (purchaseOrderLine is not null)
@@ -117,9 +110,6 @@ public partial class PunchoutRequisitionService(
         return MatchRequisitionItem(request, item, requisitionItems, isNewOrder);
     }
 
-    /// <summary>
-    /// Finds the requisition item of the line and reconciles them. Sets the requisition item of the line on success. Returns the error or null.
-    /// </summary>
     protected virtual string MatchRequisitionItem(PunchoutOrderRequestData request, PunchoutOrderRequestItem item,
         IList<PunchoutRequisitionItem> requisitionItems, bool isNewOrder)
     {
@@ -147,9 +137,6 @@ public partial class PunchoutRequisitionService(
         return error;
     }
 
-    /// <summary>
-    /// Reserves the requisition items for the purchase order before the order is created, so a concurrent purchase order cannot order them.
-    /// </summary>
     public virtual async Task<IList<PunchoutOrderLine>> ReserveItemsAsync(PunchoutOrderRequestHandlerContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -177,7 +164,7 @@ public partial class PunchoutRequisitionService(
         }
         catch (Exception ex)
         {
-            // The unique index rejects an item ordered by a concurrent purchase order, nothing is stored
+            // The unique index rejects an item ordered by a concurrent purchase order
             var orderedLines = await GetOrderedLinesAsync(configurationId, lines.Select(x => x.LineItemId).ToList());
 
             if (!orderedLines.Any(orderedLine => lines.Any(line => IsSameRequisitionItem(orderedLine, line))))
@@ -201,9 +188,6 @@ public partial class PunchoutRequisitionService(
         }
     }
 
-    /// <summary>
-    /// The customer order lines whose line numbers are missing from the update are removed, their items are released.
-    /// </summary>
     public virtual async Task ReleaseRemovedItemsAsync(PunchoutOrderRequestHandlerContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -222,8 +206,7 @@ public partial class PunchoutRequisitionService(
     }
 
     /// <summary>
-    /// Compares an order line with the requisition item sent to the buyer. The quantity of a new order must match,
-    /// the quantity of a line added by an 'update' is compared when it is added to the customer order. Returns the mismatch or null.
+    /// The quantity of a line added by an 'update' is checked later, when it is added to the customer order.
     /// </summary>
     protected virtual string ReconcileRequisitionItem(PunchoutOrderRequestData request, PunchoutOrderRequestItem item, PunchoutRequisitionItem requisitionItem, bool isNewOrder)
     {
@@ -251,7 +234,7 @@ public partial class PunchoutRequisitionService(
     }
 
     /// <summary>
-    /// The order message sends the prices with two decimals.
+    /// The order message sends prices with two decimals.
     /// </summary>
     protected virtual decimal RoundPrice(decimal price)
     {
@@ -259,7 +242,7 @@ public partial class PunchoutRequisitionService(
     }
 
     /// <summary>
-    /// The buyer may return the line item id without the session id, then the line item id is compared only.
+    /// The buyer may return the line item id without the session id.
     /// </summary>
     protected virtual bool IsSameLine(PunchoutOrderLine line, PunchoutOrderRequestItem item)
     {
@@ -267,9 +250,6 @@ public partial class PunchoutRequisitionService(
                (string.IsNullOrEmpty(item.SessionId) || line.SessionId.EqualsIgnoreCase(item.SessionId));
     }
 
-    /// <summary>
-    /// The buyer may return the line item id without the session id, then the line item id is compared only.
-    /// </summary>
     protected virtual bool IsSameItem(PunchoutRequisitionItem requisitionItem, PunchoutOrderRequestItem item)
     {
         return requisitionItem.LineItemId.EqualsIgnoreCase(item.LineItemId) &&
@@ -289,7 +269,7 @@ public partial class PunchoutRequisitionService(
     }
 
     /// <summary>
-    /// The line number as it is stored in the ordered line.
+    /// The line number truncated as in the stored order line.
     /// </summary>
     protected virtual string GetStoredLineNumber(PunchoutOrderRequestItem item)
     {
@@ -310,9 +290,6 @@ public partial class PunchoutRequisitionService(
         return line;
     }
 
-    /// <summary>
-    /// The items ordered by the purchase order.
-    /// </summary>
     protected virtual Task<IList<PunchoutOrderLine>> GetPurchaseOrderLinesAsync(string configurationId, string purchaseOrderNumber)
     {
         var criteria = AbstractTypeFactory<PunchoutOrderLineSearchCriteria>.TryCreateInstance();
@@ -323,7 +300,7 @@ public partial class PunchoutRequisitionService(
     }
 
     /// <summary>
-    /// The ordered items with the given cart line item ids, by any purchase order.
+    /// Lines of any purchase order.
     /// </summary>
     protected virtual Task<IList<PunchoutOrderLine>> GetOrderedLinesAsync(string configurationId, IList<string> lineItemIds)
     {

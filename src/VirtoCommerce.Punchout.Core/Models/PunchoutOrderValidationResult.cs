@@ -15,7 +15,7 @@ public class PunchoutOrderValidationResult
     public Store Store { get; set; }
 
     /// <summary>
-    /// The current version of the purchase order changed by an 'update' request.
+    /// The current version of the purchase order changed by an 'update' or 'delete'.
     /// </summary>
     public PunchoutOrderRequest PreviousRequest { get; set; }
 

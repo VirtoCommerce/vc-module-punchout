@@ -31,10 +31,6 @@ using ShipmentItem = VirtoCommerce.CartModule.Core.Model.ShipmentItem;
 
 namespace VirtoCommerce.Punchout.ExperienceApi.Services;
 
-/// <summary>
-/// Creates, updates and cancels the customer order of a purchase order. The order lines are created from the requisition items
-/// matched by <see cref="Core.Services.IPunchoutRequisitionService"/>, with the prices sent to the buyer.
-/// </summary>
 public partial class PunchoutCustomerOrderService(
     ICustomerOrderService customerOrderService,
     ICustomerOrderTotalsCalculator customerOrderTotalsCalculator,
@@ -50,10 +46,6 @@ public partial class PunchoutCustomerOrderService(
 
     protected const string PriceFormat = "0.00";
 
-    /// <summary>
-    /// Creates the customer order from the requisition items the processor matched with the order lines.
-    /// The prices are the prices sent to the buyer, they are not calculated again.
-    /// </summary>
     public virtual async Task CreateOrderAsync(PunchoutOrderRequestHandlerContext context)
     {
         var missingItem = context.Request.Items.FirstOrDefault(x => x.RequisitionItem is null);
@@ -71,7 +63,7 @@ public partial class PunchoutCustomerOrderService(
     }
 
     /// <summary>
-    /// Builds a cart that is not stored, the order builder converts it to the customer order as at the checkout.
+    /// An in-memory cart that the order builder converts to the customer order, as at checkout.
     /// </summary>
     protected virtual async Task<ShoppingCart> BuildCartAsync(PunchoutOrderRequestHandlerContext context)
     {
@@ -98,16 +90,13 @@ public partial class PunchoutCustomerOrderService(
         cart.Shipments = [await CreateShipmentAsync(context, cart)];
         cart.Payments = [];
 
-        // The payment covers the order total with the shipment
+        // The payment amount needs the totals, including the shipment
         shoppingCartTotalsCalculator.CalculateTotals(cart);
         cart.Payments = [await CreatePaymentAsync(context, cart)];
 
         return cart;
     }
 
-    /// <summary>
-    /// The customer name and the organization of the contact the user mapping belongs to.
-    /// </summary>
     protected virtual async Task SetCustomerAsync(PunchoutOrderRequestHandlerContext context, ShoppingCart cart)
     {
         var memberId = context.UserMapping.MemberId;
@@ -136,7 +125,7 @@ public partial class PunchoutCustomerOrderService(
     }
 
     /// <summary>
-    /// The cart line item from the requisition item. The line item id of the requisition is kept, the order builder maps the shipment items by it.
+    /// Keeps the requisition line item id: the order builder maps the shipment items by it.
     /// </summary>
     protected virtual LineItem CreateLineItem(PunchoutOrderRequestData request, PunchoutOrderRequestItem item)
     {
@@ -169,7 +158,7 @@ public partial class PunchoutCustomerOrderService(
         lineItem.PurchaseOrderLineNumber = item.LineNumber;
         lineItem.SelectedForCheckout = true;
 
-        // The calculators set the placed price to the list price without the discount, it must stay the price sent to the buyer
+        // Calculators derive the placed price from list price and discount, so it stays the price sent to the buyer
         lineItem.ListPrice = Math.Max(requisitionItem.ListPrice, requisitionItem.PlacedPrice);
         lineItem.SalePrice = requisitionItem.SalePrice;
         lineItem.DiscountAmount = lineItem.ListPrice - requisitionItem.PlacedPrice;
@@ -178,9 +167,6 @@ public partial class PunchoutCustomerOrderService(
         return lineItem;
     }
 
-    /// <summary>
-    /// One shipment with all the items, the configured default shipping method and the ShipTo address.
-    /// </summary>
     protected virtual async Task<Shipment> CreateShipmentAsync(PunchoutOrderRequestHandlerContext context, ShoppingCart cart)
     {
         var shipment = AbstractTypeFactory<Shipment>.TryCreateInstance();
@@ -209,9 +195,6 @@ public partial class PunchoutCustomerOrderService(
         return shipment;
     }
 
-    /// <summary>
-    /// The rate of the configured default shipping method, or null when it is not configured or not available.
-    /// </summary>
     protected virtual async Task<ShippingRate> GetShippingRateAsync(PunchoutOrderRequestHandlerContext context, ShoppingCart cart, Shipment shipment)
     {
         var methodCode = context.Configuration.DefaultShipmentMethodCode;
@@ -229,7 +212,7 @@ public partial class PunchoutCustomerOrderService(
             .Where(x => x.Code.EqualsIgnoreCase(methodCode))
             .ToList();
 
-        // The rates are calculated for the cart with the delivery address
+        // Rates depend on the delivery address
         cart.Shipments = [shipment];
         var evaluationContext = new ShippingEvaluationContext(cart);
 
@@ -238,9 +221,6 @@ public partial class PunchoutCustomerOrderService(
             .FirstOrDefault(x => x.ShippingMethod?.Code.EqualsIgnoreCase(methodCode) == true);
     }
 
-    /// <summary>
-    /// The payment of the order total with the configured default payment method and the BillTo address.
-    /// </summary>
     protected virtual async Task<Payment> CreatePaymentAsync(PunchoutOrderRequestHandlerContext context, ShoppingCart cart)
     {
         var payment = AbstractTypeFactory<Payment>.TryCreateInstance();
@@ -265,11 +245,6 @@ public partial class PunchoutCustomerOrderService(
         return payment;
     }
 
-    /// <summary>
-    /// Applies a new version of the purchase order to the customer order created by the previous version.
-    /// The update replaces the order content: the lines are matched by lineNumber, the missing lines are removed,
-    /// the new lines are added from the requisition items.
-    /// </summary>
     public virtual async Task UpdateOrderAsync(PunchoutOrderRequestHandlerContext context)
     {
         var orderId = context.PreviousRequest?.CustomerOrderId;
@@ -294,16 +269,13 @@ public partial class PunchoutCustomerOrderService(
         UpdateOrderAddresses(context, order);
         UpdateOrderPayments(order);
 
-        // The totals are recalculated on save, the row version rejects a concurrent change of the order
+        // Totals are recalculated on save; the row version rejects a concurrent change
         await customerOrderService.SaveChangesAsync([order]);
 
         context.Result.CustomerOrderId = order.Id;
         context.Result.PurchaseOrderNumber = context.Request.OrderId;
     }
 
-    /// <summary>
-    /// Checks that the customer order may still be changed. Returns the error message, or null.
-    /// </summary>
     protected virtual string ValidateOrderUpdate(PunchoutOrderRequestHandlerContext context, CustomerOrder order)
     {
         if (!order.StoreId.EqualsIgnoreCase(context.Store.Id))
@@ -338,7 +310,7 @@ public partial class PunchoutCustomerOrderService(
     }
 
     /// <summary>
-    /// A payment that is authorized, captured or refunded no longer matches a changed total.
+    /// An authorized, captured or refunded payment cannot follow a changed total.
     /// </summary>
     protected virtual bool IsPaymentProcessed(PaymentIn payment)
     {
@@ -354,9 +326,7 @@ public partial class PunchoutCustomerOrderService(
     }
 
     /// <summary>
-    /// Compares the purchase order with the customer order. Only the lines created from a purchase order line (with a line number)
-    /// are changed by an update. A line that is not in the order is added from its requisition item.
-    /// Returns the mismatches, or null when the update can be applied.
+    /// Lines are matched by line number; a line missing from the order is added from its requisition item.
     /// </summary>
     protected virtual string ReconcileOrder(PunchoutOrderRequestData request, CustomerOrder order)
     {
@@ -397,9 +367,6 @@ public partial class PunchoutCustomerOrderService(
         return errors.Count > 0 ? string.Join(" ", errors) : null;
     }
 
-    /// <summary>
-    /// Compares a purchase order line with the customer order line. Returns the mismatch, or null when they match.
-    /// </summary>
     protected virtual string ReconcileOrderItem(PunchoutOrderRequestItem item, OrderLineItem lineItem, CustomerOrder order)
     {
         if (!item.SupplierPartId.EqualsIgnoreCase(lineItem.Sku))
@@ -427,8 +394,7 @@ public partial class PunchoutCustomerOrderService(
     }
 
     /// <summary>
-    /// A line added by an update orders a requisition item. The processor compared its SKU and price, the quantity must match the requisition.
-    /// Returns the mismatch, or null when the line can be added.
+    /// SKU and price are already checked by the requisition service, only the quantity is left.
     /// </summary>
     protected virtual string ReconcileAddedItem(PunchoutOrderRequestItem item)
     {
@@ -453,7 +419,6 @@ public partial class PunchoutCustomerOrderService(
     }
 
     /// <summary>
-    /// Changes the quantities of the lines in the purchase order, removes the lines missing from it and adds the new lines.
     /// Lines without a purchase order line number, e.g. gifts, are kept.
     /// </summary>
     protected virtual void UpdateOrderItems(PunchoutOrderRequestData request, CustomerOrder order)
@@ -509,9 +474,6 @@ public partial class PunchoutCustomerOrderService(
         }
     }
 
-    /// <summary>
-    /// Adds the requisition item to the order and to its first shipment.
-    /// </summary>
     protected virtual void AddOrderItem(PunchoutOrderRequestData request, CustomerOrder order, PunchoutOrderRequestItem item)
     {
         var lineItem = CreateOrderLineItem(request, item);
@@ -565,7 +527,7 @@ public partial class PunchoutCustomerOrderService(
         lineItem.TaxPercentRate = requisitionItem.TaxPercentRate;
         lineItem.PurchaseOrderLineNumber = item.LineNumber;
 
-        // The order calculator sets the placed price to the price without the discount
+        // See CreateLineItem: keep the price sent to the buyer
         lineItem.Price = Math.Max(requisitionItem.ListPrice, requisitionItem.PlacedPrice);
         lineItem.DiscountAmount = lineItem.Price - requisitionItem.PlacedPrice;
         lineItem.PlacedPrice = requisitionItem.PlacedPrice;
@@ -580,7 +542,7 @@ public partial class PunchoutCustomerOrderService(
             return;
         }
 
-        // ICollection.Remove compares entities by id, the remaining items are kept by reference
+        // Rebuilt instead of Remove: ICollection.Remove compares entities by id
         var remainingItems = shipmentItems.Where(x => x.LineItemId != lineItemId).ToList();
 
         shipmentItems.Clear();
@@ -599,9 +561,6 @@ public partial class PunchoutCustomerOrderService(
             .ToList();
     }
 
-    /// <summary>
-    /// The purchase order addresses replace the order, shipment and payment addresses.
-    /// </summary>
     protected virtual void UpdateOrderAddresses(PunchoutOrderRequestHandlerContext context, CustomerOrder order)
     {
         var shippingAddress = MapAddress<OrderAddress>(context.Request.ShipTo, AddressType.Shipping);
@@ -641,7 +600,7 @@ public partial class PunchoutCustomerOrderService(
     }
 
     /// <summary>
-    /// The shipment price is kept. The payment covers the new order total, as for a new order.
+    /// The shipment price is kept, the payment covers the new total.
     /// </summary>
     protected virtual void UpdateOrderPayments(CustomerOrder order)
     {
@@ -655,12 +614,9 @@ public partial class PunchoutCustomerOrderService(
         payment.Sum = order.Total;
     }
 
-    /// <summary>
-    /// A 'delete' OrderRequest cancels the customer order created by the previous version, nothing is deleted.
-    /// </summary>
     public virtual async Task CancelOrderAsync(PunchoutOrderRequestHandlerContext context)
     {
-        // No version of the purchase order created a customer order, the cancellation has nothing to change
+        // No customer order was created, nothing to cancel
         if (string.IsNullOrEmpty(context.PreviousRequest?.CustomerOrderId))
         {
             LogCancelWithoutCustomerOrder(context.Request.OrderId);
@@ -680,7 +636,7 @@ public partial class PunchoutCustomerOrderService(
         context.Result.CustomerOrderId = order.Id;
         context.Result.PurchaseOrderNumber = context.Request.OrderId;
 
-        // The buyer may send the delete again with a new payloadID, the order stays cancelled by the first one
+        // A delete resent with a new payloadID
         if (order.IsCancelled)
         {
             LogAlreadyCancelled(context.Request.OrderId, order.Id);
@@ -700,8 +656,7 @@ public partial class PunchoutCustomerOrderService(
     }
 
     /// <summary>
-    /// Checks that the customer order may still be cancelled. Returns the error message, or null.
-    /// The processed payments do not block the cancellation, they get a cancellation request.
+    /// Processed payments do not block the cancellation, they get a cancellation request.
     /// </summary>
     protected virtual string ValidateOrderCancellation(PunchoutOrderRequestHandlerContext context, CustomerOrder order)
     {
@@ -712,12 +667,8 @@ public partial class PunchoutCustomerOrderService(
             : $"Order '{context.Request.OrderId}' cannot be cancelled in status '{order.Status}'.";
     }
 
-    /// <summary>
-    /// Requests the cancellation of the payments and cancels the order. The payload id of the delete request is the cancel reason.
-    /// </summary>
     protected virtual void CancelOrder(PunchoutOrderRequestData request, CustomerOrder order)
     {
-        // A payment that is already cancelled keeps its state
         foreach (var payment in order.InPayments?.Where(x => !x.IsCancelled && x.CancelledState != CancelledState.Completed) ?? [])
         {
             payment.CancelledState = CancelledState.Requested;
@@ -730,7 +681,7 @@ public partial class PunchoutCustomerOrderService(
     }
 
     /// <summary>
-    /// The order message sends the prices with two decimals, see <see cref="PunchoutOrderMessageBuilder"/>.
+    /// The order message sends prices with two decimals, see <see cref="PunchoutOrderMessageBuilder"/>.
     /// </summary>
     protected virtual decimal RoundPrice(decimal price)
     {
@@ -761,7 +712,7 @@ public partial class PunchoutCustomerOrderService(
         address.CountryName = punchoutAddress.CountryName;
         address.Email = punchoutAddress.Email;
 
-        // DeliverTo is the recipient, e.g. 'John Smith'
+        // DeliverTo is the recipient name, e.g. 'John Smith'
         var deliverTo = punchoutAddress.DeliverTo?.Trim() ?? string.Empty;
         var separatorIndex = deliverTo.IndexOf(' ');
         address.FirstName = separatorIndex > 0 ? deliverTo[..separatorIndex] : deliverTo.EmptyToNull();

@@ -31,11 +31,43 @@ public partial class PunchoutRequisitionService(
         ArgumentNullException.ThrowIfNull(context);
 
         var request = context.Request;
+        var errors = ValidateItemReferences(request.Items);
+
+        if (errors.Count > 0)
+        {
+            return string.Join(" ", errors);
+        }
+
         var configurationId = context.Configuration.Id;
+        var lineItemIds = request.Items.Select(x => x.LineItemId).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var orderedLines = await GetOrderedLinesAsync(configurationId, lineItemIds);
+        var requisitionItems = await requisitionItemService.GetReturnedItemsAsync(configurationId, context.UserMapping.UserId, lineItemIds);
+        var purchaseOrderLines = isNewOrder ? [] : await GetPurchaseOrderLinesAsync(configurationId, request.OrderId);
+
+        foreach (var item in request.Items)
+        {
+            item.RequisitionItem = null;
+
+            var error = MatchItem(request, item, orderedLines, requisitionItems, purchaseOrderLines, isNewOrder);
+
+            if (error is not null)
+            {
+                errors.Add(error);
+            }
+        }
+
+        return errors.Count > 0 ? string.Join(" ", errors) : null;
+    }
+
+    /// <summary>
+    /// Every line must reference a cart line item, and no two lines may reference the same one.
+    /// </summary>
+    protected virtual List<string> ValidateItemReferences(IEnumerable<PunchoutOrderRequestItem> items)
+    {
         var errors = new List<string>();
         var references = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var item in request.Items)
+        foreach (var item in items)
         {
             if (string.IsNullOrEmpty(item.LineItemId))
             {
@@ -47,74 +79,72 @@ public partial class PunchoutRequisitionService(
             }
         }
 
-        if (errors.Count > 0)
+        return errors;
+    }
+
+    /// <summary>
+    /// Matches one line of the order request. An existing line of the purchase order is compared with the ordered line,
+    /// any other line is matched with a requisition item. Returns the error or null.
+    /// </summary>
+    protected virtual string MatchItem(PunchoutOrderRequestData request, PunchoutOrderRequestItem item, IList<PunchoutOrderLine> orderedLines,
+        IList<PunchoutRequisitionItem> requisitionItems, IList<PunchoutOrderLine> purchaseOrderLines, bool isNewOrder)
+    {
+        var orderedLine = orderedLines.FirstOrDefault(x => IsSameLine(x, item));
+
+        if (orderedLine is not null && !orderedLine.PurchaseOrderNumber.EqualsIgnoreCase(request.OrderId))
         {
-            return string.Join(" ", errors);
+            return $"Line {item.LineNumber}: item '{item.SupplierPartId}' is already ordered by purchase order '{orderedLine.PurchaseOrderNumber}'.";
         }
 
-        var lineItemIds = request.Items.Select(x => x.LineItemId).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        var orderedLines = await GetOrderedLinesAsync(configurationId, lineItemIds);
-        var requisitionItems = await requisitionItemService.GetReturnedItemsAsync(configurationId, context.UserMapping.UserId, lineItemIds);
-        var purchaseOrderLines = isNewOrder ? [] : await GetPurchaseOrderLinesAsync(configurationId, request.OrderId);
-
-        foreach (var item in request.Items)
+        if (!isNewOrder)
         {
-            item.RequisitionItem = null;
+            // The customer order lines are matched by the line number, an existing line is found the same way
+            var purchaseOrderLine = purchaseOrderLines.FirstOrDefault(x => x.LineNumber.EqualsIgnoreCase(GetStoredLineNumber(item)));
 
-            var orderedLine = orderedLines.FirstOrDefault(x => IsSameLine(x, item));
-
-            if (orderedLine is not null && !orderedLine.PurchaseOrderNumber.EqualsIgnoreCase(request.OrderId))
+            if (purchaseOrderLine is not null)
             {
-                errors.Add($"Line {item.LineNumber}: item '{item.SupplierPartId}' is already ordered by purchase order '{orderedLine.PurchaseOrderNumber}'.");
-                continue;
+                return IsSameLine(purchaseOrderLine, item)
+                    ? null
+                    : $"Line {item.LineNumber}: the line orders another requisition item, an update cannot replace the item of a line.";
             }
 
-            if (!isNewOrder)
+            if (orderedLine is not null)
             {
-                // The customer order lines are matched by the line number, an existing line is found the same way
-                var purchaseOrderLine = purchaseOrderLines.FirstOrDefault(x => x.LineNumber.EqualsIgnoreCase(GetStoredLineNumber(item)));
-
-                if (purchaseOrderLine is not null)
-                {
-                    if (!IsSameLine(purchaseOrderLine, item))
-                    {
-                        errors.Add($"Line {item.LineNumber}: the line orders another requisition item, an update cannot replace the item of a line.");
-                    }
-
-                    continue;
-                }
-
-                if (orderedLine is not null)
-                {
-                    errors.Add($"Line {item.LineNumber}: item '{item.SupplierPartId}' is already ordered by line {orderedLine.LineNumber} of the purchase order.");
-                    continue;
-                }
+                return $"Line {item.LineNumber}: item '{item.SupplierPartId}' is already ordered by line {orderedLine.LineNumber} of the purchase order.";
             }
+        }
 
-            var candidates = requisitionItems.Where(x => IsSameItem(x, item)).ToList();
+        return MatchRequisitionItem(request, item, requisitionItems, isNewOrder);
+    }
 
-            if (candidates.Count > 1)
-            {
-                errors.Add($"Line {item.LineNumber}: item '{item.SupplierPartId}' is in several punchout requisitions, SupplierPartAuxiliaryID '{item.SupplierPartAuxiliaryId}' has no session id.");
-                continue;
-            }
+    /// <summary>
+    /// Finds the requisition item of the line and reconciles them. Sets the requisition item of the line on success. Returns the error or null.
+    /// </summary>
+    protected virtual string MatchRequisitionItem(PunchoutOrderRequestData request, PunchoutOrderRequestItem item,
+        IList<PunchoutRequisitionItem> requisitionItems, bool isNewOrder)
+    {
+        var candidates = requisitionItems.Where(x => IsSameItem(x, item)).ToList();
 
-            var requisitionItem = candidates.FirstOrDefault();
+        if (candidates.Count > 1)
+        {
+            return $"Line {item.LineNumber}: item '{item.SupplierPartId}' is in several punchout requisitions, SupplierPartAuxiliaryID '{item.SupplierPartAuxiliaryId}' has no session id.";
+        }
 
-            var error = requisitionItem is null
-                ? $"Line {item.LineNumber}: item '{item.SupplierPartId}' is not in a punchout requisition returned to the user."
-                : ReconcileRequisitionItem(request, item, requisitionItem, isNewOrder);
+        var requisitionItem = candidates.FirstOrDefault();
 
-            if (error is not null)
-            {
-                errors.Add(error);
-                continue;
-            }
+        if (requisitionItem is null)
+        {
+            return $"Line {item.LineNumber}: item '{item.SupplierPartId}' is not in a punchout requisition returned to the user.";
+        }
 
+        var error = ReconcileRequisitionItem(request, item, requisitionItem, isNewOrder);
+
+        if (error is null)
+        {
             item.RequisitionItem = requisitionItem;
         }
 
-        return errors.Count > 0 ? string.Join(" ", errors) : null;
+        return error;
     }
 
     /// <summary>

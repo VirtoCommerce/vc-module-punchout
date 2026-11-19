@@ -8,6 +8,9 @@ namespace VirtoCommerce.Punchout.Data.Repositories;
 
 public class PunchoutDbContext : DbContextBase
 {
+    public const int DecimalPrecision = 18;
+    public const int DecimalScale = 4;
+
     public PunchoutDbContext(DbContextOptions<PunchoutDbContext> options)
         : base(options)
     {

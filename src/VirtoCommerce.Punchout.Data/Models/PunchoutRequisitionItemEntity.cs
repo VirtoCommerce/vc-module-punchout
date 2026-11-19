@@ -4,6 +4,7 @@ using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Platform.Core.Domain;
 using VirtoCommerce.Punchout.Core;
 using VirtoCommerce.Punchout.Core.Models;
+using VirtoCommerce.Punchout.Data.Repositories;
 
 namespace VirtoCommerce.Punchout.Data.Models;
 
@@ -64,19 +65,19 @@ public class PunchoutRequisitionItemEntity : Entity, IDataEntity<PunchoutRequisi
     [StringLength(ModuleConstants.FieldLength.Unit)]
     public string WeightUnit { get; set; }
 
-    [Precision(18, 4)]
+    [Precision(PunchoutDbContext.DecimalPrecision, PunchoutDbContext.DecimalScale)]
     public decimal? Weight { get; set; }
 
     [StringLength(ModuleConstants.FieldLength.Unit)]
     public string MeasureUnit { get; set; }
 
-    [Precision(18, 4)]
+    [Precision(PunchoutDbContext.DecimalPrecision, PunchoutDbContext.DecimalScale)]
     public decimal? Height { get; set; }
 
-    [Precision(18, 4)]
+    [Precision(PunchoutDbContext.DecimalPrecision, PunchoutDbContext.DecimalScale)]
     public decimal? Length { get; set; }
 
-    [Precision(18, 4)]
+    [Precision(PunchoutDbContext.DecimalPrecision, PunchoutDbContext.DecimalScale)]
     public decimal? Width { get; set; }
 
     public int Quantity { get; set; }
@@ -84,22 +85,22 @@ public class PunchoutRequisitionItemEntity : Entity, IDataEntity<PunchoutRequisi
     [StringLength(ModuleConstants.FieldLength.Currency)]
     public string Currency { get; set; }
 
-    [Precision(18, 4)]
+    [Precision(PunchoutDbContext.DecimalPrecision, PunchoutDbContext.DecimalScale)]
     public decimal ListPrice { get; set; }
 
-    [Precision(18, 4)]
+    [Precision(PunchoutDbContext.DecimalPrecision, PunchoutDbContext.DecimalScale)]
     public decimal SalePrice { get; set; }
 
-    [Precision(18, 4)]
+    [Precision(PunchoutDbContext.DecimalPrecision, PunchoutDbContext.DecimalScale)]
     public decimal DiscountAmount { get; set; }
 
-    [Precision(18, 4)]
+    [Precision(PunchoutDbContext.DecimalPrecision, PunchoutDbContext.DecimalScale)]
     public decimal PlacedPrice { get; set; }
 
     [StringLength(ModuleConstants.FieldLength.TaxType)]
     public string TaxType { get; set; }
 
-    [Precision(18, 4)]
+    [Precision(PunchoutDbContext.DecimalPrecision, PunchoutDbContext.DecimalScale)]
     public decimal TaxPercentRate { get; set; }
 
     public virtual PunchoutRequisitionItem ToModel(PunchoutRequisitionItem model)

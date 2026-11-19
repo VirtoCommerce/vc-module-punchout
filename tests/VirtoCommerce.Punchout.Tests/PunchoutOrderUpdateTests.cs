@@ -41,10 +41,10 @@ public class PunchoutOrderUpdateTests
     [Fact]
     public void ReconcileOrder_MatchingLines_ReturnsNull()
     {
-        var handler = new TestPunchoutHandler();
+        var orderService = new TestCustomerOrderService();
         var request = CreateRequest(("1", "SKU-1", 5m, 10m));
 
-        Assert.Null(handler.ReconcileOrderPublic(request, CreateOrder()));
+        Assert.Null(orderService.ReconcileOrderPublic(request, CreateOrder()));
     }
 
     [Theory]
@@ -55,10 +55,10 @@ public class PunchoutOrderUpdateTests
     [InlineData("", "SKU-1", 1, 10, "lineNumber is missing")]
     public void ReconcileOrder_Mismatch_ReturnsError(string lineNumber, string sku, decimal quantity, decimal price, string expectedError)
     {
-        var handler = new TestPunchoutHandler();
+        var orderService = new TestCustomerOrderService();
         var request = CreateRequest((lineNumber, sku, quantity, price));
 
-        var error = handler.ReconcileOrderPublic(request, CreateOrder());
+        var error = orderService.ReconcileOrderPublic(request, CreateOrder());
 
         Assert.Contains(expectedError, error);
     }
@@ -68,11 +68,11 @@ public class PunchoutOrderUpdateTests
     [InlineData(3, "does not match the requisition quantity")]
     public void ReconcileOrder_AddedLine_ComparesRequisitionQuantity(decimal quantity, string expectedError)
     {
-        var handler = new TestPunchoutHandler();
+        var orderService = new TestCustomerOrderService();
         var request = CreateRequest(("1", "SKU-1", 5m, 10m), ("3", "SKU-3", quantity, 7m));
         request.Items[1].RequisitionItem = CreateRequisitionItem("cart-line-3", "SKU-3", 2, 7m);
 
-        var error = handler.ReconcileOrderPublic(request, CreateOrder());
+        var error = orderService.ReconcileOrderPublic(request, CreateOrder());
 
         if (expectedError is null)
         {
@@ -87,12 +87,12 @@ public class PunchoutOrderUpdateTests
     [Fact]
     public void UpdateOrderItems_AddsRequisitionItemWithItsPrice()
     {
-        var handler = new TestPunchoutHandler();
+        var orderService = new TestCustomerOrderService();
         var order = CreateOrder();
         var request = CreateRequest(("1", "SKU-1", 5m, 10m), ("2", "SKU-2", 1m, 20m), ("3", "SKU-3", 2m, 7m));
         request.Items[2].RequisitionItem = CreateRequisitionItem("cart-line-3", "SKU-3", 2, 7m, listPrice: 9m);
 
-        handler.UpdateOrderItemsPublic(request, order);
+        orderService.UpdateOrderItemsPublic(request, order);
 
         var lineItem = Assert.Single(order.Items, x => x.PurchaseOrderLineNumber == "3");
         Assert.Equal("SKU-3", lineItem.Sku);
@@ -109,14 +109,14 @@ public class PunchoutOrderUpdateTests
     [Fact]
     public void UpdateOrderItems_AddedLine_StaysInShipmentWhenOrderIsSaved()
     {
-        var handler = new TestPunchoutHandler();
+        var orderService = new TestCustomerOrderService();
         var storedOrder = new CustomerOrderEntity().FromModel(CreateLoadedOrder(), new PrimaryKeyResolvingMap());
 
         var order = CreateLoadedOrder();
         var request = CreateRequest(("1", "SKU-1", 5m, 10m), ("2", "SKU-2", 1m, 20m), ("3", "SKU-3", 2m, 7m));
         request.Items[2].RequisitionItem = CreateRequisitionItem("cart-line-3", "SKU-3", 2, 7m);
 
-        handler.UpdateOrderItemsPublic(request, order);
+        orderService.UpdateOrderItemsPublic(request, order);
 
         // The customer order service patches the stored order with the changed one
         new CustomerOrderEntity().FromModel(order, new PrimaryKeyResolvingMap()).Patch(storedOrder);
@@ -131,20 +131,20 @@ public class PunchoutOrderUpdateTests
     [Fact]
     public void ReconcileOrder_DuplicateLineNumber_ReturnsError()
     {
-        var handler = new TestPunchoutHandler();
+        var orderService = new TestCustomerOrderService();
         var request = CreateRequest(("1", "SKU-1", 1m, 10m), ("1", "SKU-1", 2m, 10m));
 
-        Assert.Contains("used by another line", handler.ReconcileOrderPublic(request, CreateOrder()));
+        Assert.Contains("used by another line", orderService.ReconcileOrderPublic(request, CreateOrder()));
     }
 
     [Fact]
     public void UpdateOrderItems_ChangesQuantityAndRemovesMissingLines()
     {
-        var handler = new TestPunchoutHandler();
+        var orderService = new TestCustomerOrderService();
         var order = CreateOrder();
         var request = CreateRequest(("1", "SKU-1", 7m, 10m));
 
-        handler.UpdateOrderItemsPublic(request, order);
+        orderService.UpdateOrderItemsPublic(request, order);
 
         // Line 2 is removed, the gift without a line number is kept
         Assert.Equal(["line-1", "gift"], order.Items.Select(x => x.Id));
@@ -158,7 +158,7 @@ public class PunchoutOrderUpdateTests
     [Fact]
     public void ValidateOrderUpdate_ChecksStatusCancellationAndPayments()
     {
-        var handler = new TestPunchoutHandler();
+        var orderService = new TestCustomerOrderService();
         var context = new PunchoutOrderRequestHandlerContext
         {
             Request = new PunchoutOrderRequestData { OrderId = "PO-1" },
@@ -167,29 +167,29 @@ public class PunchoutOrderUpdateTests
         };
 
         var order = CreateOrder();
-        Assert.Null(handler.ValidateOrderUpdatePublic(context, order));
+        Assert.Null(orderService.ValidateOrderUpdatePublic(context, order));
 
         order.Status = "Completed";
-        Assert.Contains("cannot be changed in status", handler.ValidateOrderUpdatePublic(context, order));
+        Assert.Contains("cannot be changed in status", orderService.ValidateOrderUpdatePublic(context, order));
 
         context.Configuration.UpdatableOrderStatuses = ["Completed"];
-        Assert.Null(handler.ValidateOrderUpdatePublic(context, order));
+        Assert.Null(orderService.ValidateOrderUpdatePublic(context, order));
 
         order.InPayments.Single().PaymentStatus = PaymentStatus.Paid;
-        Assert.Contains("payment is already processed", handler.ValidateOrderUpdatePublic(context, order));
+        Assert.Contains("payment is already processed", orderService.ValidateOrderUpdatePublic(context, order));
 
         order.IsCancelled = true;
-        Assert.Contains("is cancelled", handler.ValidateOrderUpdatePublic(context, order));
+        Assert.Contains("is cancelled", orderService.ValidateOrderUpdatePublic(context, order));
     }
 
     [Fact]
     public void CancelOrder_CancelsOrderAndRequestsPaymentCancellation()
     {
-        var handler = new TestPunchoutHandler();
+        var orderService = new TestCustomerOrderService();
         var order = CreateOrder();
         order.InPayments.Add(new PaymentIn { IsCancelled = true, CancelledState = CancelledState.Completed });
 
-        handler.CancelOrderPublic(new PunchoutOrderRequestData { PayloadId = "msg-003" }, order);
+        orderService.CancelOrderPublic(new PunchoutOrderRequestData { PayloadId = "msg-003" }, order);
 
         Assert.True(order.IsCancelled);
         Assert.Equal("Cancelled", order.Status);
@@ -204,7 +204,7 @@ public class PunchoutOrderUpdateTests
     [Fact]
     public void ValidateOrderCancellation_ChecksStatus()
     {
-        var handler = new TestPunchoutHandler();
+        var orderService = new TestCustomerOrderService();
         var context = new PunchoutOrderRequestHandlerContext
         {
             Request = new PunchoutOrderRequestData { OrderId = "PO-1" },
@@ -214,10 +214,10 @@ public class PunchoutOrderUpdateTests
         var order = CreateOrder();
         // A paid order can be cancelled, the payment gets a cancellation request
         order.InPayments.Single().PaymentStatus = PaymentStatus.Paid;
-        Assert.Null(handler.ValidateOrderCancellationPublic(context, order));
+        Assert.Null(orderService.ValidateOrderCancellationPublic(context, order));
 
         order.Status = "Shipped";
-        Assert.Contains("cannot be cancelled in status", handler.ValidateOrderCancellationPublic(context, order));
+        Assert.Contains("cannot be cancelled in status", orderService.ValidateOrderCancellationPublic(context, order));
     }
 
     [Theory]
@@ -354,14 +354,14 @@ public class PunchoutOrderUpdateTests
     [Fact]
     public async Task CancelOrder_WithoutCustomerOrder_SucceedsWithoutChanges()
     {
-        var handler = new TestPunchoutHandler();
+        var orderService = new TestCustomerOrderService();
         var context = new PunchoutOrderRequestHandlerContext
         {
             Request = new PunchoutOrderRequestData { OrderId = "PO-1", OrderType = "delete" },
             Result = new PunchoutOrderResult(),
         };
 
-        await handler.HandleOrderRequestAsync(context);
+        await orderService.CancelOrderAsync(context);
 
         Assert.False(context.IsFailed);
         Assert.Null(context.Result.CustomerOrderId);
@@ -447,14 +447,14 @@ public class PunchoutOrderUpdateTests
     }
 
     private sealed class TestOrderRequestProcessor()
-        : PunchoutOrderRequestProcessor(null, null, null, null, null, null, null, null, null, null, null)
+        : PunchoutOrderRequestProcessor(null, null, null, null, null, null, null, null)
     {
         public string ValidateOrderVersionPublic(PunchoutOrderRequestData request, PunchoutOrderRequest currentRequest) =>
             ValidateOrderVersion(request, currentRequest);
     }
 
     private sealed class TestExistingRequestProcessor(PunchoutOrderRequest payloadRequest, PunchoutOrderRequest processedRequest)
-        : PunchoutOrderRequestProcessor(null, null, null, null, null, null, null, null, null, null, NullLogger<PunchoutOrderRequestProcessor>.Instance)
+        : PunchoutOrderRequestProcessor(null, null, null, null, null, null, null, NullLogger<PunchoutOrderRequestProcessor>.Instance)
     {
         public Task<PunchoutOrderRequest> FindExistingRequestPublicAsync(PunchoutOrderRequestData request) =>
             FindExistingRequestAsync(request, new PunchoutConfiguration { Id = "configuration" });
@@ -470,7 +470,7 @@ public class PunchoutOrderUpdateTests
     }
 
     private sealed class TestUpdateValidationProcessor(PunchoutOrderRequest currentRequest, PunchoutOrderRequest retriedRequest = null)
-        : PunchoutOrderRequestProcessor(null, null, null, null, null, null, null, null, null, null, NullLogger<PunchoutOrderRequestProcessor>.Instance)
+        : PunchoutOrderRequestProcessor(null, null, null, null, null, null, null, NullLogger<PunchoutOrderRequestProcessor>.Instance)
     {
         public bool NewOrderValidated { get; private set; }
 
@@ -496,18 +496,14 @@ public class PunchoutOrderUpdateTests
 
             return Task.FromResult(PunchoutOrderValidationResult.Valid(settings, userMapping, store));
         }
-
-        protected override Task<string> ValidateRequisitionItemsAsync(PunchoutOrderRequestData request, PunchoutConfiguration configuration,
-            PunchoutUserMapping userMapping, bool isNewOrder) =>
-            Task.FromResult<string>(null);
     }
 
     private sealed class TestRoutingHandler()
-        : DefaultPunchoutHandler(null, null, null, null, null, null, null, null, null, null, null, null)
+        : DefaultPunchoutHandler(null, null, null, null, null, null, null)
     {
         public string Route { get; private set; }
 
-        protected override Task CreateOrderFromRequestAsync(PunchoutOrderRequestHandlerContext context)
+        protected override Task CreateOrderAsync(PunchoutOrderRequestHandlerContext context)
         {
             Route = "create";
             return Task.CompletedTask;
@@ -526,8 +522,8 @@ public class PunchoutOrderUpdateTests
         }
     }
 
-    private sealed class TestPunchoutHandler()
-        : DefaultPunchoutHandler(null, null, null, null, null, null, null, null, null, null, null, NullLogger<DefaultPunchoutHandler>.Instance)
+    private sealed class TestCustomerOrderService()
+        : PunchoutCustomerOrderService(null, null, null, null, null, null, null, NullLogger<PunchoutCustomerOrderService>.Instance)
     {
         public string ReconcileOrderPublic(PunchoutOrderRequestData request, CustomerOrder order) =>
             ReconcileOrder(request, order);

@@ -151,7 +151,7 @@ The module follows the layered architecture used across Virto Commerce platform 
    * `Total` is the sum of the line extended prices. Cart-level discounts, shipping, and taxes are not included
    * each `ItemIn` has the SKU as `SupplierPartID`, `{lineItemId};{sessionId}` as `SupplierPartAuxiliaryID`, the placed price as `UnitPrice`, the product measure unit (`EA` by default), and a placeholder classification (`Custom` / `00000000`)
 5. The session is atomically switched from `Active` to `Returned`, so it cannot return a second requisition. The cXML is stored in `PunchoutOrderMessage`, and every sent cart line item is stored in `PunchoutRequisitionItem` as a snapshot (product, catalog, SKU, name, quantity, list price, discount, placed price, tax rate, dimensions). The customer order is created from this snapshot later, not from the cart.
-6. `IPunchoutHandler.HandleOrderMessageReturnedAsync` is called. `DefaultPunchoutHandler` removes the sent items from the cart: the buyer keeps them in the requisition, and the next punchout session must not send them again. Items that were not selected for checkout stay in the cart.
+6. If the handler implements `IPunchoutOrderMessageReturnedHandler`, its `HandleOrderMessageReturnedAsync` is called. `DefaultPunchoutHandler` removes the sent items from the cart: the buyer keeps them in the requisition, and the next punchout session must not send them again. Items that were not selected for checkout stay in the cart.
 7. The mutation returns the procurement system's return URL, the form field name (`cxml-urlencoded`), and the cXML. The storefront posts the form to the procurement system. If the requisition cannot be returned, only an error code is returned and the details are logged.
 
 ### Order Flow (OrderRequest)
@@ -165,21 +165,24 @@ The module follows the layered architecture used across Virto Commerce platform 
    * `payloadID` (up to 512 characters), `orderID` (up to 256 characters), the `Total` currency, and items are present
    * every item has a `lineNumber` (up to 128 characters, unique within the order), a `SupplierPartID`, a positive quantity, and a non-negative unit price in the order currency
    * the order currency is available in the store
+
+   The requisition checks below are run by the handler (`DefaultPunchoutHandler` calls `IPunchoutRequisitionService`) after the request is stored, a mismatch rejects the request in the same way:
+
    * every line orders a requisition item. The procurement system groups the requisition lines into purchase orders by supplier, so one purchase order may contain items returned by several punchout sessions, and the items of one session may be split between purchase orders. Each line references its own session in `SupplierPartAuxiliaryID` (`{lineItemId};{sessionId}`). Without a session reference, the item is found by its line item id among all the requisitions returned to the user, and it is rejected if more than one requisition contains it
    * every line has a unique `SupplierPartAuxiliaryID`, its session has returned a requisition for the same user and integration, and the item is in the snapshot of that requisition with the same SKU, currency, quantity, and unit price rounded to two decimals
    * no item is already ordered by another purchase order
 5. The request is stored with the `Processing` status. The unique index on the configuration and `payloadID` stops a concurrent duplicate.
-6. The requisition items are reserved for the purchase order in `PunchoutOrderLine`. Its unique index on the configuration, session, and line item stops a concurrent purchase order that orders the same item, that request is rejected.
-7. The integration's `IPunchoutHandler.HandleOrderRequestAsync` creates the order. `DefaultPunchoutHandler` builds a cart that is not stored and converts it with the Orders module `ICustomerOrderBuilder`, the same conversion as at a checkout:
+6. The handler reserves the requisition items for the purchase order in `PunchoutOrderLine`. Its unique index on the configuration, session, and line item stops a concurrent purchase order that orders the same item, that request is rejected.
+7. The integration's `IPunchoutHandler.HandleOrderRequestAsync` creates the order. `DefaultPunchoutHandler` calls `IPunchoutCustomerOrderService`, which builds a cart that is not stored and converts it with the Orders module `ICustomerOrderBuilder`, the same conversion as at a checkout:
    * the line items are taken from the requisition snapshots with the prices sent to the buyer, the prices are not calculated again. The quantity and the line number come from the purchase order
    * the purchase order number is `orderID`, and the customer is the mapped user with the first organization of its contact
    * the `ShipTo` and `BillTo` addresses are added (ISO alpha-2 country codes are converted to alpha-3, and `DeliverTo` becomes the first and last name)
    * one shipment with all the items gets the `DefaultShipmentMethodCode` method and its rate, and a payment with `DefaultPaymentMethodCode` covers the total
-8. The request is stored as `Completed` with the customer order ID, `Rejected` if the order content is invalid, or `Failed` for other errors. A request that is not completed releases the items it reserved. The cXML response carries the outcome.
+8. The request is stored as `Completed` with the customer order ID, `Rejected` if the order content is invalid, or `Failed` for other errors. The handler releases the items it reserved when the order is not created. The cXML response carries the outcome.
 
 #### Order Updates (`type="update"`)
 
-An update carries the full new content of the purchase order. Instead of the session and requisition checks of step 4, the processor:
+An update carries the full new content of the purchase order. Instead of the requisition checks of step 4, the processor checks the version of the purchase order:
 
 * returns `OrderInProgress` while another document of the same `orderID` is being processed
 * rejects a `DocumentReference` that belongs to another `orderID`. The reference may point to any earlier version, including a rejected one; an unknown reference is ignored
@@ -187,9 +190,12 @@ An update carries the full new content of the purchase order. Instead of the ses
 * when `orderVersion` is present, requires a number greater than the current version (a `new` order without `orderVersion` is version 1)
 * rejects a resent failed or rejected document when the current version was received after it. Without `orderVersion` the order of the versions is known only from the time they were received, so an old version cannot overwrite a newer one
 * when no version of the order is `Completed` (the `new` order was rejected or failed, so no customer order exists), processes the update as a `new` order with the requisition checks of step 4. The buyer does not send `new` again for the same `orderID`, so otherwise every next update would be rejected
+
+Then the handler, with `IPunchoutRequisitionService`:
+
 * matches the lines with the items ordered by the purchase order by `lineNumber`, as the handler matches the customer order lines. A known line number must order the same requisition item as before, the handler compares it with the customer order. A new line number is checked against its requisition snapshot, as for a `new` order but without the quantity, and its item must not be ordered by another line. The items of the line numbers missing from the update are released
 
-`DefaultPunchoutHandler` then loads the customer order and:
+`IPunchoutCustomerOrderService` then loads the customer order and:
 
 * rejects the update if the order is in another store, cancelled, in a status not listed in `UpdatableOrderStatuses`, or has an authorized, captured, or refunded payment
 * matches the lines by `ItemOut/@lineNumber` with the order line purchase order line number. SKU and unit price (rounded to two decimals) must match the order line, and the quantity must be a whole number
@@ -200,7 +206,7 @@ An update carries the full new content of the purchase order. Instead of the ses
 
 #### Order Cancellation (`type="delete"`)
 
-The processor finds the current version of the purchase order and checks `DocumentReference` and `orderVersion` in the same way as for an update. `DefaultPunchoutHandler` does not delete anything, it cancels the customer order:
+The processor finds the current version of the purchase order and checks `DocumentReference` and `orderVersion` in the same way as for an update. `IPunchoutCustomerOrderService` does not delete anything, it cancels the customer order:
 
 * rejects the delete if the order is in another store or in a status not listed in `UpdatableOrderStatuses`. Processed payments do not block the cancellation
 * sets `CancelledState` to `Requested` on every payment that is not cancelled yet
@@ -248,14 +254,20 @@ The `createPunchoutRequisition` mutation returns one of these codes in `errorCod
 
 ### Punchout handler
 
-`IPunchoutHandler` is the business extension point of each transaction:
+The processors authenticate the requests, validate their content and store the transactions. `IPunchoutHandler` is the business extension point of each transaction: the cart, the requisition items and the customer order.
 
 | Method | Called | Default behavior |
 |--------|--------|------------------|
 | `HandleSetupAsync` | Before the session is saved | Nothing |
 | `HandleOrderMessageAsync` | Before the session is marked as returned | Builds the `PunchOutOrderMessage` and the item snapshot from the cart |
-| `HandleOrderMessageReturnedAsync` | After the session is returned and the message is stored. A failure is logged only | Removes the sent items from the cart. The interface default does nothing |
-| `HandleOrderRequestAsync` | After the order is validated | Creates the customer order from the requisition snapshots, or changes or cancels it |
+| `HandleOrderRequestAsync` | After the order request is validated and stored as `Processing` | Matches the lines with the requisition snapshots, reserves the items, and creates, changes, or cancels the customer order |
+
+A handler may also implement `IPunchoutOrderMessageReturnedHandler`. Its `HandleOrderMessageReturnedAsync` is called after the session is returned and the message is stored, a failure is logged only. `DefaultPunchoutHandler` removes the sent items from the cart there.
+
+`DefaultPunchoutHandler` delegates to two services that can be overridden separately:
+
+* `IPunchoutRequisitionService` matches the purchase order lines with the requisition items and reserves or releases them
+* `IPunchoutCustomerOrderService` creates, updates, and cancels the customer order
 
 A handler calls `context.Fail(code, message)` to stop the transaction. Nothing is persisted, and the code is returned to the buyer.
 
@@ -292,9 +304,11 @@ Register an `ICxmlRequestHandler` to support another cXML request type or to rep
 | `PunchoutOrderMapper` | `IPunchoutOrderMapper` | Translates between cXML documents and `PunchoutOrderRequestData` / `PunchoutOrderResult` |
 | `PunchoutSetupProcessor` | `IPunchoutSetupProcessor` | Validates the setup request, creates the session, and builds the start page URL |
 | `PunchoutOrderMessageProcessor` | `IPunchoutOrderMessageProcessor` | Validates the session, calls the handler to build the `PunchOutOrderMessage`, marks the session as returned, and stores the message |
-| `PunchoutOrderRequestProcessor` | `IPunchoutOrderRequestProcessor` | Authenticates and validates the `OrderRequest`, handles duplicates, calls the handler, and stores the outcome |
+| `PunchoutOrderRequestProcessor` | `IPunchoutOrderRequestProcessor` | Authenticates and validates the `OrderRequest`, handles duplicates and versions, calls the handler, and stores the outcome |
 | `PunchoutHandlerFactory` | `IPunchoutHandlerFactory` | Resolves the `IPunchoutHandler` of an integration by `HandlerTypeName` |
-| `DefaultPunchoutHandler` | `IPunchoutHandler` | Default transaction logic based on the Cart and Order Experience APIs |
+| `DefaultPunchoutHandler` | `IPunchoutHandler`, `IPunchoutOrderMessageReturnedHandler` | Default transaction logic: builds the order message from the cart, clears the cart, and routes the order requests |
+| `PunchoutRequisitionService` | `IPunchoutRequisitionService` | Matches the purchase order lines with the requisition snapshots, reserves the requisition items for a purchase order, and releases them |
+| `PunchoutCustomerOrderService` | `IPunchoutCustomerOrderService` | Creates the customer order from the requisition snapshots, applies updates, and cancels it |
 | `PunchoutOrderMessageBuilder` | `IPunchoutOrderMessageBuilder` | Builds the cXML `PunchOutOrderMessage` from the session and the cart |
 | `PunchoutSessionService` / `PunchoutSessionSearchService` | `IPunchoutSessionService` / `IPunchoutSessionSearchService` | CRUD and search for punchout sessions |
 | `PunchoutSessionManagementService` | `IPunchoutSessionManagementService` | Atomic, one-time redemption of session tokens and switching sessions to `Returned` |

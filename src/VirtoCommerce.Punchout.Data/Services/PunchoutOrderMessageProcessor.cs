@@ -92,13 +92,19 @@ public class PunchoutOrderMessageProcessor(
     }
 
     /// <summary>
+    /// Calls the handler that implements <see cref="IPunchoutOrderMessageReturnedHandler"/>.
     /// The requisition is already returned, a failure here is logged and does not change the result.
     /// </summary>
     protected virtual async Task CompleteOrderMessageAsync(IPunchoutHandler handler, PunchoutOrderMessageHandlerContext context)
     {
+        if (handler is not IPunchoutOrderMessageReturnedHandler returnedHandler)
+        {
+            return;
+        }
+
         try
         {
-            await handler.HandleOrderMessageReturnedAsync(context);
+            await returnedHandler.HandleOrderMessageReturnedAsync(context);
         }
         catch (Exception ex)
         {

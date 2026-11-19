@@ -4,6 +4,11 @@ public class PunchoutOrderRequestHandlerContext : PunchoutHandlerContext
 {
     public PunchoutOrderRequestData Request { get; set; }
 
+    /// <summary>
+    /// The id of the stored order request, the reserved requisition items reference it.
+    /// </summary>
+    public string OrderRequestId { get; set; }
+
     public PunchoutUserMapping UserMapping { get; set; }
 
     /// <summary>

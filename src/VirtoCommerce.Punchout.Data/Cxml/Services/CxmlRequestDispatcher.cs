@@ -9,7 +9,7 @@ using VirtoCommerce.Punchout.Core.Cxml.Services;
 
 namespace VirtoCommerce.Punchout.Data.Cxml.Services;
 
-public class CxmlRequestDispatcher(
+public partial class CxmlRequestDispatcher(
     IEnumerable<ICxmlRequestHandler> handlers,
     ICxmlResponseFactory responseFactory,
     ILogger<CxmlRequestDispatcher> logger)
@@ -21,7 +21,7 @@ public class CxmlRequestDispatcher(
 
         if (document.Request is null)
         {
-            logger.LogWarning("cXML document '{PayloadId}' has no Request element.", document.PayloadId);
+            LogNoRequestElement(document.PayloadId);
 
             return responseFactory.CreateResponse(CxmlConstants.Status.BadRequestCode, CxmlConstants.Status.BadRequestText,
                 "The cXML document has no Request element.");
@@ -31,7 +31,7 @@ public class CxmlRequestDispatcher(
 
         if (handler is null)
         {
-            logger.LogWarning("cXML document '{PayloadId}' has a request type that is not supported.", document.PayloadId);
+            LogRequestTypeNotSupported(document.PayloadId);
 
             return responseFactory.CreateResponse(CxmlConstants.Status.NotImplementedCode, CxmlConstants.Status.NotImplementedText,
                 "The request type is not supported.");
@@ -45,4 +45,10 @@ public class CxmlRequestDispatcher(
         // The last registered handler wins
         return handlers.LastOrDefault(x => x.CanHandle(document));
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "cXML document '{PayloadId}' has no Request element.")]
+    private partial void LogNoRequestElement(string payloadId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "cXML document '{PayloadId}' has a request type that is not supported.")]
+    private partial void LogRequestTypeNotSupported(string payloadId);
 }

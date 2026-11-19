@@ -18,7 +18,7 @@ public static class PunchoutOrderStatus
     public const string InvalidRequest = "InvalidRequest";
 
     /// <summary>
-    /// The order type is not supported, only new orders are accepted.
+    /// The order type is not 'new', 'update' or 'delete'.
     /// </summary>
     public const string UnsupportedOrderType = "UnsupportedOrderType";
 

@@ -83,6 +83,10 @@ public class Module : IModule, IHasConfiguration
 
         serviceCollection.AddTransient<IPunchoutOrderRequestService, PunchoutOrderRequestService>();
         serviceCollection.AddTransient<IPunchoutOrderRequestSearchService, PunchoutOrderRequestSearchService>();
+        serviceCollection.AddTransient<IPunchoutOrderLineService, PunchoutOrderLineService>();
+        serviceCollection.AddTransient<IPunchoutOrderLineSearchService, PunchoutOrderLineSearchService>();
+        serviceCollection.AddTransient<IPunchoutRequisitionItemService, PunchoutRequisitionItemService>();
+        serviceCollection.AddTransient<IPunchoutRequisitionService, PunchoutRequisitionService>();
 
         serviceCollection.AddTransient<ICxmlSerializer, CxmlSerializer>();
         serviceCollection.AddTransient<ICxmlResponseFactory, CxmlResponseFactory>();
@@ -90,6 +94,7 @@ public class Module : IModule, IHasConfiguration
         serviceCollection.AddTransient<IPunchoutSetupMapper, PunchoutSetupMapper>();
         serviceCollection.AddTransient<ICxmlRequestHandler, CxmlPunchoutSetupRequestHandler>();
 
+        serviceCollection.AddTransient<IPunchoutCustomerOrderService, PunchoutCustomerOrderService>();
         serviceCollection.AddTransient<IPunchoutHandler, DefaultPunchoutHandler>();
         serviceCollection.AddTransient<IPunchoutHandlerFactory, PunchoutHandlerFactory>();
         serviceCollection.AddTransient<IPunchoutSetupProcessor, PunchoutSetupProcessor>();
@@ -99,6 +104,7 @@ public class Module : IModule, IHasConfiguration
         serviceCollection.AddTransient<IPunchoutOrderMapper, PunchoutOrderMapper>();
         serviceCollection.AddTransient<IPunchoutOrderRequestProcessor, PunchoutOrderRequestProcessor>();
         serviceCollection.AddTransient<ICxmlRequestHandler, CxmlPunchoutOrderRequestHandler>();
+        serviceCollection.AddTransient<AbstractValidator<PunchoutOrderRequestData>, PunchoutOrderRequestValidator>();
 
         serviceCollection.AddTransient<IPunchoutSessionManagementService, PunchoutSessionManagementService>();
         serviceCollection.AddGrantTypeHandler<PunchoutGrantTypeHandler>(ModuleConstants.Security.PunchoutGrantType);

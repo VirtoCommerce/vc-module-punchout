@@ -17,6 +17,10 @@ public interface IPunchoutRepository : IRepository
 
     IQueryable<PunchoutOrderRequestEntity> PunchoutOrderRequests { get; }
 
+    IQueryable<PunchoutOrderLineEntity> PunchoutOrderLines { get; }
+
+    IQueryable<PunchoutRequisitionItemEntity> PunchoutRequisitionItems { get; }
+
     Task<IList<PunchoutSessionEntity>> GetPunchoutSessionsByIdsAsync(IList<string> ids, string responseGroup);
 
     Task<IList<PunchoutUserMappingEntity>> GetPunchoutUserMappingsByIdsAsync(IList<string> ids, string responseGroup);
@@ -24,6 +28,11 @@ public interface IPunchoutRepository : IRepository
     Task<IList<PunchoutOrderMessageEntity>> GetPunchoutOrderMessagesByIdsAsync(IList<string> ids, string responseGroup);
 
     Task<IList<PunchoutOrderRequestEntity>> GetPunchoutOrderRequestsByIdsAsync(IList<string> ids, string responseGroup);
+
+    /// <summary>
+    /// The requisition items with the given cart line item ids from the sessions of the user and the configuration that returned a requisition.
+    /// </summary>
+    Task<IList<PunchoutRequisitionItemEntity>> GetReturnedRequisitionItemsAsync(string configurationId, string userId, IList<string> lineItemIds);
 
     /// <summary>
     /// Atomically marks the session token as redeemed.
@@ -36,4 +45,6 @@ public interface IPunchoutRepository : IRepository
     /// </summary>
     /// <returns>True if the session was returned by this call</returns>
     Task<bool> ReturnSessionAsync(string sessionId, DateTime now);
+
+    Task<IList<PunchoutOrderLineEntity>> GetPunchoutOrderLinesByIdsAsync(IList<string> ids, string responseGroup);
 }

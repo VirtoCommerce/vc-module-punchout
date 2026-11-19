@@ -23,6 +23,10 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
 
     public IQueryable<PunchoutOrderRequestEntity> PunchoutOrderRequests => DbContext.Set<PunchoutOrderRequestEntity>();
 
+    public IQueryable<PunchoutOrderLineEntity> PunchoutOrderLines => DbContext.Set<PunchoutOrderLineEntity>();
+
+    public IQueryable<PunchoutRequisitionItemEntity> PunchoutRequisitionItems => DbContext.Set<PunchoutRequisitionItemEntity>();
+
     public virtual async Task<IList<PunchoutSessionEntity>> GetPunchoutSessionsByIdsAsync(IList<string> ids, string responseGroup)
     {
         if (ids.IsNullOrEmpty())
@@ -66,9 +70,30 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
             return [];
         }
 
-        return ids.Count == 1
-            ? await PunchoutOrderMessages.Where(x => x.Id == ids.First()).ToListAsync()
-            : await PunchoutOrderMessages.Where(x => ids.Contains(x.Id)).ToListAsync();
+        var query = ids.Count == 1
+            ? PunchoutOrderMessages.Where(x => x.Id == ids.First())
+            : PunchoutOrderMessages.Where(x => ids.Contains(x.Id));
+
+        return await query.Include(x => x.Items).ToListAsync();
+    }
+
+    public virtual async Task<IList<PunchoutRequisitionItemEntity>> GetReturnedRequisitionItemsAsync(string configurationId, string userId, IList<string> lineItemIds)
+    {
+        if (string.IsNullOrEmpty(configurationId) || string.IsNullOrEmpty(userId) || lineItemIds.IsNullOrEmpty())
+        {
+            return [];
+        }
+
+        var returnedSessions = PunchoutSessions.Where(x =>
+            x.ConfigurationId == configurationId &&
+            x.UserId == userId &&
+            x.Status == ModuleConstants.SessionStatus.Returned);
+
+        return await PunchoutRequisitionItems
+            .Where(x => lineItemIds.Contains(x.LineItemId))
+            .Join(returnedSessions, item => item.SessionId, session => session.Id, (item, _) => item)
+            .AsNoTracking()
+            .ToListAsync();
     }
 
     public virtual async Task<string> RedeemSessionTokenAsync(string sessionTokenHash, DateTime now)
@@ -117,5 +142,17 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
                 .SetProperty(x => x.ModifiedDate, now));
 
         return affected == 1;
+    }
+
+    public virtual async Task<IList<PunchoutOrderLineEntity>> GetPunchoutOrderLinesByIdsAsync(IList<string> ids, string responseGroup)
+    {
+        if (ids.IsNullOrEmpty())
+        {
+            return [];
+        }
+
+        return ids.Count == 1
+            ? await PunchoutOrderLines.Where(x => x.Id == ids.First()).ToListAsync()
+            : await PunchoutOrderLines.Where(x => ids.Contains(x.Id)).ToListAsync();
     }
 }

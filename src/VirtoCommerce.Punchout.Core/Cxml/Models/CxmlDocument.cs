@@ -22,5 +22,11 @@ public class CxmlDocument
 
     [XmlElement("Message")]
     public CxmlMessage Message { get; set; }
+
+    /// <summary>
+    /// The document as it was received. Contains credentials, never store or log it as is.
+    /// </summary>
+    [XmlIgnore]
+    public string RawXml { get; set; }
 }
 

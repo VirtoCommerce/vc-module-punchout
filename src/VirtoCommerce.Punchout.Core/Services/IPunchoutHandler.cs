@@ -4,7 +4,8 @@ using VirtoCommerce.Punchout.Core.Models;
 namespace VirtoCommerce.Punchout.Core.Services;
 
 /// <summary>
-/// Extension point for the punchout transactions.
+/// Extension point for the punchout transactions. The processors authenticate and validate the requests,
+/// the handler runs the business logic: the cart, the requisition items and the customer order.
 /// </summary>
 public interface IPunchoutHandler
 {
@@ -14,12 +15,12 @@ public interface IPunchoutHandler
     Task HandleSetupAsync(PunchoutSetupHandlerContext context);
 
     /// <summary>
-    /// Builds the cXML PunchOutOrderMessage returned to the buyer
+    /// Builds the cXML PunchOutOrderMessage returned to the buyer and the snapshot of the sent requisition items
     /// </summary>
     Task HandleOrderMessageAsync(PunchoutOrderMessageHandlerContext context);
 
     /// <summary>
-    /// Processes the order request
+    /// Creates, updates or cancels the customer order of the purchase order
     /// </summary>
     Task HandleOrderRequestAsync(PunchoutOrderRequestHandlerContext context);
 }

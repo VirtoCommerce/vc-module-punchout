@@ -1,4 +1,6 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Platform.Core.Domain;
 using VirtoCommerce.Punchout.Core.Models;
@@ -12,6 +14,11 @@ public class PunchoutOrderMessageEntity : AuditableEntity, IDataEntity<PunchoutO
 
     public string Cxml { get; set; }
 
+    /// <summary>
+    /// The snapshot of the sent cart line items.
+    /// </summary>
+    public virtual ObservableCollection<PunchoutRequisitionItemEntity> Items { get; set; } = new NullCollection<PunchoutRequisitionItemEntity>();
+
     public virtual PunchoutOrderMessage ToModel(PunchoutOrderMessage model)
     {
         model.Id = Id;
@@ -22,6 +29,9 @@ public class PunchoutOrderMessageEntity : AuditableEntity, IDataEntity<PunchoutO
 
         model.Cxml = Cxml;
         model.SessionId = SessionId;
+        model.Items = Items
+            .Select(x => x.ToModel(AbstractTypeFactory<PunchoutRequisitionItem>.TryCreateInstance()))
+            .ToList();
 
         return model;
     }
@@ -39,6 +49,20 @@ public class PunchoutOrderMessageEntity : AuditableEntity, IDataEntity<PunchoutO
         SessionId = model.SessionId;
         Cxml = model.Cxml;
 
+        if (model.Items != null)
+        {
+            Items = new ObservableCollection<PunchoutRequisitionItemEntity>(model.Items.Select(x =>
+            {
+                var item = AbstractTypeFactory<PunchoutRequisitionItemEntity>.TryCreateInstance().FromModel(x, pkMap);
+
+                // Every item is from the message session
+                item.OrderMessageId = Id;
+                item.SessionId = SessionId;
+
+                return item;
+            }));
+        }
+
         return this;
     }
 
@@ -46,5 +70,10 @@ public class PunchoutOrderMessageEntity : AuditableEntity, IDataEntity<PunchoutO
     {
         target.SessionId = SessionId;
         target.Cxml = Cxml;
+
+        if (!Items.IsNullCollection())
+        {
+            Items.Patch(target.Items, (sourceItem, targetItem) => sourceItem.Patch(targetItem));
+        }
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using VirtoCommerce.Punchout.Core.Cxml;
 using VirtoCommerce.Punchout.Core.Cxml.Models;
+using VirtoCommerce.Punchout.Data.Cxml;
 using VirtoCommerce.Punchout.Data.Cxml.Services;
 using Xunit;
 
@@ -149,5 +150,59 @@ public class PunchoutOrderMapperTests
         Assert.Equal(3, distribution.Segments.Count);
         Assert.Equal("Account", distribution.Segments[1].Type);
         Assert.Equal("530000", distribution.Segments[1].Id);
+    }
+
+    [Fact]
+    public void MapRequest_NewOrder_HasNoVersionReferenceOrCxmlWithoutRawXml()
+    {
+        var document = new CxmlSerializer().Deserialize<CxmlDocument>(OrderRequestXml);
+        var mapper = new PunchoutOrderMapper(new CxmlResponseFactory());
+
+        var request = mapper.MapRequest(document);
+
+        Assert.Null(request.OrderVersion);
+        Assert.Null(request.PreviousPayloadId);
+        Assert.Null(request.Cxml);
+    }
+
+    [Fact]
+    public void MapRequest_UpdateOrder_MapsVersionReferenceAndCxmlWithoutSecret()
+    {
+        var xml = OrderRequestXml
+            .Replace("type=\"new\">", "type=\"update\" orderVersion=\"2\"><DocumentReference payloadID=\"msg-001\"/>")
+            .Replace("<Identity>Test101</Identity>", "<Identity>Test101</Identity><DigitalSignature>signature</DigitalSignature>");
+
+        var document = new CxmlSerializer().Deserialize<CxmlDocument>(xml);
+        document.RawXml = xml;
+        var mapper = new PunchoutOrderMapper(new CxmlResponseFactory());
+
+        var request = mapper.MapRequest(document);
+
+        Assert.Equal(CxmlConstants.OrderRequestType.Update, request.OrderType);
+        Assert.Equal("2", request.OrderVersion);
+        Assert.Equal("msg-001", request.PreviousPayloadId);
+        Assert.Equal("P@ssW0rd", request.SharedSecret);
+
+        Assert.NotNull(request.Cxml);
+        Assert.DoesNotContain("SharedSecret", request.Cxml);
+        Assert.DoesNotContain("P@ssW0rd", request.Cxml);
+        Assert.DoesNotContain("DigitalSignature", request.Cxml);
+        Assert.Contains("<Identity>Test101</Identity>", request.Cxml);
+        Assert.Contains("payloadID=\"msg-001\"", request.Cxml);
+
+        // The stored document is still a valid cXML document
+        var storedDocument = new CxmlSerializer().Deserialize<CxmlDocument>(request.Cxml);
+        Assert.Null(storedDocument.Header.Sender.Credential.SharedSecret);
+        Assert.Equal("758494", storedDocument.Request.OrderRequest.OrderRequestHeader.OrderId);
+        Assert.Equal("msg-001", storedDocument.Request.OrderRequest.OrderRequestHeader.DocumentReference.PayloadId);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("<cXML><Header><Sender><Credential><SharedSecret>secret</SharedSecret>")]
+    public void RemoveSecrets_InvalidXml_ReturnsNull(string xml)
+    {
+        Assert.Null(CxmlSanitizer.RemoveSecrets(xml));
     }
 }

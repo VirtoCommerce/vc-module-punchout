@@ -14,7 +14,7 @@ namespace VirtoCommerce.Punchout.Web.Controllers.Api;
 
 [Authorize]
 [Route("api/punchout/cxml")]
-public class PunchoutController : Controller
+public partial class PunchoutController : Controller
 {
     private readonly ICxmlSerializer _serializer;
     private readonly ICxmlRequestDispatcher _dispatcher;
@@ -47,10 +47,11 @@ public class PunchoutController : Controller
         try
         {
             request = _serializer.Deserialize<CxmlDocument>(xml);
+            request.RawXml = xml;
         }
         catch (Exception ex) when (ex is XmlException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Failed to deserialize a cXML request.");
+            LogDeserializationFailed(ex);
 
             return CxmlResponse(_responseFactory.CreateResponse(CxmlConstants.Status.BadRequestCode, CxmlConstants.Status.BadRequestText,
                 "The request body is not a well-formed cXML document."));
@@ -64,7 +65,7 @@ public class PunchoutController : Controller
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to process cXML request '{PayloadId}'.", request.PayloadId);
+            LogRequestFailed(ex, request.PayloadId);
 
             response = _responseFactory.CreateResponse(CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText);
         }
@@ -82,4 +83,10 @@ public class PunchoutController : Controller
 
         return Content(responseXml, "text/xml", Encoding.UTF8);
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to deserialize a cXML request.")]
+    private partial void LogDeserializationFailed(Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to process cXML request '{PayloadId}'.")]
+    private partial void LogRequestFailed(Exception ex, string payloadId);
 }

@@ -16,7 +16,7 @@ using VirtoCommerce.StoreModule.Core.Services;
 
 namespace VirtoCommerce.Punchout.Data.Services;
 
-public class PunchoutSetupProcessor(
+public partial class PunchoutSetupProcessor(
     IOptions<PunchoutOptions> options,
     IPunchoutUserMappingSearchService userMappingSearchService,
     IPunchoutSessionService sessionService,
@@ -56,16 +56,14 @@ public class PunchoutSetupProcessor(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Punchout '{HandlerName}' handler failed to process setup for sender identity '{SenderIdentity}'.",
-                handler.GetType().Name, request.Sender);
+            LogHandlerFailed(ex, handler.GetType().Name, request.Sender);
 
             return PunchoutSetupResult.Error(PunchoutSetupStatus.SetupError);
         }
 
         if (handlerContext.IsFailed)
         {
-            logger.LogWarning("Punchout '{HandlerName}' handler failed to process setup for session '{SessionId}' with status '{Status}': {Message}",
-                handler.GetType().Name, session.Id, handlerContext.ErrorCode, handlerContext.ErrorMessage);
+            LogSetupFailed(handler.GetType().Name, session.Id, handlerContext.ErrorCode, handlerContext.ErrorMessage);
 
             return PunchoutSetupResult.Error(handlerContext.ErrorCode, handlerContext.ErrorMessage);
         }
@@ -99,9 +97,7 @@ public class PunchoutSetupProcessor(
     {
         if (Options.Configurations.IsNullOrEmpty())
         {
-            logger.LogError("Punchout is not configured: the '{Section}' configuration section has no {Configurations}.",
-                ModuleConstants.ConfigurationSections.ConfigurationKey,
-                nameof(Options.Configurations));
+            LogNoConfigurations(ModuleConstants.ConfigurationSections.ConfigurationKey, nameof(Options.Configurations));
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.InvalidCredentials);
         }
@@ -110,33 +106,28 @@ public class PunchoutSetupProcessor(
 
         if (settings is null)
         {
-            logger.LogWarning("Punchout setup rejected for sender identity '{SenderIdentity}': no configuration matches the shared secret.",
-                request.Sender);
+            LogConfigurationNotMatched(request.Sender);
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.InvalidCredentials);
         }
 
         if (string.IsNullOrEmpty(settings.Id) || string.IsNullOrEmpty(settings.StoreId))
         {
-            logger.LogError("Punchout is not configured: the configuration matched for sender identity '{SenderIdentity}' has no {Missing}.",
-                request.Sender,
-                string.IsNullOrEmpty(settings.Id) ? nameof(settings.Id) : nameof(settings.StoreId));
+            LogConfigurationIncomplete(request.Sender, string.IsNullOrEmpty(settings.Id) ? nameof(settings.Id) : nameof(settings.StoreId));
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
         }
 
         if (!AreCredentialsValid(request, settings))
         {
-            logger.LogWarning("Punchout setup rejected for sender identity '{SenderIdentity}': invalid credentials.",
-                request.Sender);
+            LogInvalidCredentials(request.Sender);
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.InvalidCredentials);
         }
 
         if (!IsReturnUrlAllowed(request.ReturnUrl, settings))
         {
-            logger.LogWarning("Punchout setup rejected for sender identity '{SenderIdentity}': the return URL '{ReturnUrl}' is not allowed.",
-                request.Sender, request.ReturnUrl);
+            LogReturnUrlNotAllowed(request.Sender, request.ReturnUrl);
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.ReturnUrlNotAllowed);
         }
@@ -145,8 +136,7 @@ public class PunchoutSetupProcessor(
 
         if (userMapping is null)
         {
-            logger.LogWarning("Punchout setup rejected: sender identity '{SenderIdentity}' is not linked to any user.",
-                request.Sender);
+            LogUserNotFound(request.Sender);
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.UserNotFound);
         }
@@ -155,8 +145,7 @@ public class PunchoutSetupProcessor(
 
         if (store is null)
         {
-            logger.LogWarning("Punchout setup rejected for sender identity '{SenderIdentity}': store '{StoreId}' does not exist or punchout is disabled for it.",
-                request.Sender, settings.StoreId);
+            LogStoreNotConfigured(request.Sender, settings.StoreId);
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
         }
@@ -165,8 +154,7 @@ public class PunchoutSetupProcessor(
 
         if (string.IsNullOrEmpty(storefrontUrl))
         {
-            logger.LogError("Punchout is configured for store '{StoreId}', which has no storefront URL.",
-                settings.StoreId);
+            LogStorefrontUrlMissing(settings.StoreId);
 
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
         }
@@ -251,4 +239,44 @@ public class PunchoutSetupProcessor(
     {
         return $"{startPage}/{sessionToken}";
     }
+
+    [LoggerMessage(Level = LogLevel.Error,
+        Message = "Punchout '{HandlerName}' handler failed to process setup for sender identity '{SenderIdentity}'.")]
+    private partial void LogHandlerFailed(Exception ex, string handlerName, string senderIdentity);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout '{HandlerName}' handler failed to process setup for session '{SessionId}' with status '{Status}': {Message}")]
+    private partial void LogSetupFailed(string handlerName, string sessionId, string status, string message);
+
+    [LoggerMessage(Level = LogLevel.Error,
+        Message = "Punchout is not configured: the '{Section}' configuration section has no {Configurations}.")]
+    private partial void LogNoConfigurations(string section, string configurations);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout setup rejected for sender identity '{SenderIdentity}': no configuration matches the shared secret.")]
+    private partial void LogConfigurationNotMatched(string senderIdentity);
+
+    [LoggerMessage(Level = LogLevel.Error,
+        Message = "Punchout is not configured: the configuration matched for sender identity '{SenderIdentity}' has no {Missing}.")]
+    private partial void LogConfigurationIncomplete(string senderIdentity, string missing);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout setup rejected for sender identity '{SenderIdentity}': invalid credentials.")]
+    private partial void LogInvalidCredentials(string senderIdentity);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout setup rejected for sender identity '{SenderIdentity}': the return URL '{ReturnUrl}' is not allowed.")]
+    private partial void LogReturnUrlNotAllowed(string senderIdentity, string returnUrl);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout setup rejected: sender identity '{SenderIdentity}' is not linked to any user.")]
+    private partial void LogUserNotFound(string senderIdentity);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout setup rejected for sender identity '{SenderIdentity}': store '{StoreId}' does not exist or punchout is disabled for it.")]
+    private partial void LogStoreNotConfigured(string senderIdentity, string storeId);
+
+    [LoggerMessage(Level = LogLevel.Error,
+        Message = "Punchout is configured for store '{StoreId}', which has no storefront URL.")]
+    private partial void LogStorefrontUrlMissing(string storeId);
 }

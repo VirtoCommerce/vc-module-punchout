@@ -17,7 +17,7 @@ using VirtoCommerce.StoreModule.Core.Services;
 
 namespace VirtoCommerce.Punchout.Data.Services;
 
-public class PunchoutOrderRequestProcessor(
+public partial class PunchoutOrderRequestProcessor(
     IOptions<PunchoutOptions> options,
     IPunchoutUserMappingSearchService userMappingSearchService,
     IStoreService storeService,
@@ -92,16 +92,14 @@ public class PunchoutOrderRequestProcessor(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Punchout '{HandlerName}' handler failed to process order '{PurchaseOrderNumber}'",
-                handler.GetType().Name, request.OrderId);
+            LogHandlerException(ex, handler.GetType().Name, request.OrderId);
 
             return PunchoutOrderResult.Error(PunchoutOrderStatus.OrderError);
         }
 
         if (handlerContext.IsFailed)
         {
-            logger.LogWarning("Punchout '{HandlerName}' handler failed to process order '{PurchaseOrderNumber}' with status '{Status}': {Message}",
-                handler.GetType().Name, request.OrderId, handlerContext.ErrorCode, handlerContext.ErrorMessage);
+            LogHandlerFailed(handler.GetType().Name, request.OrderId, handlerContext.ErrorCode, handlerContext.ErrorMessage);
 
             return PunchoutOrderResult.Error(handlerContext.ErrorCode, handlerContext.ErrorMessage);
         }
@@ -181,8 +179,7 @@ public class PunchoutOrderRequestProcessor(
                 throw;
             }
 
-            logger.LogWarning(ex, "Punchout order request '{OrderId}' with payload '{PayloadId}' is already stored by request '{ExistingRequestId}'.",
-                request.OrderId, request.PayloadId, concurrentRequest.Id);
+            LogStoredByConcurrentRequest(ex, request.OrderId, request.PayloadId, concurrentRequest.Id);
 
             return GetExistingRequestResult(request, concurrentRequest)
                 ?? PunchoutOrderResult.Error(PunchoutOrderStatus.OrderInProgress, "The order is being processed, please retry later.");
@@ -213,8 +210,7 @@ public class PunchoutOrderRequestProcessor(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Punchout order request '{PurchaseOrderNumber}' with payload '{PayloadId}' cannot be stored with status '{Status}', customer order '{CustomerOrderId}'.",
-                orderRequest.PurchaseOrderNumber, orderRequest.PayloadId, status, result.CustomerOrderId);
+            LogOrderRequestNotStored(ex, orderRequest.PurchaseOrderNumber, orderRequest.PayloadId, status, result.CustomerOrderId);
         }
     }
 
@@ -286,14 +282,12 @@ public class PunchoutOrderRequestProcessor(
         switch (existingRequest.Status)
         {
             case PunchoutOrderRequestStatus.Completed:
-                logger.LogInformation("Punchout order request '{OrderId}' with payload '{PayloadId}' is already processed by request '{ExistingRequestId}', returning the stored result.",
-                    request.OrderId, request.PayloadId, existingRequest.Id);
+                LogAlreadyProcessed(request.OrderId, request.PayloadId, existingRequest.Id);
 
                 return PunchoutOrderResult.Success(existingRequest.CustomerOrderId, existingRequest.PurchaseOrderNumber);
 
             case PunchoutOrderRequestStatus.Processing:
-                logger.LogWarning("Punchout order request '{OrderId}' with payload '{PayloadId}' is being processed by request '{ExistingRequestId}'.",
-                    request.OrderId, request.PayloadId, existingRequest.Id);
+                LogBeingProcessed(request.OrderId, request.PayloadId, existingRequest.Id);
 
                 return PunchoutOrderResult.Error(PunchoutOrderStatus.OrderInProgress, "The order is being processed, please retry later.");
 
@@ -306,9 +300,7 @@ public class PunchoutOrderRequestProcessor(
     {
         if (Options.Configurations.IsNullOrEmpty())
         {
-            logger.LogError("Punchout is not configured: the '{Section}' configuration section has no {Configurations}.",
-                ModuleConstants.ConfigurationSections.ConfigurationKey,
-                nameof(Options.Configurations));
+            LogNotConfigured(ModuleConstants.ConfigurationSections.ConfigurationKey, nameof(Options.Configurations));
 
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidCredentials);
         }
@@ -317,25 +309,21 @@ public class PunchoutOrderRequestProcessor(
 
         if (settings is null)
         {
-            logger.LogWarning("Punchout order request rejected for sender identity '{SenderIdentity}': no configuration matches the shared secret.",
-                request.Sender);
+            LogConfigurationNotFound(request.Sender);
 
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidCredentials);
         }
 
         if (string.IsNullOrEmpty(settings.Id) || string.IsNullOrEmpty(settings.StoreId))
         {
-            logger.LogError("Punchout is not configured: the configuration matched for sender identity '{SenderIdentity}' has no {Missing}.",
-                request.Sender,
-                string.IsNullOrEmpty(settings.Id) ? nameof(settings.Id) : nameof(settings.StoreId));
+            LogConfigurationIncomplete(request.Sender, string.IsNullOrEmpty(settings.Id) ? nameof(settings.Id) : nameof(settings.StoreId));
 
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.StoreNotConfigured);
         }
 
         if (!AreCredentialsValid(request, settings))
         {
-            logger.LogWarning("Punchout order request rejected for sender identity '{SenderIdentity}': invalid credentials.",
-                request.Sender);
+            LogInvalidCredentials(request.Sender);
 
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidCredentials);
         }
@@ -344,8 +332,7 @@ public class PunchoutOrderRequestProcessor(
 
         if (userMapping is null)
         {
-            logger.LogWarning("Punchout order request rejected: sender identity '{SenderIdentity}' is not linked to any user.",
-                request.Sender);
+            LogUserNotFound(request.Sender);
 
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.UserNotFound, null, settings);
         }
@@ -354,16 +341,14 @@ public class PunchoutOrderRequestProcessor(
 
         if (store is null)
         {
-            logger.LogWarning("Punchout order request rejected for sender identity '{SenderIdentity}': store '{StoreId}' does not exist or punchout is disabled for it.",
-                request.Sender, settings.StoreId);
+            LogStoreNotConfigured(request.Sender, settings.StoreId);
 
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.StoreNotConfigured, null, settings, userMapping);
         }
 
         if (!IsOrderTypeSupported(request.OrderType))
         {
-            logger.LogWarning("Punchout order request '{OrderId}' rejected for sender identity '{SenderIdentity}': order type '{OrderType}' is not supported.",
-                request.OrderId, request.Sender, request.OrderType);
+            LogUnsupportedOrderType(request.OrderId, request.Sender, request.OrderType);
 
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.UnsupportedOrderType,
                 $"Order type '{request.OrderType}' is not supported.", settings, userMapping, store);
@@ -376,16 +361,14 @@ public class PunchoutOrderRequestProcessor(
         {
             var validationError = requestValidationResult.Errors.First().ErrorMessage;
 
-            logger.LogWarning("Punchout order request '{OrderId}' rejected for sender identity '{SenderIdentity}': {Message}",
-                request.OrderId, request.Sender, validationError);
+            LogInvalidRequest(request.OrderId, request.Sender, validationError);
 
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest, validationError, settings, userMapping, store);
         }
 
         if (!IsCurrencySupported(request.Currency, store))
         {
-            logger.LogWarning("Punchout order request '{OrderId}' rejected for sender identity '{SenderIdentity}': currency '{Currency}' is not available in store '{StoreId}'.",
-                request.OrderId, request.Sender, request.Currency, store.Id);
+            LogCurrencyNotSupported(request.OrderId, request.Sender, request.Currency, store.Id);
 
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.CurrencyNotSupported,
                 $"Currency '{request.Currency}' is not supported.", settings, userMapping, store);
@@ -418,8 +401,7 @@ public class PunchoutOrderRequestProcessor(
         // Two versions applied at the same time would overwrite each other
         if (await IsOrderInProgressAsync(request, settings))
         {
-            logger.LogWarning("Punchout order request '{OrderId}' with payload '{PayloadId}' rejected: another version of the order is being processed.",
-                request.OrderId, request.PayloadId);
+            LogAnotherVersionInProgress(request.OrderId, request.PayloadId);
 
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.OrderInProgress,
                 "Another version of the order is being processed, please retry later.", settings, userMapping, store);
@@ -429,8 +411,7 @@ public class PunchoutOrderRequestProcessor(
 
         if (errorMessage is not null)
         {
-            logger.LogWarning("Punchout order request '{OrderId}' with payload '{PayloadId}' rejected: {Message}",
-                request.OrderId, request.PayloadId, errorMessage);
+            LogInvalidDocumentReference(request.OrderId, request.PayloadId, errorMessage);
 
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest, errorMessage, settings, userMapping, store);
         }
@@ -441,8 +422,7 @@ public class PunchoutOrderRequestProcessor(
 
         if (errorMessage is not null)
         {
-            logger.LogWarning("Punchout order request '{OrderId}' with payload '{PayloadId}' rejected, current version is stored by request '{CurrentRequestId}': {Message}",
-                request.OrderId, request.PayloadId, currentRequest?.Id, errorMessage);
+            LogVersionRejected(request.OrderId, request.PayloadId, currentRequest?.Id, errorMessage);
 
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest, errorMessage, settings, userMapping, store);
         }
@@ -451,8 +431,7 @@ public class PunchoutOrderRequestProcessor(
         // The update is then created from the requisition, its items still reference the punchout session.
         if (currentRequest is null && IsUpdateOrder(request.OrderType))
         {
-            logger.LogInformation("Punchout order request '{OrderId}' with payload '{PayloadId}': no version of the order is processed, the update is created as a new order.",
-                request.OrderId, request.PayloadId);
+            LogUpdateCreatedAsNewOrder(request.OrderId, request.PayloadId);
 
             return await ValidateNewOrderAsync(request, settings, userMapping, store);
         }
@@ -461,16 +440,14 @@ public class PunchoutOrderRequestProcessor(
         // The handler accepts it without a previous request, so the buyer does not get an error for the cancellation.
         if (string.IsNullOrEmpty(currentRequest?.CustomerOrderId) && IsDeleteOrder(request.OrderType))
         {
-            logger.LogInformation("Punchout order request '{OrderId}' with payload '{PayloadId}': no customer order exists for the purchase order, the delete is accepted without changes.",
-                request.OrderId, request.PayloadId);
+            LogDeleteWithoutCustomerOrder(request.OrderId, request.PayloadId);
 
             return PunchoutOrderValidationResult.ValidUpdate(settings, userMapping, store, null);
         }
 
         if (string.IsNullOrEmpty(currentRequest?.CustomerOrderId))
         {
-            logger.LogWarning("Punchout order request '{OrderId}' with payload '{PayloadId}' rejected: the order to change is not found.",
-                request.OrderId, request.PayloadId);
+            LogOrderToChangeNotFound(request.OrderId, request.PayloadId);
 
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest,
                 $"Order '{request.OrderId}' is not found.", settings, userMapping, store);
@@ -480,8 +457,7 @@ public class PunchoutOrderRequestProcessor(
 
         if (errorMessage is not null)
         {
-            logger.LogWarning("Punchout order request '{OrderId}' with payload '{PayloadId}' rejected, current version is stored by request '{CurrentRequestId}': {Message}",
-                request.OrderId, request.PayloadId, currentRequest.Id, errorMessage);
+            LogVersionRejected(request.OrderId, request.PayloadId, currentRequest.Id, errorMessage);
 
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest, errorMessage, settings, userMapping, store);
         }
@@ -510,8 +486,7 @@ public class PunchoutOrderRequestProcessor(
         if (referencedRequest is null)
         {
             // The previous version may have been sent before the order requests were stored, the order number is enough
-            logger.LogInformation("Punchout order request '{OrderId}' with payload '{PayloadId}' references unknown payload '{PreviousPayloadId}'.",
-                request.OrderId, request.PayloadId, request.PreviousPayloadId);
+            LogUnknownDocumentReference(request.OrderId, request.PayloadId, request.PreviousPayloadId);
 
             return null;
         }
@@ -655,4 +630,70 @@ public class PunchoutOrderRequestProcessor(
     {
         return value?.Length > maxLength ? value[..maxLength] : value;
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Punchout '{HandlerName}' handler failed to process order '{PurchaseOrderNumber}'")]
+    private partial void LogHandlerException(Exception ex, string handlerName, string purchaseOrderNumber);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout '{HandlerName}' handler failed to process order '{PurchaseOrderNumber}' with status '{Status}': {Message}")]
+    private partial void LogHandlerFailed(string handlerName, string purchaseOrderNumber, string status, string message);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request '{OrderId}' with payload '{PayloadId}' is already stored by request '{ExistingRequestId}'.")]
+    private partial void LogStoredByConcurrentRequest(Exception ex, string orderId, string payloadId, string existingRequestId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Punchout order request '{PurchaseOrderNumber}' with payload '{PayloadId}' cannot be stored with status '{Status}', customer order '{CustomerOrderId}'.")]
+    private partial void LogOrderRequestNotStored(Exception ex, string purchaseOrderNumber, string payloadId, string status, string customerOrderId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Punchout order request '{OrderId}' with payload '{PayloadId}' is already processed by request '{ExistingRequestId}', returning the stored result.")]
+    private partial void LogAlreadyProcessed(string orderId, string payloadId, string existingRequestId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request '{OrderId}' with payload '{PayloadId}' is being processed by request '{ExistingRequestId}'.")]
+    private partial void LogBeingProcessed(string orderId, string payloadId, string existingRequestId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Punchout is not configured: the '{Section}' configuration section has no {Configurations}.")]
+    private partial void LogNotConfigured(string section, string configurations);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request rejected for sender identity '{SenderIdentity}': no configuration matches the shared secret.")]
+    private partial void LogConfigurationNotFound(string senderIdentity);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Punchout is not configured: the configuration matched for sender identity '{SenderIdentity}' has no {Missing}.")]
+    private partial void LogConfigurationIncomplete(string senderIdentity, string missing);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request rejected for sender identity '{SenderIdentity}': invalid credentials.")]
+    private partial void LogInvalidCredentials(string senderIdentity);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request rejected: sender identity '{SenderIdentity}' is not linked to any user.")]
+    private partial void LogUserNotFound(string senderIdentity);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request rejected for sender identity '{SenderIdentity}': store '{StoreId}' does not exist or punchout is disabled for it.")]
+    private partial void LogStoreNotConfigured(string senderIdentity, string storeId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request '{OrderId}' rejected for sender identity '{SenderIdentity}': order type '{OrderType}' is not supported.")]
+    private partial void LogUnsupportedOrderType(string orderId, string senderIdentity, string orderType);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request '{OrderId}' rejected for sender identity '{SenderIdentity}': {Message}")]
+    private partial void LogInvalidRequest(string orderId, string senderIdentity, string message);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request '{OrderId}' rejected for sender identity '{SenderIdentity}': currency '{Currency}' is not available in store '{StoreId}'.")]
+    private partial void LogCurrencyNotSupported(string orderId, string senderIdentity, string currency, string storeId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request '{OrderId}' with payload '{PayloadId}' rejected: another version of the order is being processed.")]
+    private partial void LogAnotherVersionInProgress(string orderId, string payloadId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request '{OrderId}' with payload '{PayloadId}' rejected: {Message}")]
+    private partial void LogInvalidDocumentReference(string orderId, string payloadId, string message);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request '{OrderId}' with payload '{PayloadId}' rejected, current version is stored by request '{CurrentRequestId}': {Message}")]
+    private partial void LogVersionRejected(string orderId, string payloadId, string currentRequestId, string message);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Punchout order request '{OrderId}' with payload '{PayloadId}': no version of the order is processed, the update is created as a new order.")]
+    private partial void LogUpdateCreatedAsNewOrder(string orderId, string payloadId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Punchout order request '{OrderId}' with payload '{PayloadId}': no customer order exists for the purchase order, the delete is accepted without changes.")]
+    private partial void LogDeleteWithoutCustomerOrder(string orderId, string payloadId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request '{OrderId}' with payload '{PayloadId}' rejected: the order to change is not found.")]
+    private partial void LogOrderToChangeNotFound(string orderId, string payloadId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Punchout order request '{OrderId}' with payload '{PayloadId}' references unknown payload '{PreviousPayloadId}'.")]
+    private partial void LogUnknownDocumentReference(string orderId, string payloadId, string previousPayloadId);
 }

@@ -11,7 +11,7 @@ using VirtoCommerce.Punchout.Core.Services;
 
 namespace VirtoCommerce.Punchout.Data.Services;
 
-public class PunchoutRequisitionService(
+public partial class PunchoutRequisitionService(
     IPunchoutRequisitionItemService requisitionItemService,
     IPunchoutOrderLineService orderLineService,
     IPunchoutOrderLineSearchService orderLineSearchService,
@@ -155,8 +155,7 @@ public class PunchoutRequisitionService(
                 throw;
             }
 
-            logger.LogWarning(ex, "Punchout order request '{OrderId}' with payload '{PayloadId}': a requisition item is ordered by a concurrent purchase order.",
-                request.OrderId, request.PayloadId);
+            LogConcurrentReservation(ex, request.OrderId, request.PayloadId);
 
             return null;
         }
@@ -309,4 +308,8 @@ public class PunchoutRequisitionService(
     {
         return value?.Length > maxLength ? value[..maxLength] : value;
     }
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout order request '{OrderId}' with payload '{PayloadId}': a requisition item is ordered by a concurrent purchase order.")]
+    private partial void LogConcurrentReservation(Exception ex, string orderId, string payloadId);
 }

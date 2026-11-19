@@ -22,7 +22,7 @@ namespace VirtoCommerce.Punchout.ExperienceApi.Services;
 /// The requisition items are matched and reserved by <see cref="IPunchoutRequisitionService"/>,
 /// the customer order is changed by <see cref="IPunchoutCustomerOrderService"/>.
 /// </summary>
-public class DefaultPunchoutHandler(
+public partial class DefaultPunchoutHandler(
     IMediator mediator,
     ICxmlSerializer cxmlSerializer,
     IPunchoutOrderMessageBuilder orderMessageBuilder,
@@ -253,8 +253,7 @@ public class DefaultPunchoutHandler(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Punchout order items of purchase order '{PurchaseOrderNumber}' cannot be released after request '{OrderRequestId}'.",
-                context.Request.OrderId, context.OrderRequestId);
+            LogReleaseFailed(ex, context.Request.OrderId, context.OrderRequestId);
         }
     }
 
@@ -276,4 +275,8 @@ public class DefaultPunchoutHandler(
 
         return query;
     }
+
+    [LoggerMessage(Level = LogLevel.Error,
+        Message = "Punchout order items of purchase order '{PurchaseOrderNumber}' cannot be released after request '{OrderRequestId}'.")]
+    private partial void LogReleaseFailed(Exception ex, string purchaseOrderNumber, string orderRequestId);
 }

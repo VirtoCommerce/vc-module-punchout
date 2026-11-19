@@ -35,7 +35,7 @@ namespace VirtoCommerce.Punchout.ExperienceApi.Services;
 /// Creates, updates and cancels the customer order of a purchase order. The order lines are created from the requisition items
 /// matched by <see cref="Core.Services.IPunchoutRequisitionService"/>, with the prices sent to the buyer.
 /// </summary>
-public class PunchoutCustomerOrderService(
+public partial class PunchoutCustomerOrderService(
     ICustomerOrderService customerOrderService,
     ICustomerOrderTotalsCalculator customerOrderTotalsCalculator,
     ICustomerOrderBuilder customerOrderBuilder,
@@ -663,8 +663,7 @@ public class PunchoutCustomerOrderService(
         // No version of the purchase order created a customer order, the cancellation has nothing to change
         if (string.IsNullOrEmpty(context.PreviousRequest?.CustomerOrderId))
         {
-            logger.LogInformation("Punchout order '{PurchaseOrderNumber}' has no customer order, the cancellation is accepted without changes.",
-                context.Request.OrderId);
+            LogCancelWithoutCustomerOrder(context.Request.OrderId);
 
             context.Result.PurchaseOrderNumber = context.Request.OrderId;
             return;
@@ -684,8 +683,7 @@ public class PunchoutCustomerOrderService(
         // The buyer may send the delete again with a new payloadID, the order stays cancelled by the first one
         if (order.IsCancelled)
         {
-            logger.LogInformation("Punchout order '{PurchaseOrderNumber}' is already cancelled, customer order '{CustomerOrderId}'.",
-                context.Request.OrderId, order.Id);
+            LogAlreadyCancelled(context.Request.OrderId, order.Id);
             return;
         }
 
@@ -791,4 +789,12 @@ public class PunchoutCustomerOrderService(
             return isoCountryCode;
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Punchout order '{PurchaseOrderNumber}' has no customer order, the cancellation is accepted without changes.")]
+    private partial void LogCancelWithoutCustomerOrder(string purchaseOrderNumber);
+
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Punchout order '{PurchaseOrderNumber}' is already cancelled, customer order '{CustomerOrderId}'.")]
+    private partial void LogAlreadyCancelled(string purchaseOrderNumber, string customerOrderId);
 }

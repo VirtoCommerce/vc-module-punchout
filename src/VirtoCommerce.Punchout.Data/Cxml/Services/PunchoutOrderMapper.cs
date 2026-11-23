@@ -6,6 +6,7 @@ using VirtoCommerce.Punchout.Core.Cxml;
 using VirtoCommerce.Punchout.Core.Cxml.Models;
 using VirtoCommerce.Punchout.Core.Cxml.Services;
 using VirtoCommerce.Punchout.Core.Models;
+using VirtoCommerce.Punchout.Data.Cxml;
 using VirtoCommerce.Punchout.Data.Cxml.Extensions;
 
 namespace VirtoCommerce.Punchout.Data.Cxml.Services;
@@ -37,6 +38,9 @@ public class PunchoutOrderMapper(ICxmlResponseFactory responseFactory) : IPuncho
         orderContext.OrderId = orderHeader?.OrderId;
         orderContext.OrderDate = orderHeader?.OrderDate.ToDateTimeOffset();
         orderContext.OrderType = orderHeader?.Type;
+        orderContext.OrderVersion = orderHeader?.OrderVersion?.Trim();
+        orderContext.PreviousPayloadId = orderHeader?.DocumentReference?.PayloadId?.Trim();
+        orderContext.Cxml = MapCxml(document);
 
         orderContext.Currency = orderHeader?.Total?.Money?.Currency;
         orderContext.Total = orderHeader?.Total?.Money.ToDecimal();
@@ -82,6 +86,14 @@ public class PunchoutOrderMapper(ICxmlResponseFactory responseFactory) : IPuncho
             PunchoutOrderStatus.OrderInProgress => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
             _ => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
         };
+    }
+
+    /// <summary>
+    /// The received document is stored for the history of the order, the credentials must never reach the database.
+    /// </summary>
+    protected virtual string MapCxml(CxmlDocument document)
+    {
+        return CxmlSanitizer.RemoveSecrets(document.RawXml);
     }
 
     protected virtual PunchoutUserContext MapUser(IList<CxmlContact> contacts)

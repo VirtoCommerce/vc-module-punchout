@@ -12,7 +12,7 @@ using VirtoCommerce.StoreModule.Core.Services;
 
 namespace VirtoCommerce.Punchout.Data.Services;
 
-public class PunchoutOrderMessageProcessor(
+public partial class PunchoutOrderMessageProcessor(
     IOptions<PunchoutOptions> options,
     IPunchoutSessionService sessionService,
     IPunchoutSessionManagementService sessionManagementService,
@@ -52,23 +52,21 @@ public class PunchoutOrderMessageProcessor(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Punchout '{HandlerName}' handler failed to process order message for session '{SessionId}'.",
-                handler.GetType().Name, session.Id);
+            LogHandlerFailed(ex, handler.GetType().Name, session.Id);
 
             return CreateErrorResult(PunchoutOrderMessageStatus.MessageError);
         }
 
         if (handlerContext.IsFailed)
         {
-            logger.LogWarning("Punchout order message for session '{SessionId}' failed with status '{Status}': {Message}",
-                session.Id, handlerContext.ErrorCode, handlerContext.ErrorMessage);
+            LogOrderMessageFailed(session.Id, handlerContext.ErrorCode, handlerContext.ErrorMessage);
 
             return CreateErrorResult(handlerContext.ErrorCode);
         }
 
         if (handlerContext.Result == null || handlerContext.Result.Cxml.IsNullOrEmpty())
         {
-            logger.LogWarning("Punchout '{HandlerName}' handler did not set result Cxml", handler.GetType().Name);
+            LogResultCxmlNotSet(handler.GetType().Name);
 
             return CreateErrorResult(PunchoutOrderMessageStatus.MessageError);
         }
@@ -76,8 +74,7 @@ public class PunchoutOrderMessageProcessor(
         // One session transfers a requisition only once
         if (!await sessionManagementService.ReturnSessionAsync(session.Id))
         {
-            logger.LogWarning("Punchout order message rejected: session '{SessionId}' is already returned or expired.",
-                session.Id);
+            LogSessionAlreadyReturnedOrExpired(session.Id);
 
             return CreateErrorResult(PunchoutOrderMessageStatus.SessionExpired);
         }
@@ -86,7 +83,30 @@ public class PunchoutOrderMessageProcessor(
         var orderMessage = CreateOrderMessage(handlerContext);
         await orderMessageService.SaveChangesAsync([orderMessage]);
 
+        await CompleteOrderMessageAsync(handler, handlerContext);
+
         return handlerContext.Result;
+    }
+
+    /// <summary>
+    /// Calls the handler that implements <see cref="IPunchoutOrderMessageReturnedHandler"/>.
+    /// The requisition is already returned, a failure here is logged and does not change the result.
+    /// </summary>
+    protected virtual async Task CompleteOrderMessageAsync(IPunchoutHandler handler, PunchoutOrderMessageHandlerContext context)
+    {
+        if (handler is not IPunchoutOrderMessageReturnedHandler returnedHandler)
+        {
+            return;
+        }
+
+        try
+        {
+            await returnedHandler.HandleOrderMessageReturnedAsync(context);
+        }
+        catch (Exception ex)
+        {
+            LogHandlerCompletionFailed(ex, handler.GetType().Name, context.Session.Id);
+        }
     }
 
     protected virtual async Task<PunchoutOrderMessageValidationResult> ValidateAsync(PunchoutOrderMessageRequest request)
@@ -94,7 +114,7 @@ public class PunchoutOrderMessageProcessor(
         // No session id if the access token is not issued by the punchout grant
         if (request.SessionId.IsNullOrEmpty())
         {
-            logger.LogWarning("Punchout order message rejected: sessionId is not found in PunchoutOrderMessageRequest.");
+            LogSessionIdMissing();
 
             return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.SessionNotFound);
         }
@@ -102,8 +122,7 @@ public class PunchoutOrderMessageProcessor(
         var session = await sessionService.GetByIdAsync(request.SessionId);
         if (session == null)
         {
-            logger.LogWarning("Punchout order message rejected: session '{SessionId}' is not found.",
-                request.SessionId);
+            LogSessionNotFound(request.SessionId);
 
             return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.SessionNotFound);
         }
@@ -112,32 +131,28 @@ public class PunchoutOrderMessageProcessor(
 
         if (store is null)
         {
-            logger.LogWarning("Punchout order message rejected for session '{SessionId}': store '{StoreId}' does not exist or punchout is disabled for it.",
-                session.Id, session.StoreId);
+            LogStoreNotConfigured(session.Id, session.StoreId);
 
             return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.StoreNotConfigured);
         }
 
         if (!IsSessionOwner(session, request))
         {
-            logger.LogWarning("Punchout order message rejected: session '{SessionId}' is not for user '{UserId}' in store '{StoreId}'.",
-                request.SessionId, request.UserId, request.StoreId);
+            LogNotSessionOwner(request.SessionId, request.UserId, request.StoreId);
 
             return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.SessionNotFound);
         }
 
         if (IsSessionReturned(session))
         {
-            logger.LogWarning("Punchout order message rejected: session '{SessionId}' is already in returned state.",
-                request.SessionId);
+            LogSessionReturned(request.SessionId);
 
             return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.SessionReturned);
         }
 
         if (!IsSessionActive(session))
         {
-            logger.LogWarning("Punchout order message rejected: session '{SessionId}' is expired.",
-                session.Id);
+            LogSessionExpired(session.Id);
 
             return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.SessionExpired);
         }
@@ -146,8 +161,7 @@ public class PunchoutOrderMessageProcessor(
 
         if (configuration is null)
         {
-            logger.LogWarning("Configuration '{ConfigurationId}' of session '{SessionId}' was not found.",
-                session.ConfigurationId, session.Id);
+            LogConfigurationNotFound(session.ConfigurationId, session.Id);
 
             return PunchoutOrderMessageValidationResult.Invalid(PunchoutOrderMessageStatus.ConfigurationError);
         }
@@ -180,6 +194,7 @@ public class PunchoutOrderMessageProcessor(
 
         orderMessage.SessionId = context.Session.Id;
         orderMessage.Cxml = context.Result.Cxml;
+        orderMessage.Items = context.Items ?? [];
 
         return orderMessage;
     }
@@ -254,4 +269,52 @@ public class PunchoutOrderMessageProcessor(
 
         return context;
     }
+
+    [LoggerMessage(Level = LogLevel.Error,
+        Message = "Punchout '{HandlerName}' handler failed to process order message for session '{SessionId}'.")]
+    private partial void LogHandlerFailed(Exception ex, string handlerName, string sessionId);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout order message for session '{SessionId}' failed with status '{Status}': {Message}")]
+    private partial void LogOrderMessageFailed(string sessionId, string status, string message);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout '{HandlerName}' handler did not set result Cxml")]
+    private partial void LogResultCxmlNotSet(string handlerName);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout order message rejected: session '{SessionId}' is already returned or expired.")]
+    private partial void LogSessionAlreadyReturnedOrExpired(string sessionId);
+
+    [LoggerMessage(Level = LogLevel.Error,
+        Message = "Punchout '{HandlerName}' handler failed to complete the order message for session '{SessionId}'.")]
+    private partial void LogHandlerCompletionFailed(Exception ex, string handlerName, string sessionId);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout order message rejected: sessionId is not found in PunchoutOrderMessageRequest.")]
+    private partial void LogSessionIdMissing();
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout order message rejected: session '{SessionId}' is not found.")]
+    private partial void LogSessionNotFound(string sessionId);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout order message rejected for session '{SessionId}': store '{StoreId}' does not exist or punchout is disabled for it.")]
+    private partial void LogStoreNotConfigured(string sessionId, string storeId);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout order message rejected: session '{SessionId}' is not for user '{UserId}' in store '{StoreId}'.")]
+    private partial void LogNotSessionOwner(string sessionId, string userId, string storeId);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout order message rejected: session '{SessionId}' is already in returned state.")]
+    private partial void LogSessionReturned(string sessionId);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout order message rejected: session '{SessionId}' is expired.")]
+    private partial void LogSessionExpired(string sessionId);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Configuration '{ConfigurationId}' of session '{SessionId}' was not found.")]
+    private partial void LogConfigurationNotFound(string configurationId, string sessionId);
 }

@@ -6,7 +6,7 @@ using VirtoCommerce.Punchout.Core.Services;
 
 namespace VirtoCommerce.Punchout.Data.Services;
 
-public class PunchoutHandlerFactory(IServiceProvider serviceProvider, ILogger<PunchoutHandlerFactory> logger) : IPunchoutHandlerFactory
+public partial class PunchoutHandlerFactory(IServiceProvider serviceProvider, ILogger<PunchoutHandlerFactory> logger) : IPunchoutHandlerFactory
 {
     /// <summary>
     /// Returns the last non-keyed IPunchoutHandler when the configuration has no HandlerTypeName,
@@ -24,10 +24,13 @@ public class PunchoutHandlerFactory(IServiceProvider serviceProvider, ILogger<Pu
         var handler = serviceProvider.GetKeyedService<IPunchoutHandler>(handlerTypeName);
         if (handler == null)
         {
-            logger.LogWarning("Punchout handler '{HandlerTypeName}' is not registered. Register it with ServiceCollectionExtensions.AddPunchoutHandler",
-                handlerTypeName);
+            LogHandlerNotRegistered(handlerTypeName);
         }
 
         return handler;
     }
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout handler '{HandlerTypeName}' is not registered. Register it with ServiceCollectionExtensions.AddPunchoutHandler")]
+    private partial void LogHandlerNotRegistered(string handlerTypeName);
 }

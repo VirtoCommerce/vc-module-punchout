@@ -20,6 +20,12 @@ public class PunchoutOrderRequest : AuditableEntity, ICloneable
     // new, update, delete 
     public string OrderType { get; set; }
 
+    public string OrderVersion { get; set; }
+
+    public string PreviousPayloadId { get; set; }
+
+    public string Cxml { get; set; }
+
     public string PurchaseOrderNumber { get; set; }
 
     public DateTime? PurchaseOrderDate { get; set; }

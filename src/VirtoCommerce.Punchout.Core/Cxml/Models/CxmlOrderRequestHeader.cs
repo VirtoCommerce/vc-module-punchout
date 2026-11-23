@@ -20,6 +20,18 @@ public class CxmlOrderRequestHeader
     [XmlAttribute("type")]
     public string Type { get; set; }
 
+    /// <summary>
+    /// Version of the purchase order: 1 for the original order, incremented by each update or delete.
+    /// </summary>
+    [XmlAttribute("orderVersion")]
+    public string OrderVersion { get; set; }
+
+    /// <summary>
+    /// The previous version of the order, required for 'update' and 'delete'.
+    /// </summary>
+    [XmlElement("DocumentReference")]
+    public CxmlDocumentReference DocumentReference { get; set; }
+
     [XmlElement("Total")]
     public CxmlAmount Total { get; set; }
 

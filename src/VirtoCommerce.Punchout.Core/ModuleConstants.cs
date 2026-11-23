@@ -39,6 +39,19 @@ public static class ModuleConstants
             /// </summary>
             public const string ChannelSessionId = "channelSessionId";
         }
+
+        public static class Parameters
+        {
+            /// <summary>
+            /// The token request parameter with the current organization. The Customer module validates it and sets the organization_id claim from it.
+            /// </summary>
+            public const string OrganizationId = "organization_id";
+
+            /// <summary>
+            /// The organization of the punchout session, passed from the grant to the token request validators.
+            /// </summary>
+            public const string SessionOrganizationId = "punchoutSessionOrganizationId";
+        }
     }
 
     /// <summary>

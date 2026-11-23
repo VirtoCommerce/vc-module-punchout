@@ -327,6 +327,9 @@ public class PunchoutOrganizationSetupTests
 
             return Task.FromResult(result);
         }
+
+        public Task<bool> IsOrganizationUserAsync(ApplicationUser user, string organizationId) =>
+            throw new NotSupportedException();
     }
 
     /// <summary>

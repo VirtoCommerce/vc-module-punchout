@@ -12,9 +12,6 @@ public class PunchoutSetupValidationResult
 
     public PunchoutUserMapping UserMapping { get; set; }
 
-    /// <summary>
-    /// The mapped user, or the user resolved in the mapped organization.
-    /// </summary>
     public string UserId { get; set; }
 
     public string OrganizationId { get; set; }

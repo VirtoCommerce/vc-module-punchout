@@ -106,4 +106,16 @@ public class PunchoutOrganizationUserResolver(
 
         return users.Where(x => organizationMemberIds.Contains(x.MemberId)).ToList();
     }
+
+    public virtual async Task<bool> IsOrganizationUserAsync(ApplicationUser user, string organizationId)
+    {
+        if (user == null || string.IsNullOrEmpty(user.MemberId) || string.IsNullOrEmpty(organizationId))
+        {
+            return false;
+        }
+
+        var matches = await FilterOrganizationUsersAsync([user], organizationId);
+
+        return matches.Count > 0;
+    }
 }

@@ -110,6 +110,7 @@ public class Module : IModule, IHasConfiguration
 
         serviceCollection.AddTransient<IPunchoutSessionManagementService, PunchoutSessionManagementService>();
         serviceCollection.AddGrantTypeHandler<PunchoutGrantTypeHandler>(ModuleConstants.Security.PunchoutGrantType);
+        serviceCollection.AddSingleton<ITokenRequestValidator, PunchoutOrganizationRequestValidator>();
 
         // Register GraphQL schema
         _ = new GraphQLBuilder(serviceCollection, builder =>

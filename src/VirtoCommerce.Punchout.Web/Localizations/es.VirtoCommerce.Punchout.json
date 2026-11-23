@@ -28,6 +28,12 @@
           "memberId-mismatch": "El usuario no es una cuenta de seguridad del contacto especificado.",
           "user-is-admin-or-customer": "Solo se pueden asignar cuentas de tipo Customer que no sean de administrador."
         }
+      },
+      "organization-mapping-detail": {
+        "title": "Organización punchout",
+        "labels": {
+          "info": "Los usuarios de esta organización compran con sus propias cuentas. El usuario se identifica por el correo electrónico que el sistema de compras envía para el usuario final."
+        }
       }
     },
     "dialogs": {
@@ -43,6 +49,10 @@
     "widgets": {
       "user-mapping": {
         "title": "Usuario de Punchout",
+        "not-set": "No vinculado"
+      },
+      "organization-mapping": {
+        "title": "Organización punchout",
         "not-set": "No vinculado"
       }
     }

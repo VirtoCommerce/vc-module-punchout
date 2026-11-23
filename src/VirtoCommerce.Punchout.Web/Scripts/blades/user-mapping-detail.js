@@ -11,21 +11,32 @@ angular.module('VirtoCommerce.Punchout')
             blade.headIcon = 'fas fa-id-badge';
             blade.updatePermission = 'punchout:update';
             blade.metaFields = metaFormsService.getMetaFields("punchoutUserMappingDetail");
+            // A contact is mapped through its security account, an organization is mapped as a whole
+            $scope.isOrganization = blade.member.memberType === 'Organization';
             $scope.securityAccounts = (blade.member && blade.member.securityAccounts) || [];
 
             blade.refresh = function () {
                 blade.isLoading = true;
 
-                // one contact has one mapping
-                userMappings.search({ memberIds: [blade.member.id], take: 1 }, function (searchResult) {
+                // one contact or organization has one mapping
+                var criteria = $scope.isOrganization
+                    ? { organizationIds: [blade.member.id], take: 1 }
+                    : { memberIds: [blade.member.id], take: 1 };
+
+                userMappings.search(criteria, function (searchResult) {
                     if (searchResult.results.length) {
                         initialize(searchResult.results[0]);
                     } else {
                         userMappings.getNew({}, function (data) {
-                            data.memberId = blade.member.id;
+                            if ($scope.isOrganization) {
+                                data.organizationId = blade.member.id;
+                                data.organizationName = blade.member.name;
+                            } else {
+                                data.memberId = blade.member.id;
 
-                            if ($scope.securityAccounts.length) {
-                                setUser(data, $scope.securityAccounts[0].id);
+                                if ($scope.securityAccounts.length) {
+                                    setUser(data, $scope.securityAccounts[0].id);
+                                }
                             }
 
                             initialize(data);
@@ -78,7 +89,7 @@ angular.module('VirtoCommerce.Punchout')
             }
 
             function canSave() {
-                return isDirty() && isFormValid() && $scope.securityAccounts.length;
+                return isDirty() && isFormValid() && ($scope.isOrganization || $scope.securityAccounts.length);
             }
 
             $scope.isValid = canSave;

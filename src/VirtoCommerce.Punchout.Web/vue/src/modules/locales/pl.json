@@ -1,7 +1,8 @@
 {
   "PUNCHOUT": {
     "WIDGET": {
-      "TITLE": "Użytkownik Punchout"
+      "TITLE": "Użytkownik Punchout",
+      "ORGANIZATION_TITLE": "Organizacja punchout"
     },
     "MAPPING": {
       "TITLE": "Użytkownik Punchout",
@@ -12,6 +13,10 @@
       "EXTERNAL_ID_HINT": "Wartość, którą system zakupowy wysyła w cXML Header/Sender/Credential/Identity.",
       "ACCOUNT": "Konto",
       "NO_ACCOUNTS": "Ten kontakt nie ma jeszcze konta zabezpieczeń. Najpierw je utwórz: sesja Punchout jest otwierana dla konta, a nie dla kontaktu."
+    },
+    "ORGANIZATION_MAPPING": {
+      "TITLE": "Organizacja punchout",
+      "INFO": "Użytkownicy tej organizacji robią zakupy na własnych kontach. Użytkownik jest wyszukiwany po adresie e-mail, który system zakupowy przesyła dla użytkownika końcowego."
     },
     "TOOLBAR": {
       "SAVE": "Zapisz",

@@ -1,7 +1,8 @@
 {
   "PUNCHOUT": {
     "WIDGET": {
-      "TITLE": "Punchout-käyttäjä"
+      "TITLE": "Punchout-käyttäjä",
+      "ORGANIZATION_TITLE": "Punchout-organisaatio"
     },
     "MAPPING": {
       "TITLE": "Punchout-käyttäjä",
@@ -12,6 +13,10 @@
       "EXTERNAL_ID_HINT": "Arvo, jonka hankintajärjestelmä lähettää kentässä cXML Header/Sender/Credential/Identity.",
       "ACCOUNT": "Tili",
       "NO_ACCOUNTS": "Tällä yhteyshenkilöllä ei ole vielä suojaustiliä. Luo se ensin: Punchout-istunto avataan tilille, ei yhteyshenkilölle."
+    },
+    "ORGANIZATION_MAPPING": {
+      "TITLE": "Punchout-organisaatio",
+      "INFO": "Tämän organisaation käyttäjät asioivat omilla tileillään. Käyttäjä tunnistetaan sähköpostiosoitteesta, jonka hankintajärjestelmä lähettää loppukäyttäjälle."
     },
     "TOOLBAR": {
       "SAVE": "Tallenna",

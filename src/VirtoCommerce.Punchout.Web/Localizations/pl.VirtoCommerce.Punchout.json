@@ -28,6 +28,12 @@
           "memberId-mismatch": "Użytkownik nie jest kontem zabezpieczeń wskazanego kontaktu.",
           "user-is-admin-or-customer": "Można mapować tylko konta typu Customer niebędące kontami administratora."
         }
+      },
+      "organization-mapping-detail": {
+        "title": "Organizacja punchout",
+        "labels": {
+          "info": "Użytkownicy tej organizacji robią zakupy na własnych kontach. Użytkownik jest wyszukiwany po adresie e-mail, który system zakupowy przesyła dla użytkownika końcowego."
+        }
       }
     },
     "dialogs": {
@@ -43,6 +49,10 @@
     "widgets": {
       "user-mapping": {
         "title": "Użytkownik Punchout",
+        "not-set": "Niepowiązany"
+      },
+      "organization-mapping": {
+        "title": "Organizacja punchout",
         "not-set": "Niepowiązany"
       }
     }

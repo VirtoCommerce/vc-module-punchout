@@ -28,6 +28,12 @@
           "memberId-mismatch": "该用户不是指定联系人的安全账户。",
           "user-is-admin-or-customer": "只能映射非管理员的 Customer 类型账户。"
         }
+      },
+      "organization-mapping-detail": {
+        "title": "Punchout 组织",
+        "labels": {
+          "info": "该组织的用户使用各自的账户购物。系统根据采购系统为最终用户发送的电子邮件查找用户。"
+        }
       }
     },
     "dialogs": {
@@ -43,6 +49,10 @@
     "widgets": {
       "user-mapping": {
         "title": "Punchout 用户",
+        "not-set": "未关联"
+      },
+      "organization-mapping": {
+        "title": "Punchout 组织",
         "not-set": "未关联"
       }
     }

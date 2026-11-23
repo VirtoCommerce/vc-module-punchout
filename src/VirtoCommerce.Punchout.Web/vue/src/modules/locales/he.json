@@ -1,7 +1,8 @@
 {
   "PUNCHOUT": {
     "WIDGET": {
-      "TITLE": "משתמש Punchout"
+      "TITLE": "משתמש Punchout",
+      "ORGANIZATION_TITLE": "ארגון Punchout"
     },
     "MAPPING": {
       "TITLE": "משתמש Punchout",
@@ -12,6 +13,10 @@
       "EXTERNAL_ID_HINT": "הערך שמערכת הרכש שולחת ב-cXML Header/Sender/Credential/Identity.",
       "ACCOUNT": "חשבון",
       "NO_ACCOUNTS": "לאיש קשר זה אין עדיין חשבון אבטחה. יש ליצור חשבון קודם: סשן Punchout נפתח עבור חשבון, לא עבור איש קשר."
+    },
+    "ORGANIZATION_MAPPING": {
+      "TITLE": "ארגון Punchout",
+      "INFO": "משתמשי הארגון קונים בחשבונות שלהם. המשתמש מזוהה לפי כתובת הדוא\"ל שמערכת הרכש שולחת עבור משתמש הקצה."
     },
     "TOOLBAR": {
       "SAVE": "שמירה",

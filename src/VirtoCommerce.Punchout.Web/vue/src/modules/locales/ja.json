@@ -1,7 +1,8 @@
 {
   "PUNCHOUT": {
     "WIDGET": {
-      "TITLE": "Punchout ユーザー"
+      "TITLE": "Punchout ユーザー",
+      "ORGANIZATION_TITLE": "パンチアウト組織"
     },
     "MAPPING": {
       "TITLE": "Punchout ユーザー",
@@ -12,6 +13,10 @@
       "EXTERNAL_ID_HINT": "調達システムが cXML Header/Sender/Credential/Identity で送信する値です。",
       "ACCOUNT": "アカウント",
       "NO_ACCOUNTS": "この連絡先にはまだセキュリティアカウントがありません。先に作成してください。Punchout セッションは連絡先ではなくアカウントに対して開かれます。"
+    },
+    "ORGANIZATION_MAPPING": {
+      "TITLE": "パンチアウト組織",
+      "INFO": "この組織のユーザーは各自のアカウントで購入します。ユーザーは、調達システムがエンドユーザーとして送信するメールアドレスで特定されます。"
     },
     "TOOLBAR": {
       "SAVE": "保存",

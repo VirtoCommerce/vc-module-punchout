@@ -28,6 +28,12 @@
           "memberId-mismatch": "Käyttäjä ei ole määritetyn yhteyshenkilön suojaustili.",
           "user-is-admin-or-customer": "Vain Customer-tyyppisiä tilejä, jotka eivät ole järjestelmänvalvojia, voidaan määrittää."
         }
+      },
+      "organization-mapping-detail": {
+        "title": "Punchout-organisaatio",
+        "labels": {
+          "info": "Tämän organisaation käyttäjät asioivat omilla tileillään. Käyttäjä tunnistetaan sähköpostiosoitteesta, jonka hankintajärjestelmä lähettää loppukäyttäjälle."
+        }
       }
     },
     "dialogs": {
@@ -43,6 +49,10 @@
     "widgets": {
       "user-mapping": {
         "title": "Punchout-käyttäjä",
+        "not-set": "Ei linkitetty"
+      },
+      "organization-mapping": {
+        "title": "Punchout-organisaatio",
         "not-set": "Ei linkitetty"
       }
     }

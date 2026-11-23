@@ -28,6 +28,12 @@
           "memberId-mismatch": "Der Benutzer ist kein Sicherheitskonto des angegebenen Kontakts.",
           "user-is-admin-or-customer": "Nur Konten vom Typ Customer ohne Administratorrechte können zugeordnet werden."
         }
+      },
+      "organization-mapping-detail": {
+        "title": "Punchout-Organisation",
+        "labels": {
+          "info": "Benutzer dieser Organisation kaufen mit ihren eigenen Konten ein. Der Benutzer wird anhand der E-Mail-Adresse ermittelt, die das Beschaffungssystem für den Endbenutzer sendet."
+        }
       }
     },
     "dialogs": {
@@ -43,6 +49,10 @@
     "widgets": {
       "user-mapping": {
         "title": "Punchout-Benutzer",
+        "not-set": "Nicht verknüpft"
+      },
+      "organization-mapping": {
+        "title": "Punchout-Organisation",
         "not-set": "Nicht verknüpft"
       }
     }

@@ -28,6 +28,12 @@
           "memberId-mismatch": "The user is not a security account of the specified contact.",
           "user-is-admin-or-customer": "Only non-administrator accounts of Customer type can be mapped."
         }
+      },
+      "organization-mapping-detail": {
+        "title": "Punchout organization",
+        "labels": {
+          "info": "Users of this organization shop under their own accounts. The user is found by the email the procurement system sends for the end user."
+        }
       }
     },
     "dialogs": {
@@ -43,6 +49,10 @@
     "widgets": {
       "user-mapping": {
         "title": "Punchout user",
+        "not-set": "Not linked"
+      },
+      "organization-mapping": {
+        "title": "Punchout organization",
         "not-set": "Not linked"
       }
     }

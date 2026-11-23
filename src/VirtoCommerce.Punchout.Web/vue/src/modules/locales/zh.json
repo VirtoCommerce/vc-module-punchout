@@ -1,7 +1,8 @@
 {
   "PUNCHOUT": {
     "WIDGET": {
-      "TITLE": "Punchout 用户"
+      "TITLE": "Punchout 用户",
+      "ORGANIZATION_TITLE": "Punchout 组织"
     },
     "MAPPING": {
       "TITLE": "Punchout 用户",
@@ -12,6 +13,10 @@
       "EXTERNAL_ID_HINT": "采购系统在 cXML Header/Sender/Credential/Identity 中发送的值。",
       "ACCOUNT": "账户",
       "NO_ACCOUNTS": "此联系人还没有安全账户。请先创建一个：Punchout 会话是为账户而不是为联系人打开的。"
+    },
+    "ORGANIZATION_MAPPING": {
+      "TITLE": "Punchout 组织",
+      "INFO": "该组织的用户使用各自的账户购物。系统根据采购系统为最终用户发送的电子邮件查找用户。"
     },
     "TOOLBAR": {
       "SAVE": "保存",

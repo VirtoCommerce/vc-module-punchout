@@ -1,7 +1,8 @@
 {
   "PUNCHOUT": {
     "WIDGET": {
-      "TITLE": "Punchout-användare"
+      "TITLE": "Punchout-användare",
+      "ORGANIZATION_TITLE": "Punchout-organisation"
     },
     "MAPPING": {
       "TITLE": "Punchout-användare",
@@ -12,6 +13,10 @@
       "EXTERNAL_ID_HINT": "Värdet som inköpssystemet skickar i cXML Header/Sender/Credential/Identity.",
       "ACCOUNT": "Konto",
       "NO_ACCOUNTS": "Den här kontakten har inget säkerhetskonto ännu. Skapa ett först: en Punchout-session öppnas för ett konto, inte för en kontakt."
+    },
+    "ORGANIZATION_MAPPING": {
+      "TITLE": "Punchout-organisation",
+      "INFO": "Användare i denna organisation handlar med sina egna konton. Användaren identifieras via den e-postadress som inköpssystemet skickar för slutanvändaren."
     },
     "TOOLBAR": {
       "SAVE": "Spara",

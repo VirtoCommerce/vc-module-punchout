@@ -28,6 +28,12 @@
           "memberId-mismatch": "Brukeren er ikke en sikkerhetskonto for den angitte kontakten.",
           "user-is-admin-or-customer": "Bare kontoer av typen Customer som ikke er administratorer, kan tilordnes."
         }
+      },
+      "organization-mapping-detail": {
+        "title": "Punchout-organisasjon",
+        "labels": {
+          "info": "Brukere i denne organisasjonen handler med sine egne kontoer. Brukeren finnes ut fra e-postadressen innkjøpssystemet sender for sluttbrukeren."
+        }
       }
     },
     "dialogs": {
@@ -43,6 +49,10 @@
     "widgets": {
       "user-mapping": {
         "title": "Punchout-bruker",
+        "not-set": "Ikke koblet"
+      },
+      "organization-mapping": {
+        "title": "Punchout-organisasjon",
         "not-set": "Ikke koblet"
       }
     }

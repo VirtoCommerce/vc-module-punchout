@@ -3,7 +3,7 @@
     <div class="list-count">
       <i class="fas fa-id-badge" ng-class="{'muted': !mapping}"></i>
     </div>
-    <div class="list-t">{{'punchout.widgets.user-mapping.title' | translate}}</div>
+    <div class="list-t">{{title() | translate}}</div>
     <div class="list-t" ng-if="mapping">{{mapping.externalId}}</div>
     <div class="list-t muted" ng-if="!mapping">{{'punchout.widgets.user-mapping.not-set' | translate}}</div>
   </div>

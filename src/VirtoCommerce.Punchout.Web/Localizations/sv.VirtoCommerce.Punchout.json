@@ -28,6 +28,12 @@
           "memberId-mismatch": "Användaren är inte ett säkerhetskonto för den angivna kontakten.",
           "user-is-admin-or-customer": "Endast konton av typen Customer som inte är administratörer kan mappas."
         }
+      },
+      "organization-mapping-detail": {
+        "title": "Punchout-organisation",
+        "labels": {
+          "info": "Användare i denna organisation handlar med sina egna konton. Användaren identifieras via den e-postadress som inköpssystemet skickar för slutanvändaren."
+        }
       }
     },
     "dialogs": {
@@ -43,6 +49,10 @@
     "widgets": {
       "user-mapping": {
         "title": "Punchout-användare",
+        "not-set": "Inte länkad"
+      },
+      "organization-mapping": {
+        "title": "Punchout-organisation",
         "not-set": "Inte länkad"
       }
     }

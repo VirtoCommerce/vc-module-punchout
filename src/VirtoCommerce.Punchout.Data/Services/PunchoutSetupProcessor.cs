@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Punchout.Core;
+using VirtoCommerce.Punchout.Core.Cxml;
 using VirtoCommerce.Punchout.Core.Extensions;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Security;
@@ -22,6 +23,7 @@ public partial class PunchoutSetupProcessor(
     IPunchoutSessionService sessionService,
     IStoreService storeService,
     IPunchoutHandlerFactory handlerFactory,
+    IPunchoutOrganizationUserResolver organizationUserResolver,
     ILogger<PunchoutSetupProcessor> logger)
     : BasePunchoutProcessor(options, userMappingSearchService), IPunchoutSetupProcessor
 {
@@ -41,7 +43,7 @@ public partial class PunchoutSetupProcessor(
         }
 
         var sessionToken = CreateSessionToken();
-        var session = CreateSession(request, validationResult.UserMapping, validationResult.Configuration, validationResult.StorefrontUrl, sessionToken);
+        var session = CreateSession(request, validationResult, sessionToken);
 
         var handler = handlerFactory.Create(validationResult.Configuration);
         if (handler == null)
@@ -111,7 +113,7 @@ public partial class PunchoutSetupProcessor(
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.InvalidCredentials);
         }
 
-        if (string.IsNullOrEmpty(settings.Id) || string.IsNullOrEmpty(settings.StoreId))
+        if (settings.Id.IsNullOrEmpty() || settings.StoreId.IsNullOrEmpty())
         {
             LogConfigurationIncomplete(request.Sender, string.IsNullOrEmpty(settings.Id) ? nameof(settings.Id) : nameof(settings.StoreId));
 
@@ -142,6 +144,22 @@ public partial class PunchoutSetupProcessor(
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.UserNotFound);
         }
 
+        var userId = userMapping.UserId;
+        string organizationId = null;
+
+        if (userMapping.IsOrganizationMapping)
+        {
+            var userResult = await ResolveOrganizationUserAsync(request, userMapping, settings);
+
+            if (userResult.Error != null)
+            {
+                return userResult;
+            }
+
+            userId = userResult.UserId;
+            organizationId = userMapping.OrganizationId;
+        }
+
         var store = await storeService.GetPunchoutStoreAsync(settings.StoreId);
 
         if (store is null)
@@ -160,7 +178,64 @@ public partial class PunchoutSetupProcessor(
             return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.StoreNotConfigured);
         }
 
-        return PunchoutSetupValidationResult.Valid(settings, userMapping, store, storefrontUrl);
+        return PunchoutSetupValidationResult.Valid(settings, userMapping, userId, organizationId, store, storefrontUrl);
+    }
+
+    /// <summary>
+    /// Finds the user of the mapped organization by the email of the end user. Returns either an error or the user id.
+    /// </summary>
+    protected virtual async Task<PunchoutSetupValidationResult> ResolveOrganizationUserAsync(
+        PunchoutSetupRequest request,
+        PunchoutUserMapping userMapping,
+        PunchoutConfiguration settings)
+    {
+        var email = GetUserEmail(request);
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            LogUserEmailMissing(userMapping.ExternalId, userMapping.OrganizationId);
+
+            return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.InvalidRequest, "The request contains no end user email.");
+        }
+
+        var userRequest = AbstractTypeFactory<PunchoutOrganizationUserRequest>.TryCreateInstance();
+        userRequest.OrganizationId = userMapping.OrganizationId;
+        userRequest.Email = email;
+        userRequest.StoreId = settings.StoreId;
+
+        var result = await organizationUserResolver.ResolveAsync(userRequest);
+
+        switch (result.Status)
+        {
+            case PunchoutOrganizationUserStatus.Found:
+                return new PunchoutSetupValidationResult { UserId = result.User.Id };
+
+            case PunchoutOrganizationUserStatus.Ambiguous:
+                LogAmbiguousUser(email, userMapping.OrganizationId, result.UserMatchCount);
+
+                return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.AmbiguousUser);
+
+            default:
+                LogOrganizationUserNotFound(email, userMapping.OrganizationId);
+
+                return PunchoutSetupValidationResult.Invalid(PunchoutSetupStatus.UserNotFound);
+        }
+    }
+
+    /// <summary>
+    /// The email of the end user: Contact role="endUser" or, when the contact has no email, the UserEmail extrinsic.
+    /// </summary>
+    protected virtual string GetUserEmail(PunchoutSetupRequest request)
+    {
+        var email = request.User?.Email;
+
+        if (string.IsNullOrWhiteSpace(email) &&
+            request.Extrinsics?.TryGetValue(CxmlConstants.ExtrinsicName.UserEmail, out var extrinsicEmail) == true)
+        {
+            email = extrinsicEmail;
+        }
+
+        return email?.Trim();
     }
 
     protected virtual bool IsReturnUrlAllowed(string returnUrl, PunchoutConfiguration settings)
@@ -170,13 +245,13 @@ public partial class PunchoutSetupProcessor(
             return true;
         }
 
-        if (string.IsNullOrEmpty(returnUrl))
+        if (returnUrl.IsNullOrEmpty())
         {
             return false;
         }
 
         return settings.AllowedReturnUrls
-            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Where(x => !x.IsNullOrWhiteSpace())
             .Any(pattern => pattern.EndsWith('*')
                 ? returnUrl.StartsWith(pattern[..^1], StringComparison.OrdinalIgnoreCase)
                 : returnUrl.EqualsIgnoreCase(pattern));
@@ -184,16 +259,17 @@ public partial class PunchoutSetupProcessor(
 
     protected virtual PunchoutSession CreateSession(
         PunchoutSetupRequest request,
-        PunchoutUserMapping userMapping,
-        PunchoutConfiguration settings,
-        string storefrontUrl,
+        PunchoutSetupValidationResult validationResult,
         string sessionToken)
     {
+        var settings = validationResult.Configuration;
         var session = AbstractTypeFactory<PunchoutSession>.TryCreateInstance();
 
         session.StoreId = settings.StoreId;
         session.ConfigurationId = settings.Id;
-        session.UserId = userMapping.UserId;
+        session.UserId = validationResult.UserId;
+        session.UserMappingId = validationResult.UserMapping.Id;
+        session.OrganizationId = validationResult.OrganizationId;
         session.SessionTokenHash = SessionTokenHasher.Hash(sessionToken);
         session.BuyerCookie = request.BuyerCookie;
         session.BuyerIdentity = request.From;
@@ -206,7 +282,7 @@ public partial class PunchoutSetupProcessor(
         session.Status = ModuleConstants.SessionStatus.Active;
         session.ExpirationDate = DateTime.UtcNow.Add(settings.SessionLifeTime ?? PunchoutConfiguration.DefaultSessionLifeTime);
         session.TokenExpirationDate = DateTime.UtcNow.Add(settings.TokenLifeTime ?? PunchoutConfiguration.DefaultTokenLifeTime);
-        session.StartPage = BuildStartPage(storefrontUrl);
+        session.StartPage = BuildStartPage(validationResult.StorefrontUrl);
 
         return session;
     }
@@ -272,6 +348,18 @@ public partial class PunchoutSetupProcessor(
     [LoggerMessage(Level = LogLevel.Warning,
         Message = "Punchout setup rejected: identity '{MappingIdentity}' is not linked to any user or organization.")]
     private partial void LogUserNotFound(string mappingIdentity);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout setup rejected: identity '{MappingIdentity}' is linked to organization '{OrganizationId}', but the request contains no end user email.")]
+    private partial void LogUserEmailMissing(string mappingIdentity, string organizationId);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout setup rejected: no user with email '{Email}' is found in organization '{OrganizationId}'.")]
+    private partial void LogOrganizationUserNotFound(string email, string organizationId);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout setup rejected: {MatchCount} users with email '{Email}' are found in organization '{OrganizationId}', the user is ambiguous.")]
+    private partial void LogAmbiguousUser(string email, string organizationId, int matchCount);
 
     [LoggerMessage(Level = LogLevel.Warning,
         Message = "Punchout setup rejected for sender identity '{SenderIdentity}': store '{StoreId}' does not exist or punchout is disabled for it.")]

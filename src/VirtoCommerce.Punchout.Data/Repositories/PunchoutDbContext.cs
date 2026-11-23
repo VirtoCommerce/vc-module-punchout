@@ -30,6 +30,9 @@ public class PunchoutDbContext : DbContextBase
             .HasIndex(x => x.SessionTokenHash)
             .IsUnique()
             .HasDatabaseName("IX_PunchoutSession_SessionToken");
+        modelBuilder.Entity<PunchoutSessionEntity>()
+            .HasIndex(x => x.OrganizationId)
+            .HasDatabaseName("IX_PunchoutSession_OrganizationId");
 
         modelBuilder.Entity<PunchoutUserMappingEntity>().ToAuditableEntityTable("PunchoutUserMapping");
         modelBuilder.Entity<PunchoutUserMappingEntity>()

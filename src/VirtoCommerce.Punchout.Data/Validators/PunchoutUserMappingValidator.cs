@@ -18,15 +18,18 @@ public class PunchoutUserMappingValidator : AbstractValidator<PunchoutUserMappin
     private readonly IPunchoutUserMappingSearchService _searchService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMemberService _memberService;
+    private readonly IPunchoutUserPolicy _userPolicy;
 
     public PunchoutUserMappingValidator(
         IPunchoutUserMappingSearchService searchService,
         UserManager<ApplicationUser> userManager,
-        IMemberService memberService)
+        IMemberService memberService,
+        IPunchoutUserPolicy userPolicy)
     {
         _searchService = searchService;
         _userManager = userManager;
         _memberService = memberService;
+        _userPolicy = userPolicy;
 
         ClassLevelCascadeMode = CascadeMode.Stop;
         RuleLevelCascadeMode = CascadeMode.Stop;
@@ -84,7 +87,7 @@ public class PunchoutUserMappingValidator : AbstractValidator<PunchoutUserMappin
             return;
         }
 
-        if (user.IsAdministrator || user.UserType != nameof(UserType.Customer))
+        if (!_userPolicy.IsAllowed(user))
         {
             context.AddFailure(new ValidationFailure(nameof(model.UserId), null) { ErrorCode = "user-is-admin-or-customer" });
         }

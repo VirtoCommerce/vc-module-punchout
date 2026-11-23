@@ -411,6 +411,10 @@ namespace VirtoCommerce.Punchout.Data.PostgreSql.Migrations
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("OrganizationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("ReturnUrl")
                         .HasMaxLength(2048)
                         .HasColumnType("character varying(2048)");
@@ -456,7 +460,14 @@ namespace VirtoCommerce.Punchout.Data.PostgreSql.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("UserMappingId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("IX_PunchoutSession_OrganizationId");
 
                     b.HasIndex("SessionTokenHash")
                         .IsUnique()

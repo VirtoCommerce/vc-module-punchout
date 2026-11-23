@@ -73,6 +73,7 @@ public class PunchoutSetupMapper(ICxmlResponseFactory responseFactory) : IPuncho
             PunchoutSetupStatus.InvalidCredentials => (CxmlConstants.Status.UnauthorizedCode, CxmlConstants.Status.UnauthorizedText),
             PunchoutSetupStatus.InvalidRequest => (CxmlConstants.Status.BadRequestCode, CxmlConstants.Status.BadRequestText),
             PunchoutSetupStatus.UserNotFound => (CxmlConstants.Status.UnauthorizedCode, CxmlConstants.Status.UnauthorizedText),
+            PunchoutSetupStatus.AmbiguousUser => (CxmlConstants.Status.UnauthorizedCode, CxmlConstants.Status.UnauthorizedText),
             PunchoutSetupStatus.ReturnUrlNotAllowed => (CxmlConstants.Status.BadRequestCode, CxmlConstants.Status.BadRequestText),
             PunchoutSetupStatus.StoreNotConfigured => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
             PunchoutSetupStatus.ConfigurationError => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),

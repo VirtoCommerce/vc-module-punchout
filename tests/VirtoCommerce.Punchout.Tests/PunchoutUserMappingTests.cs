@@ -1,14 +1,12 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using VirtoCommerce.CustomerModule.Core.Model;
-using VirtoCommerce.CustomerModule.Core.Services;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Services;
 using VirtoCommerce.Punchout.Data.Services;
 using VirtoCommerce.Punchout.Data.Validators;
+using VirtoCommerce.Punchout.Tests.Fakes;
 using Xunit;
 
 namespace VirtoCommerce.Punchout.Tests;
@@ -147,11 +145,10 @@ public class PunchoutUserMappingTests
 
     private static PunchoutUserMappingValidator CreateValidator(IList<PunchoutUserMapping> mappings)
     {
-        var memberService = DispatchProxy.Create<IMemberService, MemberServiceProxy>();
-        ((MemberServiceProxy)(object)memberService).Organizations.Add(new Organization { Id = OrganizationId, Name = "Organization" });
+        var memberService = MemberServiceProxy.Create(new Organization { Id = OrganizationId, Name = "Organization" });
 
         // The user manager is used for user mappings only
-        return new PunchoutUserMappingValidator(new InMemoryUserMappingSearchService(mappings), null, memberService);
+        return new PunchoutUserMappingValidator(new InMemoryUserMappingSearchService(mappings), null, memberService, new PunchoutUserPolicy());
     }
 
     private static PunchoutUserMapping CreateOrganizationMapping(string id = null) => new()
@@ -190,22 +187,6 @@ public class PunchoutUserMappingTests
                 .ToList();
 
             return Task.FromResult(new PunchoutUserMappingSearchResult { Results = results, TotalCount = results.Count });
-        }
-    }
-
-    public class MemberServiceProxy : DispatchProxy
-    {
-        public IList<Member> Organizations { get; } = [];
-
-        protected override object Invoke(MethodInfo targetMethod, object[] args)
-        {
-            if (targetMethod?.Name == nameof(IMemberService.GetByIdAsync))
-            {
-                var id = (string)args[0];
-                return Task.FromResult(Organizations.FirstOrDefault(x => x.Id == id));
-            }
-
-            throw new NotSupportedException(targetMethod?.Name);
         }
     }
 }

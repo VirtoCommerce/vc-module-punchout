@@ -50,6 +50,12 @@ public class PunchoutSession : AuditableEntity, ICloneable
 
     public string UserId { get; set; }
 
+    // The mapping the session was set up with
+    public string UserMappingId { get; set; }
+
+    // The organization of an organization mapping, empty for a user mapping
+    public string OrganizationId { get; set; }
+
     public object Clone()
     {
         return MemberwiseClone();

@@ -93,6 +93,21 @@ public class PunchoutOrderMapperTests
         """;
 
     [Fact]
+    public void MapRequest_OrderRequestExtrinsic_Mapped()
+    {
+        var xml = OrderRequestXml.Replace(
+            "</Contact>\n      </OrderRequestHeader>".Replace("\n", Environment.NewLine),
+            $"</Contact>{Environment.NewLine}<Extrinsic name=\"UserEmail\">jane@customer.com</Extrinsic>{Environment.NewLine}</OrderRequestHeader>");
+        Assert.NotEqual(OrderRequestXml, xml);
+
+        var document = new CxmlSerializer().Deserialize<CxmlDocument>(xml);
+
+        var request = new PunchoutOrderMapper(new CxmlResponseFactory()).MapRequest(document);
+
+        Assert.Equal("jane@customer.com", request.Extrinsics[CxmlConstants.ExtrinsicName.UserEmail.ToLowerInvariant()]);
+    }
+
+    [Fact]
     public void MapRequest_OrderRequest_MapsAllFields()
     {
         var document = new CxmlSerializer().Deserialize<CxmlDocument>(OrderRequestXml);

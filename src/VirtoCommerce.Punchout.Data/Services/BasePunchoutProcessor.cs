@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using VirtoCommerce.Platform.Core.Common;
+using VirtoCommerce.Punchout.Core.Cxml;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Services;
 
@@ -45,6 +47,22 @@ public abstract class BasePunchoutProcessor(
         // An empty configured domain is not checked
         return settings.SenderDomain.IsNullOrEmpty() ||
                settings.SenderDomain.EqualsIgnoreCase(request.SenderDomain);
+    }
+
+    /// <summary>
+    /// The email of the end user: Contact role="endUser" or, when the contact has no email, the UserEmail extrinsic.
+    /// </summary>
+    protected virtual string GetUserEmail(PunchoutUserContext user, IDictionary<string, string> extrinsics)
+    {
+        var email = user?.Email;
+
+        if (string.IsNullOrWhiteSpace(email) &&
+            extrinsics?.TryGetValue(CxmlConstants.ExtrinsicName.UserEmail, out var extrinsicEmail) == true)
+        {
+            email = extrinsicEmail;
+        }
+
+        return email?.Trim();
     }
 
     /// <summary>

@@ -11,6 +11,23 @@ namespace VirtoCommerce.Punchout.Data.Cxml.Extensions;
 
 public static class CxmlMappingExtensions
 {
+    /// <summary>
+    /// Extrinsic values by name, compared ignoring case.
+    /// </summary>
+    public static Dictionary<string, string> ToExtrinsicDictionary(this IList<CxmlExtrinsic> extrinsics)
+    {
+        if (extrinsics.IsNullOrEmpty())
+        {
+            return [];
+        }
+
+        // Duplicate names are legal in cXML, the last one wins
+        return extrinsics
+            .Where(x => x is not null && !x.Name.IsNullOrEmpty())
+            .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.Last().Value, StringComparer.OrdinalIgnoreCase);
+    }
+
     public static PunchoutUserContext ToUserContext(this IList<CxmlContact> contacts)
     {
         if (contacts.IsNullOrEmpty())

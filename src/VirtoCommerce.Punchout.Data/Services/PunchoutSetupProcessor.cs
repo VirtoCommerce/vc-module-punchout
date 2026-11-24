@@ -227,15 +227,7 @@ public partial class PunchoutSetupProcessor(
     /// </summary>
     protected virtual string GetUserEmail(PunchoutSetupRequest request)
     {
-        var email = request.User?.Email;
-
-        if (string.IsNullOrWhiteSpace(email) &&
-            request.Extrinsics?.TryGetValue(CxmlConstants.ExtrinsicName.UserEmail, out var extrinsicEmail) == true)
-        {
-            email = extrinsicEmail;
-        }
-
-        return email?.Trim();
+        return GetUserEmail(request.User, request.Extrinsics);
     }
 
     protected virtual bool IsReturnUrlAllowed(string returnUrl, PunchoutConfiguration settings)

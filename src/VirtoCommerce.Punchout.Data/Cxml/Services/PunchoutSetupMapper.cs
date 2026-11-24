@@ -35,7 +35,7 @@ public class PunchoutSetupMapper(ICxmlResponseFactory responseFactory) : IPuncho
 
         setupContext.BuyerCookie = setupRequest?.BuyerCookie;
         setupContext.ReturnUrl = setupRequest?.BrowserFormPost?.Url;
-        setupContext.Extrinsics = MapExtrinsics(setupRequest?.Extrinsics);
+        setupContext.Extrinsics = (setupRequest?.Extrinsics).ToExtrinsicDictionary();
         setupContext.User = MapUser(setupRequest?.Contacts);
 
         return setupContext;
@@ -79,19 +79,5 @@ public class PunchoutSetupMapper(ICxmlResponseFactory responseFactory) : IPuncho
             PunchoutSetupStatus.ConfigurationError => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
             _ => (CxmlConstants.Status.InternalServerErrorCode, CxmlConstants.Status.InternalServerErrorText),
         };
-    }
-
-    private static Dictionary<string, string> MapExtrinsics(IList<CxmlExtrinsic> extrinsics)
-    {
-        if (extrinsics.IsNullOrEmpty())
-        {
-            return [];
-        }
-
-        // Duplicate names are legal in cXML, the last one wins 
-        return extrinsics
-            .Where(x => !x.Name.IsNullOrEmpty())
-            .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(x => x.Key, x => x.Last().Value, StringComparer.OrdinalIgnoreCase);
     }
 }

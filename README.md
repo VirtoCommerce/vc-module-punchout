@@ -4,7 +4,7 @@
 
 The Punchout module connects Virto Commerce to e-procurement systems such as Coupa, SAP Ariba, and Oracle over the cXML PunchOut protocol. It covers the full punchout cycle:
 
-1. **Setup**: a buyer starts shopping from inside their procurement system and is redirected to the Virto Commerce storefront, already signed in and working in the context of their organization. The module validates the incoming `PunchOutSetupRequest` against shared-secret configurations, maps the procurement-system identity to a platform user, opens a time-limited punchout session, and returns a one-time start page URL. The storefront exchanges that URL for an access token through a dedicated `punchout` OAuth grant.
+1. **Setup**: a buyer starts shopping from inside their procurement system and is redirected to the Virto Commerce storefront, already signed in and working in the context of their organization. The module validates the incoming `PunchOutSetupRequest` against shared-secret configurations, maps the procurement-system identity to a platform user, or to an organization whose employees shop under their own accounts, opens a time-limited punchout session, and returns a one-time start page URL. The storefront exchanges that URL for an access token through a dedicated `punchout` OAuth grant.
 2. **Requisition return**: when the buyer finishes shopping, the storefront calls the `createPunchoutRequisition` GraphQL mutation. The module builds a cXML `PunchOutOrderMessage` from the cart and returns it with the procurement system's return URL, so the storefront can post it back to the procurement system.
 3. **Order**: after the requisition is approved, the procurement system sends a cXML `OrderRequest`. The module authenticates it, checks every line against the requisition it came from (a purchase order may combine items of several punchout sessions), and creates a customer order from the requisition snapshots.
 
@@ -18,8 +18,9 @@ The Punchout module connects Virto Commerce to e-procurement systems such as Cou
 * **Shared-secret authentication**: the sender's `SharedSecret` is compared against every configured integration in constant time, with an optional check of the sender domain.
 * **Return URL allow list**: restricts the `BrowserFormPost` URL to exact URLs or `*`-suffixed prefixes for each integration.
 * **User mapping**: links an external identity from `Header/Sender/Credential/Identity` to a platform customer account. Mappings are managed from the contact details blade in the admin.
+* **Organization mapping**: links an external identity to an organization instead of a single account, for procurement systems such as Coupa that send one `Sender` identity for all their users. The end user is found among the existing users of the organization by the email from `Contact role="endUser"` or the `UserEmail` extrinsic, so each employee shops and orders under their own account. Mappings are managed from the organization details blade in the admin.
 * **One-time session tokens**: each setup request issues a cryptographically random 32-byte token. The database stores only its SHA-256 hash, and the token is redeemed atomically, exactly once, before its lifetime ends (15 minutes by default).
-* **`punchout` OAuth grant type**: `connect/token` with `grant_type=punchout` redeems the session token and issues an access token for the mapped user. The token is valid until the session expires (4 hours by default), carries `channelId` and `channelSessionId` claims, and comes without a refresh token.
+* **`punchout` OAuth grant type**: `connect/token` with `grant_type=punchout` redeems the session token and issues an access token for the user of the session. The token is valid until the session expires (4 hours by default), carries `channelId` and `channelSessionId` claims, and comes without a refresh token. For an organization mapping, the `organization_id` claim is the mapped organization.
 * **Organization scoping**: when a request carries a punchout principal, the buyer's available organizations are narrowed to the current organization through the Profile Experience API pipeline.
 * **Per-store switch**: setup and order requests are rejected unless the `Punchout.Enabled` setting is turned on for the configured store.
 * **Extensibility**: each integration can use its own `IPunchoutHandler` to customize or reject the setup, the order message, and the order. New cXML request types can be added as `ICxmlRequestHandler` implementations, and models are created through `AbstractTypeFactory`.
@@ -76,25 +77,42 @@ Integrations are defined in the `Punchout` section of the platform configuration
 |---------|------|---------|-------------|
 | `Punchout.Enabled` | Boolean | `false` | Turns on punchout for the store. While it is off, setup requests, requisition returns, and order requests for the store are rejected. This is a public setting, so the storefront can read it |
 
-### User Mappings
+### User and Organization Mappings
 
-Each procurement-system user who punches out needs a mapping between their external identity (`Header/Sender/Credential/Identity`) and a platform security account. Open a contact in the admin and use the **Punchout user** widget on the contact details blade. A mapping is valid when:
+The external identity of a request (`Header/Sender/Credential/Identity`) must be mapped either to a platform security account or to an organization. Only **active** mappings are used, and the mapping is checked again when the session token is redeemed.
 
-* the external identity is not empty and is not used by another mapping
+#### User mapping
+
+All the punchout sessions and orders of the identity belong to one account. Open a contact in the admin and use the **Punchout user** widget on the contact details blade. A user mapping is valid when:
+
+* the external identity is not empty and is not used by another user mapping
 * the account belongs to the contact
 * the account is a customer account and not an administrator
 
-Only **active** mappings are used, and the mapping is checked again when the session token is redeemed.
+#### Organization mapping
+
+Each user of the procurement system shops under their own account in the organization. Open an organization in the admin and use the **Punchout organization** widget on the organization details blade. An organization mapping is valid when the external identity is not empty and is not used by another organization mapping, and the organization exists.
+
+The same identity may have both a user mapping and an organization mapping. The user mapping takes precedence.
+
+For an organization mapping, each `PunchOutSetupRequest` and `OrderRequest` must identify the end user by email: the `Email` of `Contact role="endUser"` (or of the first contact if there is no `endUser`) or, if the contact has no email, the `UserEmail` extrinsic. The user is found among the existing accounts with that email that:
+
+* are customer accounts and not administrators
+* belong to a contact that is a member of the mapped organization
+* are not bound to another store
+* are not locked out
+
+The request is rejected if there is no email, no such user, or more than one. Users are not created automatically and are not found by user name.
 
 ### Permissions
 
 | Permission | Description |
 |------------|-------------|
 | `punchout:access` | Open the Punchout module |
-| `punchout:read` | View punchout user mappings |
-| `punchout:create` | Create punchout user mappings |
-| `punchout:update` | Update punchout user mappings |
-| `punchout:delete` | Delete punchout user mappings |
+| `punchout:read` | View punchout user and organization mappings |
+| `punchout:create` | Create punchout user and organization mappings |
+| `punchout:update` | Update punchout user and organization mappings |
+| `punchout:delete` | Delete punchout user and organization mappings |
 
 ## Architecture
 
@@ -132,13 +150,15 @@ The module follows the layered architecture used across Virto Commerce platform 
    * a configuration matches the shared secret, compared in constant time
    * the sender domain matches, if configured
    * the return URL is in the allow list, if configured
-   * an **active** user mapping exists for `Header/Sender/Credential/Identity`
+   * an **active** mapping exists for `Header/Sender/Credential/Identity`, a user mapping takes precedence over an organization mapping
+   * for an organization mapping, exactly one user of the organization has the end user email (see [User and Organization Mappings](#user-and-organization-mappings))
    * the configured store exists, has punchout enabled, and has a storefront URL
-5. A `PunchoutSession` is prepared, storing the configuration, user, buyer cookie, buyer, supplier, and sender identities and domains, return URL, session and token expiration dates, and the token hash. The integration's `IPunchoutHandler.HandleSetupAsync` can change or reject it.
+5. A `PunchoutSession` is prepared, storing the configuration, mapping, user, organization (for an organization mapping), buyer cookie, buyer, supplier, and sender identities and domains, return URL, session and token expiration dates, and the token hash. The integration's `IPunchoutHandler.HandleSetupAsync` can change or reject it.
 6. The session is saved, and the cXML `PunchOutSetupResponse` returns the start page `{storefrontUrl}/punchout/{sessionToken}`.
 7. The buyer's browser opens the start page. The storefront calls `connect/token` with `grant_type=punchout&session_token={sessionToken}`.
-8. `PunchoutGrantTypeHandler` redeems the token atomically, checks that the session has not expired, the user mapping is still active, and the user exists, is a customer and not an administrator, is not locked out, and is allowed to sign in. It then issues an access token that expires with the session.
-9. While the buyer shops, `PunchoutContactOrganizationsMiddleware` limits the contact's organizations to the current one.
+8. `PunchoutGrantTypeHandler` redeems the token atomically, checks that the session has not expired, the user exists, is a customer and not an administrator, is not locked out, and is allowed to sign in, and the mapping of the session is still active and still points to the same user, or to the same organization the user is still a member of. It then issues an access token that expires with the session.
+9. For an organization mapping, the grant passes the session organization as the `organization_id` token request parameter. The Customer module validates the user's access to it, sets the `organization_id` claim, and makes it the contact's current organization. `PunchoutOrganizationRequestValidator` rejects the token request if the organization was replaced with another organization of the user, for example because the user is locked in the mapped one.
+10. While the buyer shops, `PunchoutContactOrganizationsMiddleware` limits the contact's organizations to the current one.
 
 ### Requisition Return Flow (PunchOutOrderMessage)
 
@@ -157,7 +177,7 @@ The module follows the layered architecture used across Virto Commerce platform 
 ### Order Flow (OrderRequest)
 
 1. After the requisition is approved, the procurement system sends a cXML `OrderRequest` to `POST api/punchout/cxml`. `CxmlPunchoutOrderRequestHandler` and `PunchoutOrderMapper` convert it into a `PunchoutOrderRequestData`, including addresses, contacts, items, classifications, and accounting distributions.
-2. `PunchoutOrderRequestProcessor` authenticates the request in the same way as the setup request: shared secret, sender domain, and an active user mapping for `Header/Sender/Credential/Identity`. Requests that do not match any configuration are not stored.
+2. `PunchoutOrderRequestProcessor` authenticates the request in the same way as the setup request: shared secret, sender domain, and an active user or organization mapping for `Header/Sender/Credential/Identity`. Requests that do not match any configuration are not stored.
 3. The processor looks for an earlier request with the same `payloadID`. For a `new` order it also looks for the latest completed or in-progress request of any type with the same `orderID`: a `new` order that comes after an `update` of the same purchase order (resent or delayed) must not create a second customer order. A completed request returns its stored result, and a request still in progress returns `OrderInProgress`. Failed and rejected requests are processed again.
 4. The order is validated:
    * the store exists and has punchout enabled
@@ -165,17 +185,19 @@ The module follows the layered architecture used across Virto Commerce platform 
    * `payloadID` (up to 512 characters), `orderID` (up to 256 characters), the `Total` currency, and items are present
    * every item has a `lineNumber` (up to 128 characters, unique within the order), a `SupplierPartID`, a positive quantity, and a non-negative unit price in the order currency
    * the order currency is available in the store
+   * for an organization mapping, the end user of the request is found in the organization by email, as in the setup request. This applies to `new`, `update`, and `delete` orders. The end user does not have to be the user who started the punchout session, but both must be users of the organization
 
    The requisition checks below are run by the handler (`DefaultPunchoutHandler` calls `IPunchoutRequisitionService`) after the request is stored, a mismatch rejects the request in the same way:
 
    * every line orders a requisition item. The procurement system groups the requisition lines into purchase orders by supplier, so one purchase order may contain items returned by several punchout sessions, and the items of one session may be split between purchase orders. Each line references its own session in `SupplierPartAuxiliaryID` (`{lineItemId};{sessionId}`). Without a session reference, the item is found by its line item id among all the requisitions returned to the user, and it is rejected if more than one requisition contains it
-   * every line has a unique `SupplierPartAuxiliaryID`, its session has returned a requisition for the same user and integration, and the item is in the snapshot of that requisition with the same SKU, currency, quantity, and unit price rounded to two decimals
+   * for an organization mapping, the items are looked up in the sessions of the organization mapping started by any user of the organization, so one purchase order may combine the requisitions of several employees. An item from a session of another organization or of a user mapping is rejected
+   * every line has a unique `SupplierPartAuxiliaryID`, its session has returned a requisition for the same user (or organization) and integration, and the item is in the snapshot of that requisition with the same SKU, currency, quantity, and unit price rounded to two decimals
    * no item is already ordered by another purchase order
 5. The request is stored with the `Processing` status. The unique index on the configuration and `payloadID` stops a concurrent duplicate.
 6. The handler reserves the requisition items for the purchase order in `PunchoutOrderLine`. Its unique index on the configuration, session, and line item stops a concurrent purchase order that orders the same item, that request is rejected.
 7. The integration's `IPunchoutHandler.HandleOrderRequestAsync` creates the order. `DefaultPunchoutHandler` calls `IPunchoutCustomerOrderService`, which builds a cart that is not stored and converts it with the Orders module `ICustomerOrderBuilder`, the same conversion as at a checkout:
    * the line items are taken from the requisition snapshots with the prices sent to the buyer, the prices are not calculated again. The quantity and the line number come from the purchase order
-   * the purchase order number is `orderID`, and the customer is the mapped user with the first organization of its contact
+   * the purchase order number is `orderID`. For a user mapping, the customer is the mapped user with the first organization of its contact. For an organization mapping, the customer is the end user of the request, and the order belongs to the mapped organization
    * the `ShipTo` and `BillTo` addresses are added (ISO alpha-2 country codes are converted to alpha-3, and `DeliverTo` becomes the first and last name)
    * one shipment with all the items gets the `DefaultShipmentMethodCode` method and its rate, and a payment with `DefaultPaymentMethodCode` covers the total
 8. The request is stored as `Completed` with the customer order ID, `Rejected` if the order content is invalid, or `Failed` for other errors. The handler releases the items it reserved when the order is not created. The cXML response carries the outcome.
@@ -197,9 +219,10 @@ Then the handler, with `IPunchoutRequisitionService`:
 
 `IPunchoutCustomerOrderService` then loads the customer order and:
 
-* rejects the update if the order is in another store, cancelled, in a status not listed in `UpdatableOrderStatuses`, or has an authorized, captured, or refunded payment
+* rejects the update if the order is in another store, belongs to another organization than the organization mapping, cancelled, in a status not listed in `UpdatableOrderStatuses`, or has an authorized, captured, or refunded payment
 * matches the lines by `ItemOut/@lineNumber` with the order line purchase order line number. SKU and unit price (rounded to two decimals) must match the order line, and the quantity must be a whole number
 * a line that is not in the order is added from its requisition snapshot, its quantity must match the requisition
+* keeps the customer of the order, even when the update comes from another end user of the organization
 * sets the new quantities (also in the shipment items), removes the lines missing from the update, and adds the new lines to the first shipment. Lines without a purchase order line number, such as gifts, are kept. The removed requisition items are released and may be ordered by another purchase order
 * replaces the `ShipTo` and `BillTo` addresses of the order, its shipments, and payments, keeps the shipment price, and sets the payment amount to the new order total
 * saves the order: the totals are recalculated and the order row version rejects a concurrent change
@@ -208,7 +231,7 @@ Then the handler, with `IPunchoutRequisitionService`:
 
 The processor finds the current version of the purchase order and checks `DocumentReference` and `orderVersion` in the same way as for an update. `IPunchoutCustomerOrderService` does not delete anything, it cancels the customer order:
 
-* rejects the delete if the order is in another store or in a status not listed in `UpdatableOrderStatuses`. Processed payments do not block the cancellation
+* rejects the delete if the order is in another store, belongs to another organization than the organization mapping, or is in a status not listed in `UpdatableOrderStatuses`. Processed payments do not block the cancellation
 * sets `CancelledState` to `Requested` on every payment that is not cancelled yet
 * sets `IsCancelled`, the `Cancelled` status, `CancelledDate`, and the delete request's `payloadID` as `CancelReason`, and saves the order. The requisition items of the purchase order are released
 * returns `200 OK` without changes if the order is already cancelled, e.g. the buyer resent the delete with a new `payloadID`
@@ -230,7 +253,7 @@ The HTTP status code is always `200 OK`. Procurement systems read the outcome fr
 |---------------|-------------|
 | `Success` | `200 OK` (with `StartPage` URL) |
 | `InvalidRequest`, `ReturnUrlNotAllowed` | `400 Bad Request` |
-| `InvalidCredentials`, `UserNotFound` | `401 Unauthorized` |
+| `InvalidCredentials`, `UserNotFound`, `AmbiguousUser` | `401 Unauthorized` |
 | `StoreNotConfigured`, `ConfigurationError`, `SetupError` | `500 Internal Server Error` |
 
 #### OrderRequest
@@ -243,6 +266,8 @@ The HTTP status code is always `200 OK`. Procurement systems read the outcome fr
 | `UnsupportedOrderType` | `450 Not Implemented` |
 | `OrderInProgress` | `500 Internal Server Error` (the buyer can retry later) |
 | `StoreNotConfigured`, `ConfigurationError`, `OrderError` | `500 Internal Server Error` |
+
+`UserNotFound` means that the identity has no active mapping. For an organization mapping, an end user without email, not found in the organization, or found more than once is `InvalidRequest`, and the request is stored as `Rejected`.
 
 The status text of a rejected order explains the reason, for example the order line that does not match the requisition.
 
@@ -285,6 +310,12 @@ serviceCollection.AddTransient<IPunchoutHandler, MyPunchoutHandler>();
 
 `PunchoutOrderMessageBuilder` (`IPunchoutOrderMessageBuilder`) can be overridden to change the `PunchOutOrderMessage` content, for example to send real UNSPSC classifications instead of the placeholder.
 
+### Mapping and user resolution
+
+* `GetMappingIdentity` of the setup and order request processors returns the identity the mapping is looked up by, `Header/Sender/Credential/Identity` by default. Override it to map, for example, `Header/From/Credential/Identity` instead.
+* `IPunchoutUserPolicy` decides which accounts may be mapped or found in an organization (customer accounts that are not administrators by default). It is shared by the user mapping validation, the end user lookup, and the `punchout` grant.
+* `IPunchoutOrganizationUserResolver` finds the end user of an organization mapping by email and checks the organization membership when the session token is redeemed.
+
 ### cXML request types
 
 Register an `ICxmlRequestHandler` to support another cXML request type or to replace a built-in handler. The dispatcher uses the last registered handler whose `CanHandle` returns `true`.
@@ -314,10 +345,13 @@ Register an `ICxmlRequestHandler` to support another cXML request type or to rep
 | `PunchoutSessionManagementService` | `IPunchoutSessionManagementService` | Atomic, one-time redemption of session tokens and switching sessions to `Returned` |
 | `PunchoutOrderMessageService` / `PunchoutOrderMessageSearchService` | `IPunchoutOrderMessageService` / `IPunchoutOrderMessageSearchService` | CRUD and search for the stored order messages |
 | `PunchoutOrderRequestService` / `PunchoutOrderRequestSearchService` | `IPunchoutOrderRequestService` / `IPunchoutOrderRequestSearchService` | CRUD and search for the stored order requests |
-| `PunchoutRequisitionItemService` | `IPunchoutRequisitionItemService` | Finds the requisition items returned to a user by their line item ids, in one query |
+| `PunchoutRequisitionItemService` | `IPunchoutRequisitionItemService` | Finds the requisition items returned to a user, or to the sessions of an organization mapping, by their line item ids, in one query |
 | `PunchoutOrderLineService` / `PunchoutOrderLineSearchService` | `IPunchoutOrderLineService` / `IPunchoutOrderLineSearchService` | CRUD and search for the requisition items ordered by purchase orders. They are always read from the database (`CacheDisabler`), the unique index rejects an item reserved by a concurrent purchase order |
-| `PunchoutUserMappingService` / `PunchoutUserMappingSearchService` | `IPunchoutUserMappingService` / `IPunchoutUserMappingSearchService` | CRUD and search for external-identity-to-user mappings |
+| `PunchoutUserMappingService` / `PunchoutUserMappingSearchService` | `IPunchoutUserMappingService` / `IPunchoutUserMappingSearchService` | CRUD and search for the mappings of external identities to users and organizations |
+| `PunchoutOrganizationUserResolver` | `IPunchoutOrganizationUserResolver` | Finds the end user of an organization mapping by email and checks the organization membership |
+| `PunchoutUserPolicy` | `IPunchoutUserPolicy` | Decides which accounts may take part in punchout |
 | `PunchoutGrantTypeHandler` | `GrantTypeHandlerBase` | `punchout` OAuth grant: redeems the session token and issues a session-bound access token |
+| `PunchoutOrganizationRequestValidator` | `ITokenRequestValidator` | Rejects a `punchout` token request whose organization differs from the organization of the session |
 
 ### Domain Events
 
@@ -335,12 +369,12 @@ Token redemption and the switch to `Returned` update the session directly in the
 
 | Table | Purpose |
 |-------|---------|
-| `PunchoutSession` | Punchout sessions: store, configuration, user, buyer cookie, buyer, supplier, and sender identities and domains, return URL, status (`Active` or `Returned`), start page, session and token expiration dates, token hash (unique), and redemption flag |
-| `PunchoutUserMapping` | Links an external identity (unique) to a platform user (`UserId`, `UserName`) and the contact (`MemberId`) that owns the account, with an active flag |
+| `PunchoutSession` | Punchout sessions: store, configuration, mapping, user, organization (for an organization mapping), buyer cookie, buyer, supplier, and sender identities and domains, return URL, status (`Active` or `Returned`), start page, session and token expiration dates, token hash (unique), and redemption flag |
+| `PunchoutUserMapping` | Links an external identity either to a platform user (`UserId`, `UserName`) and the contact (`MemberId`) that owns the account, or to an organization (`OrganizationId`, `OrganizationName`), with an active flag. An identity has at most one mapping of each kind |
 | `PunchoutOrderMessage` | cXML of the `PunchOutOrderMessage` returned for a session. Deleted together with the session |
 | `PunchoutRequisitionItem` | Snapshot of the cart line items sent in an order message: message, session, line item (unique within the message), product, catalog, SKU, name, quantity, prices, discount, tax, and dimensions. Deleted together with the message |
 | `PunchoutOrderLine` | Requisition items ordered by purchase orders: configuration, session, cart line item (unique together), purchase order number, line number, and the order request that added the item |
-| `PunchoutOrderRequest` | Received `OrderRequest` documents: configuration, store, `payloadID` (unique within the configuration), sender and buyer identities, user, order type, purchase order number and date, currency, total, created customer order, status (`Processing`, `Completed`, `Failed`, or `Rejected`), and error code and message |
+| `PunchoutOrderRequest` | Received `OrderRequest` documents: configuration, store, `payloadID` (unique within the configuration), sender and buyer identities, user (the end user for an organization mapping), order type, purchase order number and date, currency, total, created customer order, status (`Processing`, `Completed`, `Failed`, or `Rejected`), and error code and message |
 
 ### REST API
 
@@ -357,7 +391,7 @@ Base route: `api/punchout-user-mappings`
 
 | Method | Endpoint | Permission | Description |
 |--------|----------|------------|-------------|
-| `POST` | `/search` | `punchout:read` | Search user mappings |
+| `POST` | `/search` | `punchout:read` | Search user and organization mappings, e.g. by `memberIds` or `organizationIds` |
 | `GET` | `/{id}` | `punchout:read` | Get a user mapping by ID |
 | `GET` | `/new` | `punchout:read` | Get a new, active user mapping template |
 | `POST` | `/` | `punchout:create` | Create a user mapping |
@@ -391,7 +425,7 @@ mutation {
 
 | Module | Purpose |
 |--------|---------|
-| `VirtoCommerce.Customer` | Contacts and organizations that own the mapped security accounts |
+| `VirtoCommerce.Customer` | Contacts and organizations that own the mapped security accounts, organization membership, and the `organization_id` token claim |
 | `VirtoCommerce.Store` | Store storefront URL, currencies, and the `Punchout.Enabled` store setting |
 | `VirtoCommerce.ProfileExperienceApiModule` | `ContactOrganizationsContext` pipeline used to scope organizations for punchout users |
 | `VirtoCommerce.XCart` | Loading the cart for the `PunchOutOrderMessage` and removing the sent items |

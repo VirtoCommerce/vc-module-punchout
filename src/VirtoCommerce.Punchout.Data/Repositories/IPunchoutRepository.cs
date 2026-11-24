@@ -30,9 +30,10 @@ public interface IPunchoutRepository : IRepository
     Task<IList<PunchoutOrderRequestEntity>> GetPunchoutOrderRequestsByIdsAsync(IList<string> ids, string responseGroup);
 
     /// <summary>
-    /// The requisition items with the given cart line item ids from the sessions of the user and the configuration that returned a requisition.
+    /// The requisition items with the given cart line item ids from the sessions of the configuration that returned a requisition:
+    /// the sessions of the organization mapping when the organization is set, otherwise the user mapping sessions of the user.
     /// </summary>
-    Task<IList<PunchoutRequisitionItemEntity>> GetReturnedRequisitionItemsAsync(string configurationId, string userId, IList<string> lineItemIds);
+    Task<IList<PunchoutRequisitionItemEntity>> GetReturnedRequisitionItemsAsync(string configurationId, string userId, string organizationId, IList<string> lineItemIds);
 
     /// <summary>
     /// Atomically marks the session token as redeemed.

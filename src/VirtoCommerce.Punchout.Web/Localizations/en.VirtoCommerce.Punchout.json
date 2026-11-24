@@ -25,6 +25,7 @@
           "userId-memberId-required": "UserId and MemberId are required.",
           "userId-or-organizationId-required": "Either UserId or OrganizationId is required, but not both.",
           "organization-not-found": "The organization is not found.",
+          "organization-memberId-not-allowed": "An organization mapping cannot have a MemberId.",
           "organization-mapping-exists": "The organization already has a punchout mapping.",
           "memberId-mismatch": "The user is not a security account of the specified contact.",
           "user-is-admin-or-customer": "Only non-administrator accounts of Customer type can be mapped."

@@ -61,6 +61,10 @@ public class PunchoutUserMappingValidator : AbstractValidator<PunchoutUserMappin
         When(x => x.IsOrganizationMapping, () =>
         {
             RuleFor(x => x)
+                .Must(x => x.MemberId.IsNullOrEmpty())
+                .WithErrorCode("organization-memberId-not-allowed");
+
+            RuleFor(x => x)
                 .CustomAsync(ValidateOrganizationAsync);
 
             // The requisitions of an organization are shared by its mapping, and the admin shows one mapping per organization

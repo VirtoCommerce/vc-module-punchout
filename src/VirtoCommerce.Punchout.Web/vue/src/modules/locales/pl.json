@@ -34,6 +34,7 @@
       "userId-memberId-required": "UserId i MemberId są wymagane.",
       "userId-or-organizationId-required": "Wymagane jest UserId albo OrganizationId, ale nie oba jednocześnie.",
       "organization-not-found": "Nie znaleziono organizacji.",
+      "organization-memberId-not-allowed": "Mapowanie organizacji nie może mieć MemberId.",
       "organization-mapping-exists": "Organizacja ma już mapowanie punchout.",
       "memberId-mismatch": "Użytkownik nie jest kontem zabezpieczeń wskazanego kontaktu.",
       "user-is-admin-or-customer": "Można mapować tylko konta typu Customer niebędące kontami administratora."

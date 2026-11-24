@@ -68,6 +68,18 @@ public class PunchoutUserMappingTests
     }
 
     [Fact]
+    public async Task Validate_OrganizationMappingWithMember_Fails()
+    {
+        var validator = CreateValidator([]);
+        var mapping = CreateOrganizationMapping();
+        mapping.MemberId = "contact-1";
+
+        var result = await validator.ValidateAsync(mapping, TestContext.Current.CancellationToken);
+
+        Assert.Equal("organization-memberId-not-allowed", Assert.Single(result.Errors).ErrorCode);
+    }
+
+    [Fact]
     public async Task Validate_OrganizationMappingNextToUserMapping_Succeeds()
     {
         var validator = CreateValidator([CreateUserMapping("existing")]);

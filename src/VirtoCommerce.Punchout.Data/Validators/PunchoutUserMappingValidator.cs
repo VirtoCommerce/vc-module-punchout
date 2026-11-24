@@ -62,7 +62,25 @@ public class PunchoutUserMappingValidator : AbstractValidator<PunchoutUserMappin
         {
             RuleFor(x => x)
                 .CustomAsync(ValidateOrganizationAsync);
+
+            // The requisitions of an organization are shared by its mapping, and the admin shows one mapping per organization
+            RuleFor(x => x.OrganizationId)
+                .MustAsync(BeSingleOrganizationMappingAsync)
+                .WithErrorCode("organization-mapping-exists");
         });
+    }
+
+    /// <summary>
+    /// An organization can have one organization mapping.
+    /// </summary>
+    private async Task<bool> BeSingleOrganizationMappingAsync(PunchoutUserMapping model, string organizationId, CancellationToken cancellationToken)
+    {
+        var criteria = AbstractTypeFactory<PunchoutUserMappingSearchCriteria>.TryCreateInstance();
+        criteria.OrganizationIds = [organizationId];
+
+        var existing = await _searchService.SearchNoCloneAsync(criteria);
+
+        return existing.Results.All(x => x.Id == model.Id || !x.IsOrganizationMapping);
     }
 
     /// <summary>

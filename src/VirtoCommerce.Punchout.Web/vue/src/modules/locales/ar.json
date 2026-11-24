@@ -34,6 +34,7 @@
       "userId-memberId-required": "UserId وMemberId مطلوبان.",
       "userId-or-organizationId-required": "يجب تحديد UserId أو OrganizationId، وليس كليهما.",
       "organization-not-found": "لم يتم العثور على المؤسسة.",
+      "organization-mapping-exists": "لدى المؤسسة تعيين punchout بالفعل.",
       "memberId-mismatch": "المستخدم ليس حساب أمان لجهة الاتصال المحددة.",
       "user-is-admin-or-customer": "يمكن ربط حسابات النوع Customer فقط، بشرط ألا تكون حسابات مسؤول."
     }

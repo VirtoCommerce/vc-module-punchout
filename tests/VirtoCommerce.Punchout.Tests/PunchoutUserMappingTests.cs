@@ -89,6 +89,21 @@ public class PunchoutUserMappingTests
     }
 
     [Fact]
+    public async Task Validate_SecondMappingForOrganization_Fails()
+    {
+        // Two identities of one organization would share its requisitions, and the admin shows one mapping per organization
+        var existing = CreateOrganizationMapping("existing");
+        var validator = CreateValidator([existing]);
+
+        var mapping = CreateOrganizationMapping();
+        mapping.ExternalId = "another-sender";
+
+        var result = await validator.ValidateAsync(mapping, TestContext.Current.CancellationToken);
+
+        Assert.Equal("organization-mapping-exists", Assert.Single(result.Errors).ErrorCode);
+    }
+
+    [Fact]
     public async Task Validate_UpdateOfSameOrganizationMapping_Succeeds()
     {
         var existing = CreateOrganizationMapping("existing");
@@ -183,6 +198,7 @@ public class PunchoutUserMappingTests
         {
             var results = mappings
                 .Where(x => criteria.ExternalIds == null || criteria.ExternalIds.Contains(x.ExternalId))
+                .Where(x => criteria.OrganizationIds == null || criteria.OrganizationIds.Contains(x.OrganizationId))
                 .Where(x => criteria.IsActive == null || x.IsActive == criteria.IsActive)
                 .ToList();
 

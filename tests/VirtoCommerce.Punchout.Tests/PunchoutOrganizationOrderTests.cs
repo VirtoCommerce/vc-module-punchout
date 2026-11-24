@@ -193,6 +193,24 @@ public class PunchoutOrganizationOrderTests
         Assert.Equal("org-0", cart.OrganizationId);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CreateOrder_CustomerNotResolved_ConfigurationError(bool emptyCustomer)
+    {
+        // An override of ValidateAsync or CreateHandlerContext that does not call the base leaves the customer empty
+        var service = new TestCustomerOrderService(MemberServiceProxy.Create());
+
+        var context = CreateContext(CreateOrganizationMapping());
+        context.Customer = emptyCustomer ? new PunchoutOrderCustomer() : null;
+
+        await service.CreateOrderAsync(context);
+
+        Assert.True(context.IsFailed);
+        Assert.Equal(PunchoutOrderStatus.ConfigurationError, context.ErrorCode);
+        Assert.Equal("The customer of the order is not resolved.", context.ErrorMessage);
+    }
+
     // Update and delete
 
     [Fact]

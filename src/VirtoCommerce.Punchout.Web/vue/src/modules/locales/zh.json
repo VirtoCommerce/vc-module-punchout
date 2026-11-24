@@ -34,6 +34,7 @@
       "userId-memberId-required": "UserId 和 MemberId 为必填项。",
       "userId-or-organizationId-required": "必须指定 UserId 或 OrganizationId 之一，但不能同时指定。",
       "organization-not-found": "未找到该组织。",
+      "organization-mapping-exists": "该组织已有 punchout 映射。",
       "memberId-mismatch": "该用户不是指定联系人的安全账户。",
       "user-is-admin-or-customer": "只能映射非管理员的 Customer 类型账户。"
     }

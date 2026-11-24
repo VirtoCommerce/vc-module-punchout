@@ -25,6 +25,7 @@
           "userId-memberId-required": "UserId y MemberId son obligatorios.",
           "userId-or-organizationId-required": "Se requiere UserId u OrganizationId, pero no ambos.",
           "organization-not-found": "No se encontró la organización.",
+          "organization-mapping-exists": "La organización ya tiene una asignación de punchout.",
           "memberId-mismatch": "El usuario no es una cuenta de seguridad del contacto especificado.",
           "user-is-admin-or-customer": "Solo se pueden asignar cuentas de tipo Customer que no sean de administrador."
         }

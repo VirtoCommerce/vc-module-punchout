@@ -34,6 +34,7 @@
       "userId-memberId-required": "UserId ו-MemberId הם שדות חובה.",
       "userId-or-organizationId-required": "יש לציין UserId או OrganizationId, אך לא את שניהם.",
       "organization-not-found": "הארגון לא נמצא.",
+      "organization-mapping-exists": "לארגון כבר יש מיפוי punchout.",
       "memberId-mismatch": "המשתמש אינו חשבון אבטחה של איש הקשר שצוין.",
       "user-is-admin-or-customer": "ניתן למפות רק חשבונות מסוג Customer שאינם חשבונות מנהל."
     }

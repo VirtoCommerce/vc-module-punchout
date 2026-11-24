@@ -48,6 +48,13 @@ public partial class PunchoutCustomerOrderService(
 
     public virtual async Task CreateOrderAsync(PunchoutOrderRequestHandlerContext context)
     {
+        if (string.IsNullOrEmpty(context.Customer?.UserId))
+        {
+            LogCustomerNotResolved(context.Request.OrderId);
+            context.Fail(PunchoutOrderStatus.ConfigurationError, "The customer of the order is not resolved.");
+            return;
+        }
+
         var missingItem = context.Request.Items.FirstOrDefault(x => x.RequisitionItem is null);
         if (missingItem != null)
         {
@@ -782,4 +789,8 @@ public partial class PunchoutCustomerOrderService(
     [LoggerMessage(Level = LogLevel.Warning,
         Message = "Punchout order '{PurchaseOrderNumber}' rejected: customer order '{CustomerOrderId}' belongs to organization '{OrderOrganizationId}', not to the mapped organization '{OrganizationId}'.")]
     private partial void LogOrderOfAnotherOrganization(string purchaseOrderNumber, string customerOrderId, string orderOrganizationId, string organizationId);
+
+    [LoggerMessage(Level = LogLevel.Error,
+        Message = "Punchout order '{PurchaseOrderNumber}' cannot be created: the handler context has no customer. An override of PunchoutOrderRequestProcessor.ValidateAsync or CreateHandlerContext must set PunchoutOrderValidationResult.Customer and PunchoutOrderRequestHandlerContext.Customer.")]
+    private partial void LogCustomerNotResolved(string purchaseOrderNumber);
 }

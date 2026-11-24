@@ -25,6 +25,7 @@
           "userId-memberId-required": "UserId и MemberId обязательны.",
           "userId-or-organizationId-required": "Укажите либо UserId, либо OrganizationId, но не оба.",
           "organization-not-found": "Организация не найдена.",
+          "organization-mapping-exists": "У организации уже есть сопоставление punchout.",
           "memberId-mismatch": "Пользователь не является учётной записью указанного контакта.",
           "user-is-admin-or-customer": "Сопоставлять можно только учётные записи типа Customer без прав администратора."
         }

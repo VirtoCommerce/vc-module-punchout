@@ -91,7 +91,7 @@ All the punchout sessions and orders of the identity belong to one account. Open
 
 #### Organization mapping
 
-Each user of the procurement system shops under their own account in the organization. Open an organization in the admin and use the **Punchout organization** widget on the organization details blade. An organization mapping is valid when the external identity is not empty and is not used by another organization mapping, and the organization exists.
+Each user of the procurement system shops under their own account in the organization. Open an organization in the admin and use the **Punchout organization** widget on the organization details blade. An organization mapping is valid when the external identity is not empty and is not used by another organization mapping, the organization exists, and the organization has no other organization mapping. All the sessions of an organization share their requisitions, so one organization is linked to one procurement identity.
 
 The same identity may have both a user mapping and an organization mapping. The user mapping takes precedence.
 
@@ -370,7 +370,7 @@ Token redemption and the switch to `Returned` update the session directly in the
 | Table | Purpose |
 |-------|---------|
 | `PunchoutSession` | Punchout sessions: store, configuration, mapping, user, organization (for an organization mapping), buyer cookie, buyer, supplier, and sender identities and domains, return URL, status (`Active` or `Returned`), start page, session and token expiration dates, token hash (unique), and redemption flag |
-| `PunchoutUserMapping` | Links an external identity either to a platform user (`UserId`, `UserName`) and the contact (`MemberId`) that owns the account, or to an organization (`OrganizationId`, `OrganizationName`), with an active flag. An identity has at most one mapping of each kind |
+| `PunchoutUserMapping` | Links an external identity either to a platform user (`UserId`, `UserName`) and the contact (`MemberId`) that owns the account, or to an organization (`OrganizationId`, `OrganizationName`), with an active flag. An identity has at most one mapping of each kind, and an organization has at most one organization mapping |
 | `PunchoutOrderMessage` | cXML of the `PunchOutOrderMessage` returned for a session. Deleted together with the session |
 | `PunchoutRequisitionItem` | Snapshot of the cart line items sent in an order message: message, session, line item (unique within the message), product, catalog, SKU, name, quantity, prices, discount, tax, and dimensions. Deleted together with the message |
 | `PunchoutOrderLine` | Requisition items ordered by purchase orders: configuration, session, cart line item (unique together), purchase order number, line number, and the order request that added the item |

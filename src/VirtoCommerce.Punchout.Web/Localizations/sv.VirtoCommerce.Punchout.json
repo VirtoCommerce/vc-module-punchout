@@ -25,6 +25,7 @@
           "userId-memberId-required": "UserId och MemberId krävs.",
           "userId-or-organizationId-required": "Antingen UserId eller OrganizationId krävs, men inte båda.",
           "organization-not-found": "Organisationen hittades inte.",
+          "organization-mapping-exists": "Organisationen har redan en punchout-mappning.",
           "memberId-mismatch": "Användaren är inte ett säkerhetskonto för den angivna kontakten.",
           "user-is-admin-or-customer": "Endast konton av typen Customer som inte är administratörer kan mappas."
         }

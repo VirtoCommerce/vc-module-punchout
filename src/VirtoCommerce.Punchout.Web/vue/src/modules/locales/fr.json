@@ -34,6 +34,7 @@
       "userId-memberId-required": "UserId et MemberId sont obligatoires.",
       "userId-or-organizationId-required": "UserId ou OrganizationId est obligatoire, mais pas les deux.",
       "organization-not-found": "L'organisation est introuvable.",
+      "organization-mapping-exists": "L'organisation a déjà un mappage punchout.",
       "memberId-mismatch": "L'utilisateur n'est pas un compte de sécurité du contact spécifié.",
       "user-is-admin-or-customer": "Seuls les comptes de type Customer non administrateurs peuvent être mappés."
     }

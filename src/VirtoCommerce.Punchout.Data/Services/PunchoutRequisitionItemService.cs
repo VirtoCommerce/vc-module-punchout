@@ -11,16 +11,20 @@ namespace VirtoCommerce.Punchout.Data.Services;
 
 public class PunchoutRequisitionItemService(Func<IPunchoutRepository> repositoryFactory) : IPunchoutRequisitionItemService
 {
-    public virtual async Task<IList<PunchoutRequisitionItem>> GetReturnedItemsAsync(string configurationId, string userId, IList<string> lineItemIds)
+    public virtual async Task<IList<PunchoutRequisitionItem>> GetReturnedItemsAsync(PunchoutReturnedItemsCriteria criteria)
     {
-        if (string.IsNullOrEmpty(configurationId) || string.IsNullOrEmpty(userId) || lineItemIds.IsNullOrEmpty())
+        ArgumentNullException.ThrowIfNull(criteria);
+
+        if (string.IsNullOrEmpty(criteria.ConfigurationId) ||
+            (string.IsNullOrEmpty(criteria.UserId) && string.IsNullOrEmpty(criteria.OrganizationId)) ||
+            criteria.LineItemIds.IsNullOrEmpty())
         {
             return [];
         }
 
         using var repository = repositoryFactory();
 
-        var entities = await repository.GetReturnedRequisitionItemsAsync(configurationId, userId, lineItemIds);
+        var entities = await repository.GetReturnedRequisitionItemsAsync(criteria.ConfigurationId, criteria.UserId, criteria.OrganizationId, criteria.LineItemIds);
 
         return entities
             .Select(x => x.ToModel(AbstractTypeFactory<PunchoutRequisitionItem>.TryCreateInstance()))

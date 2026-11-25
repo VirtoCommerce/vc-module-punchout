@@ -15,6 +15,11 @@ public class PunchoutOrderValidationResult
     public Store Store { get; set; }
 
     /// <summary>
+    /// The customer of the order. Set once the user is resolved, a rejected request may have it too.
+    /// </summary>
+    public PunchoutOrderCustomer Customer { get; set; }
+
+    /// <summary>
     /// The current version of the purchase order changed by an 'update' or 'delete'.
     /// </summary>
     public PunchoutOrderRequest PreviousRequest { get; set; }

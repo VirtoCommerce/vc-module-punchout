@@ -23,8 +23,18 @@
           "externalId-required": "ExternalId は必須です",
           "mapping-exists": "ExternalId '{{externalId}}' のマッピングは既に存在します。",
           "userId-memberId-required": "UserId と MemberId は必須です。",
+          "userId-or-organizationId-required": "UserId または OrganizationId のいずれか一方が必須です（両方は指定できません）。",
+          "organization-not-found": "組織が見つかりません。",
+          "organization-memberId-not-allowed": "組織マッピングには MemberId を指定できません。",
+          "organization-mapping-exists": "この組織には既にパンチアウトのマッピングがあります。",
           "memberId-mismatch": "このユーザーは指定された連絡先のセキュリティアカウントではありません。",
           "user-is-admin-or-customer": "マッピングできるのは、管理者以外の Customer タイプのアカウントのみです。"
+        }
+      },
+      "organization-mapping-detail": {
+        "title": "パンチアウト組織",
+        "labels": {
+          "info": "この組織のユーザーは各自のアカウントで購入します。ユーザーは、調達システムがエンドユーザーとして送信するメールアドレスで特定されます。"
         }
       }
     },
@@ -41,6 +51,10 @@
     "widgets": {
       "user-mapping": {
         "title": "Punchout ユーザー",
+        "not-set": "未リンク"
+      },
+      "organization-mapping": {
+        "title": "パンチアウト組織",
         "not-set": "未リンク"
       }
     }

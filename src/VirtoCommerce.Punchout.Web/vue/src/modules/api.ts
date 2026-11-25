@@ -7,6 +7,8 @@ export interface PunchoutUserMapping {
   userId?: string;
   userName?: string;
   memberId?: string;
+  organizationId?: string;
+  organizationName?: string;
 }
 
 export interface SecurityAccount {
@@ -14,10 +16,11 @@ export interface SecurityAccount {
   userName?: string;
 }
 
-/** The contact a mapping belongs to (Customer module's /api/members) */
+/** The contact or organization a mapping belongs to (Customer module's /api/members) */
 export interface Member {
   id?: string;
   name?: string;
+  memberType?: string;
   securityAccounts?: SecurityAccount[];
 }
 
@@ -54,6 +57,11 @@ export const userMappings = {
   // one contact has one mapping
   byMember: (memberId: string) =>
     http<{ results?: PunchoutUserMapping[] }>("POST", `${BASE}/search`, { memberIds: [memberId], take: 1 }).then(
+      (r) => r.results?.[0],
+    ),
+  // one organization has one mapping
+  byOrganization: (organizationId: string) =>
+    http<{ results?: PunchoutUserMapping[] }>("POST", `${BASE}/search`, { organizationIds: [organizationId], take: 1 }).then(
       (r) => r.results?.[0],
     ),
   getNew: () => http<PunchoutUserMapping>("GET", `${BASE}/new`),

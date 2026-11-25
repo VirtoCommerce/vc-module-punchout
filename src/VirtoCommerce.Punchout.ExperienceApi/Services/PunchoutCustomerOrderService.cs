@@ -48,6 +48,13 @@ public partial class PunchoutCustomerOrderService(
 
     public virtual async Task CreateOrderAsync(PunchoutOrderRequestHandlerContext context)
     {
+        if (string.IsNullOrEmpty(context.Customer?.UserId))
+        {
+            LogCustomerNotResolved(context.Request.OrderId);
+            context.Fail(PunchoutOrderStatus.ConfigurationError, "The customer of the order is not resolved.");
+            return;
+        }
+
         var missingItem = context.Request.Items.FirstOrDefault(x => x.RequisitionItem is null);
         if (missingItem != null)
         {
@@ -73,8 +80,8 @@ public partial class PunchoutCustomerOrderService(
         cart.StoreId = context.Store.Id;
         cart.Currency = request.Currency;
         cart.LanguageCode = context.Store.DefaultLanguage;
-        cart.CustomerId = context.UserMapping.UserId;
-        cart.CustomerName = context.UserMapping.UserName;
+        cart.CustomerId = context.Customer.UserId;
+        cart.CustomerName = context.Customer.UserName;
         cart.PurchaseOrderNumber = request.OrderId;
 
         await SetCustomerAsync(context, cart);
@@ -97,22 +104,22 @@ public partial class PunchoutCustomerOrderService(
         return cart;
     }
 
+    /// <summary>
+    /// The order of an organization mapping belongs to the mapped organization, the order of a user mapping to the first organization of the contact.
+    /// </summary>
     protected virtual async Task SetCustomerAsync(PunchoutOrderRequestHandlerContext context, ShoppingCart cart)
     {
-        var memberId = context.UserMapping.MemberId;
-        if (string.IsNullOrEmpty(memberId))
+        var memberId = context.Customer.MemberId;
+        var contact = string.IsNullOrEmpty(memberId)
+            ? null
+            : await memberService.GetByIdAsync(memberId) as Contact;
+
+        if (contact is not null)
         {
-            return;
+            cart.CustomerName = contact.FullName.EmptyToNull() ?? contact.Name.EmptyToNull() ?? cart.CustomerName;
         }
 
-        if (await memberService.GetByIdAsync(memberId) is not Contact contact)
-        {
-            return;
-        }
-
-        cart.CustomerName = contact.FullName.EmptyToNull() ?? contact.Name.EmptyToNull() ?? cart.CustomerName;
-
-        var organizationId = contact.Organizations?.FirstOrDefault();
+        var organizationId = context.Customer.OrganizationId.EmptyToNull() ?? contact?.Organizations?.FirstOrDefault();
         if (string.IsNullOrEmpty(organizationId))
         {
             return;
@@ -283,6 +290,12 @@ public partial class PunchoutCustomerOrderService(
             return $"Order '{context.Request.OrderId}' is not found.";
         }
 
+        var organizationError = ValidateOrderOrganization(context, order);
+        if (organizationError != null)
+        {
+            return organizationError;
+        }
+
         if (order.IsCancelled)
         {
             return $"Order '{context.Request.OrderId}' is cancelled.";
@@ -300,6 +313,23 @@ public partial class PunchoutCustomerOrderService(
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// An organization mapping changes only the orders of its organization. The orders of a user mapping are not checked.
+    /// </summary>
+    protected virtual string ValidateOrderOrganization(PunchoutOrderRequestHandlerContext context, CustomerOrder order)
+    {
+        var userMapping = context.UserMapping;
+
+        if (userMapping?.IsOrganizationMapping != true || order.OrganizationId.EqualsIgnoreCase(userMapping.OrganizationId))
+        {
+            return null;
+        }
+
+        LogOrderOfAnotherOrganization(context.Request.OrderId, order.Id, order.OrganizationId, userMapping.OrganizationId);
+
+        return $"Order '{context.Request.OrderId}' belongs to another organization.";
     }
 
     protected virtual IList<string> GetUpdatableOrderStatuses(PunchoutConfiguration configuration)
@@ -633,6 +663,13 @@ public partial class PunchoutCustomerOrderService(
             return;
         }
 
+        var organizationError = ValidateOrderOrganization(context, order);
+        if (organizationError != null)
+        {
+            context.Fail(PunchoutOrderStatus.InvalidRequest, organizationError);
+            return;
+        }
+
         context.Result.CustomerOrderId = order.Id;
         context.Result.PurchaseOrderNumber = context.Request.OrderId;
 
@@ -748,4 +785,12 @@ public partial class PunchoutCustomerOrderService(
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Punchout order '{PurchaseOrderNumber}' is already cancelled, customer order '{CustomerOrderId}'.")]
     private partial void LogAlreadyCancelled(string purchaseOrderNumber, string customerOrderId);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Punchout order '{PurchaseOrderNumber}' rejected: customer order '{CustomerOrderId}' belongs to organization '{OrderOrganizationId}', not to the mapped organization '{OrganizationId}'.")]
+    private partial void LogOrderOfAnotherOrganization(string purchaseOrderNumber, string customerOrderId, string orderOrganizationId, string organizationId);
+
+    [LoggerMessage(Level = LogLevel.Error,
+        Message = "Punchout order '{PurchaseOrderNumber}' cannot be created: the handler context has no customer. An override of PunchoutOrderRequestProcessor.ValidateAsync or CreateHandlerContext must set PunchoutOrderValidationResult.Customer and PunchoutOrderRequestHandlerContext.Customer.")]
+    private partial void LogCustomerNotResolved(string purchaseOrderNumber);
 }

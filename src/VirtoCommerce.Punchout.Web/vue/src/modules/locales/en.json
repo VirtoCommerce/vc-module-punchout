@@ -1,7 +1,8 @@
 {
   "PUNCHOUT": {
     "WIDGET": {
-      "TITLE": "Punchout user"
+      "TITLE": "Punchout user",
+      "ORGANIZATION_TITLE": "Punchout organization"
     },
     "MAPPING": {
       "TITLE": "Punchout user",
@@ -12,6 +13,10 @@
       "EXTERNAL_ID_HINT": "The value the procurement system sends in cXML Header/Sender/Credential/Identity.",
       "ACCOUNT": "Account",
       "NO_ACCOUNTS": "This contact has no security account yet. Create one first: a punchout session is opened for an account, not for a contact."
+    },
+    "ORGANIZATION_MAPPING": {
+      "TITLE": "Punchout organization",
+      "INFO": "Users of this organization shop under their own accounts. The user is found by the email the procurement system sends for the end user."
     },
     "TOOLBAR": {
       "SAVE": "Save",
@@ -27,6 +32,10 @@
       "externalId-required": "ExternalId is required",
       "mapping-exists": "A mapping with ExternalId '{externalId}' already exists.",
       "userId-memberId-required": "UserId and MemberId are required.",
+      "userId-or-organizationId-required": "Either UserId or OrganizationId is required, but not both.",
+      "organization-not-found": "The organization is not found.",
+      "organization-memberId-not-allowed": "An organization mapping cannot have a MemberId.",
+      "organization-mapping-exists": "The organization already has a punchout mapping.",
       "memberId-mismatch": "The user is not a security account of the specified contact.",
       "user-is-admin-or-customer": "Only non-administrator accounts of Customer type can be mapped."
     }

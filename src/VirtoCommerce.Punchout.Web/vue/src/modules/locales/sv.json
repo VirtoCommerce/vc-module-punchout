@@ -1,7 +1,8 @@
 {
   "PUNCHOUT": {
     "WIDGET": {
-      "TITLE": "Punchout-användare"
+      "TITLE": "Punchout-användare",
+      "ORGANIZATION_TITLE": "Punchout-organisation"
     },
     "MAPPING": {
       "TITLE": "Punchout-användare",
@@ -12,6 +13,10 @@
       "EXTERNAL_ID_HINT": "Värdet som inköpssystemet skickar i cXML Header/Sender/Credential/Identity.",
       "ACCOUNT": "Konto",
       "NO_ACCOUNTS": "Den här kontakten har inget säkerhetskonto ännu. Skapa ett först: en Punchout-session öppnas för ett konto, inte för en kontakt."
+    },
+    "ORGANIZATION_MAPPING": {
+      "TITLE": "Punchout-organisation",
+      "INFO": "Användare i denna organisation handlar med sina egna konton. Användaren identifieras via den e-postadress som inköpssystemet skickar för slutanvändaren."
     },
     "TOOLBAR": {
       "SAVE": "Spara",
@@ -27,6 +32,10 @@
       "externalId-required": "ExternalId krävs",
       "mapping-exists": "En mappning med ExternalId '{externalId}' finns redan.",
       "userId-memberId-required": "UserId och MemberId krävs.",
+      "userId-or-organizationId-required": "Antingen UserId eller OrganizationId krävs, men inte båda.",
+      "organization-not-found": "Organisationen hittades inte.",
+      "organization-memberId-not-allowed": "En organisationsmappning kan inte ha MemberId.",
+      "organization-mapping-exists": "Organisationen har redan en punchout-mappning.",
       "memberId-mismatch": "Användaren är inte ett säkerhetskonto för den angivna kontakten.",
       "user-is-admin-or-customer": "Endast konton av typen Customer som inte är administratörer kan mappas."
     }

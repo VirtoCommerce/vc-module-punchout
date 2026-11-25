@@ -23,8 +23,18 @@
           "externalId-required": "ExternalId обязателен",
           "mapping-exists": "Сопоставление с ExternalId '{{externalId}}' уже существует.",
           "userId-memberId-required": "UserId и MemberId обязательны.",
+          "userId-or-organizationId-required": "Укажите либо UserId, либо OrganizationId, но не оба.",
+          "organization-not-found": "Организация не найдена.",
+          "organization-memberId-not-allowed": "У сопоставления организации не может быть MemberId.",
+          "organization-mapping-exists": "У организации уже есть сопоставление punchout.",
           "memberId-mismatch": "Пользователь не является учётной записью указанного контакта.",
           "user-is-admin-or-customer": "Сопоставлять можно только учётные записи типа Customer без прав администратора."
+        }
+      },
+      "organization-mapping-detail": {
+        "title": "Punchout-организация",
+        "labels": {
+          "info": "Пользователи этой организации работают под своими учётными записями. Пользователь определяется по email конечного пользователя, который присылает система закупок."
         }
       }
     },
@@ -41,6 +51,10 @@
     "widgets": {
       "user-mapping": {
         "title": "Пользователь Punchout",
+        "not-set": "Не привязан"
+      },
+      "organization-mapping": {
+        "title": "Punchout-организация",
         "not-set": "Не привязан"
       }
     }

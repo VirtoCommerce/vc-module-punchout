@@ -447,14 +447,14 @@ public class PunchoutOrderUpdateTests
     }
 
     private sealed class TestOrderRequestProcessor()
-        : PunchoutOrderRequestProcessor(null, null, null, null, null, null, null, null)
+        : PunchoutOrderRequestProcessor(null, null, null, null, null, null, null, null, null)
     {
         public string ValidateOrderVersionPublic(PunchoutOrderRequestData request, PunchoutOrderRequest currentRequest) =>
             ValidateOrderVersion(request, currentRequest);
     }
 
     private sealed class TestExistingRequestProcessor(PunchoutOrderRequest payloadRequest, PunchoutOrderRequest processedRequest)
-        : PunchoutOrderRequestProcessor(null, null, null, null, null, null, null, NullLogger<PunchoutOrderRequestProcessor>.Instance)
+        : PunchoutOrderRequestProcessor(null, null, null, null, null, null, null, null, NullLogger<PunchoutOrderRequestProcessor>.Instance)
     {
         public Task<PunchoutOrderRequest> FindExistingRequestPublicAsync(PunchoutOrderRequestData request) =>
             FindExistingRequestAsync(request, new PunchoutConfiguration { Id = "configuration" });
@@ -470,7 +470,7 @@ public class PunchoutOrderUpdateTests
     }
 
     private sealed class TestUpdateValidationProcessor(PunchoutOrderRequest currentRequest, PunchoutOrderRequest retriedRequest = null)
-        : PunchoutOrderRequestProcessor(null, null, null, null, null, null, null, NullLogger<PunchoutOrderRequestProcessor>.Instance)
+        : PunchoutOrderRequestProcessor(null, null, null, null, null, null, null, null, NullLogger<PunchoutOrderRequestProcessor>.Instance)
     {
         public bool NewOrderValidated { get; private set; }
 

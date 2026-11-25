@@ -41,6 +41,11 @@ public class PunchoutUserMappingSearchService(
             query = query.Where(x => criteria.MemberIds.Contains(x.MemberId));
         }
 
+        if (!criteria.OrganizationIds.IsNullOrEmpty())
+        {
+            query = query.Where(x => criteria.OrganizationIds.Contains(x.OrganizationId));
+        }
+
         if (criteria.IsActive != null)
         {
             query = query.Where(x => x.IsActive == criteria.IsActive);
@@ -48,7 +53,10 @@ public class PunchoutUserMappingSearchService(
 
         if (!string.IsNullOrEmpty(criteria.Keyword))
         {
-            query = query.Where(x => x.ExternalId.Contains(criteria.Keyword) || x.UserName.Contains(criteria.Keyword));
+            query = query.Where(x =>
+                x.ExternalId.Contains(criteria.Keyword) ||
+                x.UserName.Contains(criteria.Keyword) ||
+                x.OrganizationName.Contains(criteria.Keyword));
         }
 
         return query;

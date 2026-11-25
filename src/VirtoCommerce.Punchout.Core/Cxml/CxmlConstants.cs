@@ -30,6 +30,11 @@ public static class CxmlConstants
         public const string EndUser = "endUser";
     }
 
+    public static class ExtrinsicName
+    {
+        public const string UserEmail = "UserEmail";
+    }
+
     public static class Status
     {
         public const string OkCode = "200";

@@ -1,7 +1,8 @@
 {
   "PUNCHOUT": {
     "WIDGET": {
-      "TITLE": "مستخدم Punchout"
+      "TITLE": "مستخدم Punchout",
+      "ORGANIZATION_TITLE": "مؤسسة Punchout"
     },
     "MAPPING": {
       "TITLE": "مستخدم Punchout",
@@ -12,6 +13,10 @@
       "EXTERNAL_ID_HINT": "القيمة التي يرسلها نظام المشتريات في cXML Header/Sender/Credential/Identity.",
       "ACCOUNT": "الحساب",
       "NO_ACCOUNTS": "ليس لجهة الاتصال هذه حساب أمان بعد. أنشئ حسابًا أولًا: تُفتح جلسة Punchout لحساب، وليس لجهة اتصال."
+    },
+    "ORGANIZATION_MAPPING": {
+      "TITLE": "مؤسسة Punchout",
+      "INFO": "يتسوق مستخدمو هذه المؤسسة بحساباتهم الخاصة. يتم تحديد المستخدم من خلال البريد الإلكتروني الذي يرسله نظام المشتريات للمستخدم النهائي."
     },
     "TOOLBAR": {
       "SAVE": "حفظ",
@@ -27,6 +32,10 @@
       "externalId-required": "ExternalId مطلوب",
       "mapping-exists": "يوجد بالفعل ربط بالقيمة ExternalId «{externalId}».",
       "userId-memberId-required": "UserId وMemberId مطلوبان.",
+      "userId-or-organizationId-required": "يجب تحديد UserId أو OrganizationId، وليس كليهما.",
+      "organization-not-found": "لم يتم العثور على المؤسسة.",
+      "organization-memberId-not-allowed": "لا يمكن أن يحتوي تعيين المؤسسة على MemberId.",
+      "organization-mapping-exists": "لدى المؤسسة تعيين punchout بالفعل.",
       "memberId-mismatch": "المستخدم ليس حساب أمان لجهة الاتصال المحددة.",
       "user-is-admin-or-customer": "يمكن ربط حسابات النوع Customer فقط، بشرط ألا تكون حسابات مسؤول."
     }

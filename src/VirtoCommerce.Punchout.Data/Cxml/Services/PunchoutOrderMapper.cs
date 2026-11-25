@@ -53,6 +53,7 @@ public class PunchoutOrderMapper(ICxmlResponseFactory responseFactory) : IPuncho
         orderContext.ShipTo = MapAddress(orderHeader?.ShipTo?.Address);
         orderContext.BillTo = MapAddress(orderHeader?.BillTo?.Address);
         orderContext.User = MapUser(orderHeader?.Contacts);
+        orderContext.Extrinsics = (orderHeader?.Extrinsics).ToExtrinsicDictionary();
 
         orderContext.Items = orderRequest?.Items?
             .Where(x => x is not null)

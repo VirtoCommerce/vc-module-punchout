@@ -1,7 +1,8 @@
 {
   "PUNCHOUT": {
     "WIDGET": {
-      "TITLE": "Punchout-Benutzer"
+      "TITLE": "Punchout-Benutzer",
+      "ORGANIZATION_TITLE": "Punchout-Organisation"
     },
     "MAPPING": {
       "TITLE": "Punchout-Benutzer",
@@ -12,6 +13,10 @@
       "EXTERNAL_ID_HINT": "Der Wert, den das Beschaffungssystem in cXML Header/Sender/Credential/Identity sendet.",
       "ACCOUNT": "Konto",
       "NO_ACCOUNTS": "Dieser Kontakt hat noch kein Sicherheitskonto. Erstellen Sie zuerst eines: Eine Punchout-Sitzung wird für ein Konto geöffnet, nicht für einen Kontakt."
+    },
+    "ORGANIZATION_MAPPING": {
+      "TITLE": "Punchout-Organisation",
+      "INFO": "Benutzer dieser Organisation kaufen mit ihren eigenen Konten ein. Der Benutzer wird anhand der E-Mail-Adresse ermittelt, die das Beschaffungssystem für den Endbenutzer sendet."
     },
     "TOOLBAR": {
       "SAVE": "Speichern",
@@ -27,6 +32,10 @@
       "externalId-required": "ExternalId ist erforderlich",
       "mapping-exists": "Eine Zuordnung mit ExternalId '{externalId}' existiert bereits.",
       "userId-memberId-required": "UserId und MemberId sind erforderlich.",
+      "userId-or-organizationId-required": "Entweder UserId oder OrganizationId ist erforderlich, aber nicht beide.",
+      "organization-not-found": "Die Organisation wurde nicht gefunden.",
+      "organization-memberId-not-allowed": "Eine Organisationszuordnung darf keine MemberId haben.",
+      "organization-mapping-exists": "Die Organisation hat bereits eine Punchout-Zuordnung.",
       "memberId-mismatch": "Der Benutzer ist kein Sicherheitskonto des angegebenen Kontakts.",
       "user-is-admin-or-customer": "Nur Konten vom Typ Customer ohne Administratorrechte können zugeordnet werden."
     }

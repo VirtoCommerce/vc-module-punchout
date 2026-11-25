@@ -2,7 +2,8 @@
     <div class="blade-inner">
         <form name="formScope" class="form">
           <div class="inner-block">
-            <div ng-if="!securityAccounts.length" class="note warning" style="margin: 0">{{ 'punchout.blades.user-mapping-detail.labels.no-accounts' | translate }}</div>
+            <div ng-if="!isOrganization && !securityAccounts.length" class="note warning" style="margin: 0">{{ 'punchout.blades.user-mapping-detail.labels.no-accounts' | translate }}</div>
+            <div ng-if="isOrganization" class="note" style="margin: 0">{{ 'punchout.blades.organization-mapping-detail.labels.info' | translate }}</div>
             <fieldset>
               <va-metaform registered-inputs="blade.metaFields" blade="blade" column-count="6" ng-if="blade.currentEntity" ng-init="setForm(formScope)"></va-metaform>
             </fieldset>

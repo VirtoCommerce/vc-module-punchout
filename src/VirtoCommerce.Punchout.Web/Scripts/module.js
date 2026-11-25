@@ -20,6 +20,7 @@ angular.module(moduleName, [])
             };
 
             widgetService.registerWidget(memberPunchoutUserMappingWidget, 'customerDetail2');
+            widgetService.registerWidget(angular.copy(memberPunchoutUserMappingWidget), 'organizationDetail2');
 
             // metaforms
             metaFormsService.registerMetaFields('punchoutUserMappingDetail', [

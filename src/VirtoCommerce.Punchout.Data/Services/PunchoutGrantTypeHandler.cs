@@ -20,7 +20,9 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IPunchoutSessionManagementService _sessionManagementService;
-    private readonly IPunchoutUserMappingSearchService _userMappingSearchService;
+    private readonly IPunchoutUserMappingService _userMappingService;
+    private readonly IPunchoutOrganizationUserResolver _organizationUserResolver;
+    private readonly IPunchoutUserPolicy _userPolicy;
 
     public PunchoutGrantTypeHandler(
         SignInManager<ApplicationUser> signInManager,
@@ -31,12 +33,16 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
         IEventPublisher eventPublisher,
         ITwoFactorSignInService twoFactorSignInService,
         IPunchoutSessionManagementService sessionManagementService,
-        IPunchoutUserMappingSearchService userMappingSearchService)
+        IPunchoutUserMappingService userMappingService,
+        IPunchoutOrganizationUserResolver organizationUserResolver,
+        IPunchoutUserPolicy userPolicy)
         : base(signInManager, identityOptions, requestValidators, claimProviders, requestHandlers, eventPublisher, twoFactorSignInService)
     {
         _signInManager = signInManager;
         _sessionManagementService = sessionManagementService;
-        _userMappingSearchService = userMappingSearchService;
+        _userMappingService = userMappingService;
+        _organizationUserResolver = organizationUserResolver;
+        _userPolicy = userPolicy;
     }
 
     public override string GrantType => ModuleConstants.Security.PunchoutGrantType;
@@ -63,17 +69,16 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
             return GrantValidationResult.Fail(SecurityErrorDescriber.LoginFailed());
         }
 
-        if (!await HasActiveUserMappingAsync(session))
+        var user = await _signInManager.UserManager.FindByIdAsync(session.UserId);
+        if (user == null
+            || !_userPolicy.IsAllowed(user)
+            || await _signInManager.UserManager.IsLockedOutAsync(user)
+            || !await _signInManager.CanSignInAsync(user))
         {
             return GrantValidationResult.Fail(SecurityErrorDescriber.LoginFailed());
         }
 
-        var user = await _signInManager.UserManager.FindByIdAsync(session.UserId);
-        if (user == null
-            || user.IsAdministrator
-            || user.UserType != nameof(UserType.Customer)
-            || await _signInManager.UserManager.IsLockedOutAsync(user)
-            || !await _signInManager.CanSignInAsync(user))
+        if (!await HasActiveUserMappingAsync(session, user))
         {
             return GrantValidationResult.Fail(SecurityErrorDescriber.LoginFailed());
         }
@@ -82,25 +87,41 @@ public class PunchoutGrantTypeHandler : GrantTypeHandlerBase
         context.AdditionalParameters.Add(ModuleConstants.Security.Claims.ChannelSessionId, session.Id);
         context.AdditionalParameters.Add("sessionExpirationDate", session.ExpirationDate.Value);
 
+        if (!session.OrganizationId.IsNullOrEmpty())
+        {
+            // The session is bound to the organization of the organization mapping:
+            // the Customer module validates the requested organization and sets it to the organization_id claim
+            context.Request.SetParameter(ModuleConstants.Security.Parameters.OrganizationId, session.OrganizationId);
+            context.AdditionalParameters.Add(ModuleConstants.Security.Parameters.SessionOrganizationId, session.OrganizationId);
+        }
+
         return GrantValidationResult.Succeed(user);
     }
 
-    protected virtual async Task<bool> HasActiveUserMappingAsync(PunchoutSession session)
+    /// <summary>
+    /// The mapping the session was set up with is still active and still grants the session user.
+    /// </summary>
+    protected virtual async Task<bool> HasActiveUserMappingAsync(PunchoutSession session, ApplicationUser user)
     {
-        if (session.SenderIdentity.IsNullOrEmpty())
+        if (session.UserMappingId.IsNullOrEmpty())
         {
             return false;
         }
 
-        var criteria = AbstractTypeFactory<PunchoutUserMappingSearchCriteria>.TryCreateInstance();
-        criteria.ExternalIds = [session.SenderIdentity];
-        criteria.UserIds = [session.UserId];
-        criteria.IsActive = true;
-        criteria.Take = 0;
+        var mapping = await _userMappingService.GetNoCloneAsync(session.UserMappingId);
 
-        var searchResult = await _userMappingSearchService.SearchNoCloneAsync(criteria);
+        if (mapping is not { IsActive: true })
+        {
+            return false;
+        }
 
-        return searchResult.TotalCount > 0;
+        if (mapping.IsOrganizationMapping)
+        {
+            return mapping.OrganizationId.EqualsIgnoreCase(session.OrganizationId) &&
+                   await _organizationUserResolver.IsOrganizationUserAsync(user, mapping.OrganizationId);
+        }
+
+        return mapping.UserId.EqualsIgnoreCase(session.UserId);
     }
 
     protected virtual RedeemPunchoutSessionRequest GetRedeemPunchoutSessionRequest(TokenRequestContext context)

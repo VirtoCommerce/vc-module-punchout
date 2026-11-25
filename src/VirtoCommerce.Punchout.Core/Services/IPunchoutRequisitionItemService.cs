@@ -10,8 +10,8 @@ namespace VirtoCommerce.Punchout.Core.Services;
 public interface IPunchoutRequisitionItemService
 {
     /// <summary>
-    /// The requisition items with the given cart line item ids, returned by the sessions of the user and the configuration.
+    /// The requisition items with the given cart line item ids, returned by the sessions of the user or the organization and the configuration.
     /// One cart line item may be in the requisitions of several sessions, e.g. when it was not removed from the cart after the first one.
     /// </summary>
-    Task<IList<PunchoutRequisitionItem>> GetReturnedItemsAsync(string configurationId, string userId, IList<string> lineItemIds);
+    Task<IList<PunchoutRequisitionItem>> GetReturnedItemsAsync(PunchoutReturnedItemsCriteria criteria);
 }

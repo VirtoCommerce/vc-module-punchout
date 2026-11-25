@@ -51,5 +51,10 @@ public class PunchoutOrderRequestData : BasePunchoutRequest
     /// </summary>
     public PunchoutUserContext User { get; set; }
 
+    /// <summary>
+    /// OrderRequestHeader/Extrinsic values by name.
+    /// </summary>
+    public IDictionary<string, string> Extrinsics { get; set; }
+
     public IList<PunchoutOrderRequestItem> Items { get; set; } = [];
 }

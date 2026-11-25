@@ -58,6 +58,12 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
     [StringLength(128)]
     public string UserId { get; set; }
 
+    [StringLength(128)]
+    public string UserMappingId { get; set; }
+
+    [StringLength(128)]
+    public string OrganizationId { get; set; }
+
     public virtual PunchoutSession ToModel(PunchoutSession model)
     {
         model.Id = Id;
@@ -83,6 +89,8 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
         model.Status = Status;
         model.StartPage = StartPage;
         model.UserId = UserId;
+        model.UserMappingId = UserMappingId;
+        model.OrganizationId = OrganizationId;
 
         return model;
     }
@@ -114,6 +122,8 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
         Status = model.Status;
         StartPage = model.StartPage;
         UserId = model.UserId;
+        UserMappingId = model.UserMappingId;
+        OrganizationId = model.OrganizationId;
 
         return this;
     }
@@ -137,5 +147,7 @@ public class PunchoutSessionEntity : AuditableEntity, IDataEntity<PunchoutSessio
         target.Status = Status;
         target.StartPage = StartPage;
         target.UserId = UserId;
+        target.UserMappingId = UserMappingId;
+        target.OrganizationId = OrganizationId;
     }
 }

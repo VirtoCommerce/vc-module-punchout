@@ -35,7 +35,7 @@ public partial class PunchoutRequisitionService(
         var configurationId = context.Configuration.Id;
         var lineItemIds = request.Items.Select(x => x.LineItemId).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         var orderedLines = await GetOrderedLinesAsync(configurationId, lineItemIds);
-        var requisitionItems = await requisitionItemService.GetReturnedItemsAsync(configurationId, context.UserMapping.UserId, lineItemIds);
+        var requisitionItems = await requisitionItemService.GetReturnedItemsAsync(CreateReturnedItemsCriteria(context, lineItemIds));
         var purchaseOrderLines = isNewOrder ? [] : await GetPurchaseOrderLinesAsync(configurationId, request.OrderId);
 
         foreach (var item in request.Items)
@@ -51,6 +51,29 @@ public partial class PunchoutRequisitionService(
         }
 
         return errors.Count > 0 ? string.Join(" ", errors) : null;
+    }
+
+    /// <summary>
+    /// An organization mapping orders the items returned by the sessions of any user of the organization,
+    /// a user mapping only the items returned to the user.
+    /// </summary>
+    protected virtual PunchoutReturnedItemsCriteria CreateReturnedItemsCriteria(PunchoutOrderRequestHandlerContext context, IList<string> lineItemIds)
+    {
+        var criteria = AbstractTypeFactory<PunchoutReturnedItemsCriteria>.TryCreateInstance();
+
+        criteria.ConfigurationId = context.Configuration.Id;
+        criteria.LineItemIds = lineItemIds;
+
+        if (context.UserMapping.IsOrganizationMapping)
+        {
+            criteria.OrganizationId = context.UserMapping.OrganizationId;
+        }
+        else
+        {
+            criteria.UserId = context.UserMapping.UserId;
+        }
+
+        return criteria;
     }
 
     /// <summary>

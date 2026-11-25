@@ -249,6 +249,7 @@ public class PunchoutRequisitionTests
             Configuration = Configuration,
             Store = new Store { Id = "store", DefaultLanguage = "en-US" },
             UserMapping = new PunchoutUserMapping { UserId = "user", UserName = "buyer" },
+            Customer = new PunchoutOrderCustomer { UserId = "user", UserName = "buyer" },
         };
 
         var cart = await orderService.BuildCartPublicAsync(context);
@@ -382,8 +383,14 @@ public class PunchoutRequisitionTests
 
     private sealed class InMemoryRequisitionItemService(IList<PunchoutRequisitionItem> items) : IPunchoutRequisitionItemService
     {
-        public Task<IList<PunchoutRequisitionItem>> GetReturnedItemsAsync(string configurationId, string userId, IList<string> lineItemIds) =>
-            Task.FromResult<IList<PunchoutRequisitionItem>>(items.Where(x => lineItemIds.Contains(x.LineItemId)).ToList());
+        public PunchoutReturnedItemsCriteria LastCriteria { get; private set; }
+
+        public Task<IList<PunchoutRequisitionItem>> GetReturnedItemsAsync(PunchoutReturnedItemsCriteria criteria)
+        {
+            LastCriteria = criteria;
+
+            return Task.FromResult<IList<PunchoutRequisitionItem>>(items.Where(x => criteria.LineItemIds.Contains(x.LineItemId)).ToList());
+        }
     }
 
     private sealed class TestCustomerOrderService()

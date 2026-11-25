@@ -23,8 +23,18 @@
           "externalId-required": "ExternalId on pakollinen",
           "mapping-exists": "Määritys, jonka ExternalId on '{{externalId}}', on jo olemassa.",
           "userId-memberId-required": "UserId ja MemberId ovat pakollisia.",
+          "userId-or-organizationId-required": "Joko UserId tai OrganizationId vaaditaan, mutta ei molempia.",
+          "organization-not-found": "Organisaatiota ei löydy.",
+          "organization-memberId-not-allowed": "Organisaatiomäärityksellä ei voi olla MemberId-arvoa.",
+          "organization-mapping-exists": "Organisaatiolla on jo punchout-määritys.",
           "memberId-mismatch": "Käyttäjä ei ole määritetyn yhteyshenkilön suojaustili.",
           "user-is-admin-or-customer": "Vain Customer-tyyppisiä tilejä, jotka eivät ole järjestelmänvalvojia, voidaan määrittää."
+        }
+      },
+      "organization-mapping-detail": {
+        "title": "Punchout-organisaatio",
+        "labels": {
+          "info": "Tämän organisaation käyttäjät asioivat omilla tileillään. Käyttäjä tunnistetaan sähköpostiosoitteesta, jonka hankintajärjestelmä lähettää loppukäyttäjälle."
         }
       }
     },
@@ -41,6 +51,10 @@
     "widgets": {
       "user-mapping": {
         "title": "Punchout-käyttäjä",
+        "not-set": "Ei linkitetty"
+      },
+      "organization-mapping": {
+        "title": "Punchout-organisaatio",
         "not-set": "Ei linkitetty"
       }
     }

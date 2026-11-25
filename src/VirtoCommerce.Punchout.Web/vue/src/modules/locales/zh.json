@@ -1,7 +1,8 @@
 {
   "PUNCHOUT": {
     "WIDGET": {
-      "TITLE": "Punchout 用户"
+      "TITLE": "Punchout 用户",
+      "ORGANIZATION_TITLE": "Punchout 组织"
     },
     "MAPPING": {
       "TITLE": "Punchout 用户",
@@ -12,6 +13,10 @@
       "EXTERNAL_ID_HINT": "采购系统在 cXML Header/Sender/Credential/Identity 中发送的值。",
       "ACCOUNT": "账户",
       "NO_ACCOUNTS": "此联系人还没有安全账户。请先创建一个：Punchout 会话是为账户而不是为联系人打开的。"
+    },
+    "ORGANIZATION_MAPPING": {
+      "TITLE": "Punchout 组织",
+      "INFO": "该组织的用户使用各自的账户购物。系统根据采购系统为最终用户发送的电子邮件查找用户。"
     },
     "TOOLBAR": {
       "SAVE": "保存",
@@ -27,6 +32,10 @@
       "externalId-required": "ExternalId 为必填项",
       "mapping-exists": "ExternalId 为 '{externalId}' 的映射已存在。",
       "userId-memberId-required": "UserId 和 MemberId 为必填项。",
+      "userId-or-organizationId-required": "必须指定 UserId 或 OrganizationId 之一，但不能同时指定。",
+      "organization-not-found": "未找到该组织。",
+      "organization-memberId-not-allowed": "组织映射不能指定 MemberId。",
+      "organization-mapping-exists": "该组织已有 punchout 映射。",
       "memberId-mismatch": "该用户不是指定联系人的安全账户。",
       "user-is-admin-or-customer": "只能映射非管理员的 Customer 类型账户。"
     }

@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using VirtoCommerce.Platform.Core.Common;
+using VirtoCommerce.Punchout.Core.Cxml;
 using VirtoCommerce.Punchout.Core.Models;
 using VirtoCommerce.Punchout.Core.Services;
 
@@ -47,20 +49,45 @@ public abstract class BasePunchoutProcessor(
                settings.SenderDomain.EqualsIgnoreCase(request.SenderDomain);
     }
 
-    protected virtual async Task<PunchoutUserMapping> FindUserMappingAsync(string senderIdentity)
+    /// <summary>
+    /// The email of the end user: Contact role="endUser" or, when the contact has no email, the UserEmail extrinsic.
+    /// </summary>
+    protected virtual string GetUserEmail(PunchoutUserContext user, IDictionary<string, string> extrinsics)
     {
-        if (string.IsNullOrEmpty(senderIdentity))
+        var email = user?.Email;
+
+        if (string.IsNullOrWhiteSpace(email) &&
+            extrinsics?.TryGetValue(CxmlConstants.ExtrinsicName.UserEmail, out var extrinsicEmail) == true)
+        {
+            email = extrinsicEmail;
+        }
+
+        return email?.Trim();
+    }
+
+    /// <summary>
+    /// Returns the identity the user mapping is looked up by.
+    /// </summary>
+    protected virtual string GetMappingIdentity(BasePunchoutRequest request) => request.Sender;
+
+    /// <summary>
+    /// Finds the active mapping for the identity. A user mapping takes precedence over an organization mapping.
+    /// </summary>
+    protected virtual async Task<PunchoutUserMapping> FindUserMappingAsync(string identity)
+    {
+        if (string.IsNullOrEmpty(identity))
         {
             return null;
         }
 
         var criteria = AbstractTypeFactory<PunchoutUserMappingSearchCriteria>.TryCreateInstance();
-        criteria.ExternalIds = [senderIdentity];
+        criteria.ExternalIds = [identity];
         criteria.IsActive = true;
-        criteria.Take = 1;
 
         var searchResult = await userMappingSearchService.SearchNoCloneAsync(criteria);
 
-        return searchResult.Results.FirstOrDefault();
+        return searchResult.Results
+            .OrderBy(x => x.IsOrganizationMapping)
+            .FirstOrDefault();
     }
 }

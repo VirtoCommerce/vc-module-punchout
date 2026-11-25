@@ -1,7 +1,8 @@
 {
   "PUNCHOUT": {
     "WIDGET": {
-      "TITLE": "Пользователь Punchout"
+      "TITLE": "Пользователь Punchout",
+      "ORGANIZATION_TITLE": "Punchout-организация"
     },
     "MAPPING": {
       "TITLE": "Пользователь Punchout",
@@ -12,6 +13,10 @@
       "EXTERNAL_ID_HINT": "Значение, которое система закупок передает в cXML Header/Sender/Credential/Identity.",
       "ACCOUNT": "Учётная запись",
       "NO_ACCOUNTS": "У этого контакта пока нет учётной записи. Сначала создайте ее: сессия Punchout открывается для учётной записи, а не для контакта."
+    },
+    "ORGANIZATION_MAPPING": {
+      "TITLE": "Punchout-организация",
+      "INFO": "Пользователи этой организации работают под своими учётными записями. Пользователь определяется по email конечного пользователя, который присылает система закупок."
     },
     "TOOLBAR": {
       "SAVE": "Сохранить",
@@ -27,6 +32,10 @@
       "externalId-required": "ExternalId обязателен",
       "mapping-exists": "Сопоставление с ExternalId '{externalId}' уже существует.",
       "userId-memberId-required": "UserId и MemberId обязательны.",
+      "userId-or-organizationId-required": "Укажите либо UserId, либо OrganizationId, но не оба.",
+      "organization-not-found": "Организация не найдена.",
+      "organization-memberId-not-allowed": "У сопоставления организации не может быть MemberId.",
+      "organization-mapping-exists": "У организации уже есть сопоставление punchout.",
       "memberId-mismatch": "Пользователь не является учётной записью указанного контакта.",
       "user-is-admin-or-customer": "Сопоставлять можно только учётные записи типа Customer без прав администратора."
     }

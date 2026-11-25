@@ -97,6 +97,8 @@ public class Module : IModule, IHasConfiguration
         serviceCollection.AddTransient<IPunchoutCustomerOrderService, PunchoutCustomerOrderService>();
         serviceCollection.AddTransient<IPunchoutHandler, DefaultPunchoutHandler>();
         serviceCollection.AddTransient<IPunchoutHandlerFactory, PunchoutHandlerFactory>();
+        serviceCollection.AddTransient<IPunchoutUserPolicy, PunchoutUserPolicy>();
+        serviceCollection.AddTransient<IPunchoutOrganizationUserResolver, PunchoutOrganizationUserResolver>();
         serviceCollection.AddTransient<IPunchoutSetupProcessor, PunchoutSetupProcessor>();
         serviceCollection.AddTransient<IPunchoutOrderMessageBuilder, PunchoutOrderMessageBuilder>();
         serviceCollection.AddTransient<IPunchoutOrderMessageProcessor, PunchoutOrderMessageProcessor>();
@@ -108,6 +110,7 @@ public class Module : IModule, IHasConfiguration
 
         serviceCollection.AddTransient<IPunchoutSessionManagementService, PunchoutSessionManagementService>();
         serviceCollection.AddGrantTypeHandler<PunchoutGrantTypeHandler>(ModuleConstants.Security.PunchoutGrantType);
+        serviceCollection.AddSingleton<ITokenRequestValidator, PunchoutOrganizationRequestValidator>();
 
         // Register GraphQL schema
         _ = new GraphQLBuilder(serviceCollection, builder =>

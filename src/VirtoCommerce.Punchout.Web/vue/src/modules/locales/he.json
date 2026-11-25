@@ -1,7 +1,8 @@
 {
   "PUNCHOUT": {
     "WIDGET": {
-      "TITLE": "משתמש Punchout"
+      "TITLE": "משתמש Punchout",
+      "ORGANIZATION_TITLE": "ארגון Punchout"
     },
     "MAPPING": {
       "TITLE": "משתמש Punchout",
@@ -12,6 +13,10 @@
       "EXTERNAL_ID_HINT": "הערך שמערכת הרכש שולחת ב-cXML Header/Sender/Credential/Identity.",
       "ACCOUNT": "חשבון",
       "NO_ACCOUNTS": "לאיש קשר זה אין עדיין חשבון אבטחה. יש ליצור חשבון קודם: סשן Punchout נפתח עבור חשבון, לא עבור איש קשר."
+    },
+    "ORGANIZATION_MAPPING": {
+      "TITLE": "ארגון Punchout",
+      "INFO": "משתמשי הארגון קונים בחשבונות שלהם. המשתמש מזוהה לפי כתובת הדוא\"ל שמערכת הרכש שולחת עבור משתמש הקצה."
     },
     "TOOLBAR": {
       "SAVE": "שמירה",
@@ -27,6 +32,10 @@
       "externalId-required": "ExternalId הוא שדה חובה",
       "mapping-exists": "כבר קיים מיפוי עם ExternalId '{externalId}'.",
       "userId-memberId-required": "UserId ו-MemberId הם שדות חובה.",
+      "userId-or-organizationId-required": "יש לציין UserId או OrganizationId, אך לא את שניהם.",
+      "organization-not-found": "הארגון לא נמצא.",
+      "organization-memberId-not-allowed": "למיפוי ארגון לא יכול להיות MemberId.",
+      "organization-mapping-exists": "לארגון כבר יש מיפוי punchout.",
       "memberId-mismatch": "המשתמש אינו חשבון אבטחה של איש הקשר שצוין.",
       "user-is-admin-or-customer": "ניתן למפות רק חשבונות מסוג Customer שאינם חשבונות מנהל."
     }

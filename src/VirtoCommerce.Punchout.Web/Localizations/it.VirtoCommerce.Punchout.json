@@ -23,8 +23,18 @@
           "externalId-required": "ExternalId è obbligatorio",
           "mapping-exists": "Esiste già una mappatura con ExternalId '{{externalId}}'.",
           "userId-memberId-required": "UserId e MemberId sono obbligatori.",
+          "userId-or-organizationId-required": "È obbligatorio UserId oppure OrganizationId, ma non entrambi.",
+          "organization-not-found": "Organizzazione non trovata.",
+          "organization-memberId-not-allowed": "Una mappatura dell'organizzazione non può avere un MemberId.",
+          "organization-mapping-exists": "L'organizzazione ha già una mappatura punchout.",
           "memberId-mismatch": "L'utente non è un account di sicurezza del contatto specificato.",
           "user-is-admin-or-customer": "È possibile mappare solo account di tipo Customer non amministratori."
+        }
+      },
+      "organization-mapping-detail": {
+        "title": "Organizzazione punchout",
+        "labels": {
+          "info": "Gli utenti di questa organizzazione acquistano con i propri account. L'utente viene individuato tramite l'e-mail che il sistema di approvvigionamento invia per l'utente finale."
         }
       }
     },
@@ -41,6 +51,10 @@
     "widgets": {
       "user-mapping": {
         "title": "Utente Punchout",
+        "not-set": "Non collegato"
+      },
+      "organization-mapping": {
+        "title": "Organizzazione punchout",
         "not-set": "Non collegato"
       }
     }

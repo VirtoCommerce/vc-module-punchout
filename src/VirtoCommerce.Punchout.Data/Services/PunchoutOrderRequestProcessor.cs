@@ -25,6 +25,7 @@ public partial class PunchoutOrderRequestProcessor(
     IPunchoutOrderRequestSearchService orderRequestSearchService,
     IPunchoutHandlerFactory handlerFactory,
     AbstractValidator<PunchoutOrderRequestData> requestValidator,
+    IPunchoutOrganizationUserResolver organizationUserResolver,
     ILogger<PunchoutOrderRequestProcessor> logger)
     : BasePunchoutProcessor(options, userMappingSearchService), IPunchoutOrderRequestProcessor
 {
@@ -135,7 +136,7 @@ public partial class PunchoutOrderRequestProcessor(
         orderRequest.PayloadId = request.PayloadId;
         orderRequest.SenderIdentity = Truncate(request.Sender, ModuleConstants.FieldLength.Identity);
         orderRequest.BuyerIdentity = Truncate(request.From, ModuleConstants.FieldLength.Identity);
-        orderRequest.UserId = validationResult.UserMapping?.UserId;
+        orderRequest.UserId = validationResult.Customer?.UserId ?? validationResult.UserMapping?.UserId;
         orderRequest.OrderType = Truncate(request.OrderType.IsNullOrEmpty() ? CxmlConstants.OrderRequestType.New : request.OrderType, ModuleConstants.FieldLength.OrderType); // 'type' defaults to 'new' in the cXML DTD
         orderRequest.OrderVersion = Truncate(request.OrderVersion, ModuleConstants.FieldLength.OrderVersion);
         orderRequest.PreviousPayloadId = Truncate(request.PreviousPayloadId, ModuleConstants.FieldLength.PayloadId);
@@ -318,11 +319,12 @@ public partial class PunchoutOrderRequestProcessor(
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidCredentials);
         }
 
-        var userMapping = await FindUserMappingAsync(request.Sender);
+        var mappingIdentity = GetMappingIdentity(request);
+        var userMapping = await FindUserMappingAsync(mappingIdentity);
 
         if (userMapping is null)
         {
-            LogUserNotFound(request.Sender);
+            LogUserNotFound(mappingIdentity);
 
             return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.UserNotFound, null, settings);
         }
@@ -364,12 +366,80 @@ public partial class PunchoutOrderRequestProcessor(
                 $"Currency '{request.Currency}' is not supported.", settings, userMapping, store);
         }
 
-        if (IsUpdateOrder(request.OrderType) || IsDeleteOrder(request.OrderType))
+        // Applies to every order type: the end user must belong to the mapped organization
+        var customerResult = await ResolveCustomerAsync(request, settings, userMapping, store);
+
+        if (!customerResult.IsValid)
         {
-            return await ValidateUpdateAsync(request, settings, userMapping, store);
+            return customerResult;
         }
 
-        return await ValidateNewOrderAsync(request, settings, userMapping, store);
+        var result = IsUpdateOrder(request.OrderType) || IsDeleteOrder(request.OrderType)
+            ? await ValidateUpdateAsync(request, settings, userMapping, store)
+            : await ValidateNewOrderAsync(request, settings, userMapping, store);
+
+        result.Customer ??= customerResult.Customer;
+
+        return result;
+    }
+
+    /// <summary>
+    /// The customer of a user mapping is the mapped user. The customer of an organization mapping is the end user of the request,
+    /// found among the users of the organization by email. Returns either an error or the customer.
+    /// </summary>
+    protected virtual async Task<PunchoutOrderValidationResult> ResolveCustomerAsync(PunchoutOrderRequestData request, PunchoutConfiguration settings,
+        PunchoutUserMapping userMapping, Store store)
+    {
+        var customer = AbstractTypeFactory<PunchoutOrderCustomer>.TryCreateInstance();
+
+        if (!userMapping.IsOrganizationMapping)
+        {
+            customer.UserId = userMapping.UserId;
+            customer.UserName = userMapping.UserName;
+            customer.MemberId = userMapping.MemberId;
+
+            return new PunchoutOrderValidationResult { Customer = customer };
+        }
+
+        var email = GetUserEmail(request.User, request.Extrinsics);
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            LogUserEmailMissing(request.OrderId, userMapping.ExternalId, userMapping.OrganizationId);
+
+            return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest,
+                "The request contains no end user email.", settings, userMapping, store);
+        }
+
+        var userRequest = AbstractTypeFactory<PunchoutOrganizationUserRequest>.TryCreateInstance();
+        userRequest.OrganizationId = userMapping.OrganizationId;
+        userRequest.Email = email;
+        userRequest.StoreId = settings.StoreId;
+
+        var userResult = await organizationUserResolver.ResolveAsync(userRequest);
+
+        switch (userResult.Status)
+        {
+            case PunchoutOrganizationUserStatus.Found:
+                customer.UserId = userResult.User.Id;
+                customer.UserName = userResult.User.UserName;
+                customer.MemberId = userResult.User.MemberId;
+                customer.OrganizationId = userMapping.OrganizationId;
+
+                return new PunchoutOrderValidationResult { Customer = customer };
+
+            case PunchoutOrganizationUserStatus.Ambiguous:
+                LogAmbiguousUser(request.OrderId, email, userMapping.OrganizationId, userResult.UserMatchCount);
+
+                return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest,
+                    $"Several users of the organization have the end user email '{email}'.", settings, userMapping, store);
+
+            default:
+                LogOrganizationUserNotFound(request.OrderId, email, userMapping.OrganizationId);
+
+                return PunchoutOrderValidationResult.Invalid(PunchoutOrderStatus.InvalidRequest,
+                    $"The end user '{email}' is not found in the organization.", settings, userMapping, store);
+        }
     }
 
     /// <summary>
@@ -596,6 +666,7 @@ public partial class PunchoutOrderRequestProcessor(
         context.OrderRequestId = orderRequest.Id;
         context.Configuration = validationResult.Configuration;
         context.UserMapping = validationResult.UserMapping;
+        context.Customer = validationResult.Customer;
         context.Store = validationResult.Store;
         context.PreviousRequest = validationResult.PreviousRequest;
 
@@ -639,8 +710,17 @@ public partial class PunchoutOrderRequestProcessor(
     [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request rejected for sender identity '{SenderIdentity}': invalid credentials.")]
     private partial void LogInvalidCredentials(string senderIdentity);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request rejected: sender identity '{SenderIdentity}' is not linked to any user.")]
-    private partial void LogUserNotFound(string senderIdentity);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request rejected: identity '{MappingIdentity}' is not linked to any user or organization.")]
+    private partial void LogUserNotFound(string mappingIdentity);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request '{OrderId}' rejected for identity '{MappingIdentity}' mapped to organization '{OrganizationId}': the request contains no end user email.")]
+    private partial void LogUserEmailMissing(string orderId, string mappingIdentity, string organizationId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request '{OrderId}' rejected: no user with email '{Email}' is found in organization '{OrganizationId}'.")]
+    private partial void LogOrganizationUserNotFound(string orderId, string email, string organizationId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request '{OrderId}' rejected: {MatchCount} users with email '{Email}' are found in organization '{OrganizationId}'.")]
+    private partial void LogAmbiguousUser(string orderId, string email, string organizationId, int matchCount);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Punchout order request rejected for sender identity '{SenderIdentity}': store '{StoreId}' does not exist or punchout is disabled for it.")]
     private partial void LogStoreNotConfigured(string senderIdentity, string storeId);

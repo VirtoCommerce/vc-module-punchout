@@ -49,4 +49,7 @@ public class CxmlOrderRequestHeader
 
     [XmlElement("Contact")]
     public List<CxmlContact> Contacts { get; set; }
+
+    [XmlElement("Extrinsic")]
+    public List<CxmlExtrinsic> Extrinsics { get; set; }
 }

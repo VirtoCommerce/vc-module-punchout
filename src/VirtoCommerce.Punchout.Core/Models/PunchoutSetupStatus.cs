@@ -28,6 +28,11 @@ public static class PunchoutSetupStatus
     public const string UserNotFound = "UserNotFound";
 
     /// <summary>
+    /// The identity is linked to an organization, and more than one of its users has the email the request carries.
+    /// </summary>
+    public const string AmbiguousUser = "AmbiguousUser";
+
+    /// <summary>
     /// The URL the request asks to return to is not in the allow list of the configuration.
     /// </summary>
     public const string ReturnUrlNotAllowed = "ReturnUrlNotAllowed";

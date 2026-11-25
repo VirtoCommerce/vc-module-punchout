@@ -1,7 +1,8 @@
 {
   "PUNCHOUT": {
     "WIDGET": {
-      "TITLE": "Usuario de Punchout"
+      "TITLE": "Usuario de Punchout",
+      "ORGANIZATION_TITLE": "Organización punchout"
     },
     "MAPPING": {
       "TITLE": "Usuario de Punchout",
@@ -12,6 +13,10 @@
       "EXTERNAL_ID_HINT": "El valor que el sistema de compras envía en cXML Header/Sender/Credential/Identity.",
       "ACCOUNT": "Cuenta",
       "NO_ACCOUNTS": "Este contacto aún no tiene una cuenta de seguridad. Cree una primero: una sesión de Punchout se abre para una cuenta, no para un contacto."
+    },
+    "ORGANIZATION_MAPPING": {
+      "TITLE": "Organización punchout",
+      "INFO": "Los usuarios de esta organización compran con sus propias cuentas. El usuario se identifica por el correo electrónico que el sistema de compras envía para el usuario final."
     },
     "TOOLBAR": {
       "SAVE": "Guardar",
@@ -27,6 +32,10 @@
       "externalId-required": "ExternalId es obligatorio",
       "mapping-exists": "Ya existe una asignación con ExternalId '{externalId}'.",
       "userId-memberId-required": "UserId y MemberId son obligatorios.",
+      "userId-or-organizationId-required": "Se requiere UserId u OrganizationId, pero no ambos.",
+      "organization-not-found": "No se encontró la organización.",
+      "organization-memberId-not-allowed": "Una asignación de organización no puede tener MemberId.",
+      "organization-mapping-exists": "La organización ya tiene una asignación de punchout.",
       "memberId-mismatch": "El usuario no es una cuenta de seguridad del contacto especificado.",
       "user-is-admin-or-customer": "Solo se pueden asignar cuentas de tipo Customer que no sean de administrador."
     }

@@ -411,6 +411,10 @@ namespace VirtoCommerce.Punchout.Data.MySql.Migrations
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("OrganizationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
                     b.Property<string>("ReturnUrl")
                         .HasMaxLength(2048)
                         .HasColumnType("varchar(2048)");
@@ -456,7 +460,14 @@ namespace VirtoCommerce.Punchout.Data.MySql.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)");
 
+                    b.Property<string>("UserMappingId")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("IX_PunchoutSession_OrganizationId");
 
                     b.HasIndex("SessionTokenHash")
                         .IsUnique()
@@ -498,8 +509,15 @@ namespace VirtoCommerce.Punchout.Data.MySql.Migrations
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("OrganizationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("OrganizationName")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
                     b.Property<string>("UserId")
-                        .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)");
 
@@ -510,11 +528,13 @@ namespace VirtoCommerce.Punchout.Data.MySql.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ExternalId")
-                        .IsUnique()
                         .HasDatabaseName("IX_PunchoutUserMapping_ExternalId");
 
                     b.HasIndex("MemberId")
                         .HasDatabaseName("IX_PunchoutUserMapping_MemberId");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("IX_PunchoutUserMapping_OrganizationId");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("IX_PunchoutUserMapping_UserId");

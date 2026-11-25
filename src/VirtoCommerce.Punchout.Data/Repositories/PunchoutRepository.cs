@@ -77,17 +77,23 @@ public class PunchoutRepository(PunchoutDbContext dbContext, IUnitOfWork unitOfW
         return await query.Include(x => x.Items).ToListAsync();
     }
 
-    public virtual async Task<IList<PunchoutRequisitionItemEntity>> GetReturnedRequisitionItemsAsync(string configurationId, string userId, IList<string> lineItemIds)
+    public virtual async Task<IList<PunchoutRequisitionItemEntity>> GetReturnedRequisitionItemsAsync(string configurationId, string userId, string organizationId,
+        IList<string> lineItemIds)
     {
-        if (string.IsNullOrEmpty(configurationId) || string.IsNullOrEmpty(userId) || lineItemIds.IsNullOrEmpty())
+        if (string.IsNullOrEmpty(configurationId) || (string.IsNullOrEmpty(userId) && string.IsNullOrEmpty(organizationId)) || lineItemIds.IsNullOrEmpty())
         {
             return [];
         }
 
         var returnedSessions = PunchoutSessions.Where(x =>
             x.ConfigurationId == configurationId &&
-            x.UserId == userId &&
             x.Status == ModuleConstants.SessionStatus.Returned);
+
+        // The sessions of an organization mapping are shared by the users of the organization,
+        // the sessions of a user mapping belong to the user only
+        returnedSessions = string.IsNullOrEmpty(organizationId)
+            ? returnedSessions.Where(x => x.UserId == userId && x.OrganizationId == null)
+            : returnedSessions.Where(x => x.OrganizationId == organizationId);
 
         return await PunchoutRequisitionItems
             .Where(x => lineItemIds.Contains(x.LineItemId))

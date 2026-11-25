@@ -6,6 +6,17 @@ angular.module('VirtoCommerce.Punchout')
 
                 $scope.mapping = null;
 
+                // The widget is shown on contacts (user mapping) and organizations (organization mapping)
+                function isOrganization() {
+                    return blade.currentEntity && blade.currentEntity.memberType === 'Organization';
+                }
+
+                $scope.title = function () {
+                    return isOrganization()
+                        ? 'punchout.widgets.organization-mapping.title'
+                        : 'punchout.widgets.user-mapping.title';
+                };
+
                 function refresh() {
                     if (!blade.currentEntity || !blade.currentEntity.id) {
                         return;
@@ -13,7 +24,11 @@ angular.module('VirtoCommerce.Punchout')
 
                     $scope.widget.isLoading = true;
 
-                    userMappings.search({ memberIds: [blade.currentEntity.id], take: 1 }, function (searchResult) {
+                    var criteria = isOrganization()
+                        ? { organizationIds: [blade.currentEntity.id], take: 1 }
+                        : { memberIds: [blade.currentEntity.id], take: 1 };
+
+                    userMappings.search(criteria, function (searchResult) {
                         $scope.mapping = searchResult.results.length ? searchResult.results[0] : null;
                         $scope.widget.isLoading = false;
                     }, function () {
@@ -28,7 +43,9 @@ angular.module('VirtoCommerce.Punchout')
 
                     var newBlade = {
                         id: 'memberPunchoutUserMappingBlade',
-                        title: 'punchout.blades.user-mapping-detail.title',
+                        title: isOrganization()
+                            ? 'punchout.blades.organization-mapping-detail.title'
+                            : 'punchout.blades.user-mapping-detail.title',
                         subtitle: blade.currentEntity.name,
                         member: blade.currentEntity,
                         controller: 'VirtoCommerce.Punchout.userMappingDetailController',
